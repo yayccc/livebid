@@ -2,25 +2,28 @@
 
 ## 总体架构
 
+下图描述目标微服务架构，不代表当前仓库已经实现全部服务。当前开发以 `01-overview.md` 中的“当前阶段”为准。
+
 ```text
-React Web / 管理后台
+mobile-user / merchant-admin
         |
-        v
-API Gateway
-        |
-        +------------------+
-        |                  |
-        v                  v
-WebSocket Gateway      HTTP API
-        |                  |
-        v                  v
-auction-service     user-service
-live-service        goods-service
-order-service       payment-service
-message-service     ai-service
-        |
-        v
-MySQL / Redis / MQ / Object Storage
+        +----------------------+
+        |                      |
+        v                      v
+API Gateway              WebSocket Gateway
+        |                      |
+        |                      v
+        |                auction-service
+        |                      |
+        +----------+-----------+-----------+
+                   |                       |
+                   v                       v
+        user/goods/live service     order/payment service
+                   |                       |
+                   +-----------+-----------+
+                               |
+                               v
+                  MySQL / Redis / MQ / Object Storage
 ```
 
 ## 服务拆分
@@ -38,25 +41,26 @@ MySQL / Redis / MQ / Object Storage
 | `message-service` | 站内通知、系统消息、广播事件消费 | 可选 |
 | `ai-service` | AI 定价建议、话术生成、风险提示 | 可选 |
 
+## 架构边界
+
+- 前端只访问 `api-gateway` 和 `ws-gateway`，不直接调用具体业务微服务。
+- `api-gateway` 是对外 HTTP 入口，负责鉴权、限流、路由、聚合和统一响应格式。
+- `ws-gateway` 是 WebSocket 入口，负责连接管理、直播间订阅、消息收发和广播。
+- 除网关外，普通业务微服务默认只暴露内部 gRPC 接口。
+- 每个业务微服务只读写自己拥有的数据表。
+- 跨服务同步调用优先使用 gRPC，跨服务状态流转优先使用 MQ 事件。
+- 竞拍实时状态优先放 Redis，最终事实落 MySQL。
+- AI 只提供定价、话术、风控等辅助建议，不参与出价有效性、落锤成交、订单支付等核心判定。
+
 ## 核心服务职责
 
 `api-gateway`：
 
 - 对外 REST API
-- JWT 校验
-- 用户身份透传
-- 路由到内部服务
+- 鉴权、限流和用户身份透传
+- 路由到内部 gRPC 服务
 - 聚合页面需要的数据
 - 统一错误码和响应格式
-
-`ws-gateway`：
-
-- 维护 WebSocket 连接
-- 用户加入/离开直播间
-- 接收用户出价消息
-- 调用 `auction-service` 完成出价
-- 向直播间广播竞拍变化
-- 心跳检测和断线清理
 
 `auction-service`：
 
