@@ -47,6 +47,7 @@ API Gateway              WebSocket Gateway
 - `api-gateway` 是对外 HTTP 入口，负责鉴权、限流、路由、聚合和统一响应格式。
 - `ws-gateway` 是 WebSocket 入口，负责连接管理、直播间订阅、消息收发和广播。
 - 除网关外，普通业务微服务默认只暴露内部 gRPC 接口。
+- JWT 签发与验证设计详见 `docs/04-auth-design.md`。
 - 每个业务微服务只读写自己拥有的数据表。
 - 跨服务同步调用优先使用 gRPC，跨服务状态流转优先使用 MQ 事件。
 - 竞拍实时状态优先放 Redis，最终事实落 MySQL。
