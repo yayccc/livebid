@@ -47,31 +47,22 @@ livebid/
 
 ## 单个微服务结构
 
-以 `auction-service` 为例：
+以 `shop-service` 为例。当前阶段优先保持轻量，两层就够：`handler` 直接承接 gRPC 用例编排，`repository` 只负责数据访问。`service`、`dto` 不作为默认目录，等业务复杂到需要复用、事务编排或跨入口共享逻辑时再引入。
 
 ```text
-services/auction-service/
+services/shop-service/
 ├── cmd/
 │   └── server/
 │       └── main.go
 ├── internal/
 │   ├── handler/
-│   │   ├── auction_handler.go
-│   │   └── bid_handler.go
-│   ├── service/
-│   │   ├── auction_service.go
-│   │   ├── bid_service.go
-│   │   └── hammer_service.go
+│   │   └── shop_grpc_handler.go
 │   ├── repository/
-│   │   ├── auction_repository.go
-│   │   └── bid_record_repository.go
+│   │   ├── shop_repository.go
+│   │   └── login_log_repository.go
 │   ├── model/
-│   │   ├── auction.go
-│   │   └── bid_record.go
-│   ├── dto/
+│   │   └── shop.go
 │   ├── client/
-│   ├── mq/
-│   ├── job/
 │   ├── router/
 │   ├── config/
 │   └── bootstrap/
@@ -86,18 +77,14 @@ services/auction-service/
 
 | 目录/文件 | 功能说明 |
 | --- | --- |
-| `cmd/server/main.go` | 服务启动入口，负责加载配置、初始化日志、数据库、Redis、MQ、RPC client、gRPC/HTTP server 等基础组件，并启动服务。 |
-| `internal/handler` | 接口处理层，接收 gRPC 或网关 HTTP 请求，完成参数绑定、基础校验、用户上下文读取和响应返回，不直接写业务规则。 |
-| `internal/service` | 业务逻辑层，负责编排核心业务流程，例如创建竞拍、出价校验、倒计时延长、落锤成交、事件发布等。 |
-| `internal/repository` | 数据访问层，封装本服务数据库表的增删改查和查询组合，不处理 HTTP、WebSocket、MQ 等外部协议。 |
+| `cmd/server/main.go` | 服务启动入口，负责加载配置、初始化日志、数据库、RPC client、gRPC server 等基础组件，并启动服务。 |
+| `internal/handler` | gRPC 接口处理层，接收 proto 请求，完成参数校验、用例编排、错误码映射和响应返回。当前骨架阶段允许直接调用 repository。 |
+| `internal/repository` | 数据访问层，封装本服务数据库表的增删改查和查询组合，不处理 gRPC、HTTP、WebSocket、MQ 等外部协议。 |
 | `internal/model` | 数据模型目录，定义数据库实体、领域模型或持久化对象，例如 `Auction`、`BidRecord`。 |
-| `internal/dto` | 数据传输对象目录，定义请求参数、响应结构、RPC 入参出参等，不直接等同于数据库模型。 |
 | `internal/client` | 外部依赖客户端目录，封装对其他微服务、第三方 API、对象存储等外部系统的调用。 |
-| `internal/mq` | 消息队列相关目录，放置事件生产者、消费者、消息结构和订阅处理逻辑。 |
-| `internal/job` | 定时任务或异步后台任务目录，例如订单超时关闭、竞拍状态补偿、数据清理等。 |
 | `internal/router` | 路由或服务注册目录，按服务类型集中管理 gRPC handler、HTTP 路由或中间件挂载。 |
 | `internal/config` | 当前服务的配置结构和配置加载逻辑，例如数据库、Redis、MQ、端口、超时时间等。 |
-| `internal/bootstrap` | 启动装配目录，负责把配置、基础组件、repository、service、handler、router 等对象组装起来。 |
+| `internal/bootstrap` | 启动装配目录，负责把配置、基础组件、repository、handler、router 等对象组装起来。 |
 | `tests` | 服务级测试目录，放置集成测试、接口测试或较完整的业务流程测试。 |
 | `configs` | 当前服务自己的配置文件或配置模板，例如 `config.local.yaml`、`config.example.yaml`；真实敏感配置通过环境变量或部署系统注入。 |
 | `Dockerfile` | 当前服务的容器构建文件。 |
@@ -117,37 +104,28 @@ services/auction-service/
 - 服务之间的同步调用契约放在 `api/proto`，生成代码放在 `gen`；不要手写或随意修改生成目录里的代码。
 - 对外 HTTP 契约放在 `api/openapi`，由 `api-gateway` 统一承接；普通业务服务的 HTTP 路由只用于内部调试或健康检查。
 - `pkg` 只放跨服务通用能力，例如日志、配置加载、错误码、响应封装、鉴权、gRPC 工具、MQ 工具、Redis 锁、参数校验；不要把某个业务域的规则下沉到 `pkg`。
-- `internal/service` 可以编排 Redis、MQ、RPC client 和 repository；`internal/repository` 只能处理本服务数据库访问，不调用其他服务。
+- 当前阶段默认不创建 `internal/service` 和 `internal/dto`；gRPC 服务可以直接使用 proto 作为边界类型，由 handler 编排 repository。
+- 当 handler 变得臃肿、同一逻辑被多个入口复用、需要事务/Redis/MQ/RPC client 编排时，再引入 `internal/service`。
+- `internal/repository` 只能处理本服务数据库访问，不调用其他服务。
 - 新增微服务时优先复制 `templates/go-service` 或参考现有服务结构，保持 `cmd/server`、`internal/*`、`tests`、`Dockerfile`、`Makefile`、`README.md` 的基本形态一致。
 - 不要把密钥、真实数据库密码、支付密钥、模型 API Key 等敏感信息提交到仓库；配置文件只保留示例值或通过环境变量注入。
 
-## 三层职责
+## 当前分层职责
 
 handler 层：
 
-- 接收 HTTP/gRPC 请求
-- 参数绑定和基础校验
+- 接收 gRPC 请求
+- 参数校验和错误码映射
 - 获取当前用户上下文
-- 调用 service
+- 编排 repository 和必要的公共组件
 - 统一返回响应
-- 不写业务规则
-- 不直接访问数据库、Redis、MQ
-
-Service 层：
-
-- 编排业务流程
-- 控制事务
-- 调用 repository
-- 调用 Redis、MQ、RPC client
-- 实现竞拍状态机
-- 保证幂等和一致性
+- 不直接写 SQL，不直接处理数据库连接细节
 
 repository 层：
 
 - 封装数据库访问
 - 只处理本服务自己的数据表
 - 不处理 HTTP、WebSocket、MQ
-- 不直接返回前端 DTO
 - 不调用其他服务
 
 ## 网关结构建议
@@ -159,7 +137,6 @@ services/api-gateway/
 ├── cmd/server/main.go
 ├── internal/
 │   ├── handler/
-│   ├── service/
 │   ├── client/
 │   ├── middleware/
 │   ├── router/
@@ -174,7 +151,6 @@ services/ws-gateway/
 ├── cmd/server/main.go
 ├── internal/
 │   ├── handler/
-│   ├── service/
 │   ├── client/
 │   ├── ws/
 │   ├── mq/
