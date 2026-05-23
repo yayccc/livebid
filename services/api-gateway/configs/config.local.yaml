@@ -1,0 +1,24 @@
+env: local
+
+http:
+  addr: ":58080"
+
+shopService:
+  addr: "127.0.0.1:9001"
+
+jwt:
+  secret: "local-dev-jwt-secret-change-me"
+  issuer: "livebid"
+  accessTokenTTLSeconds: 1800
+
+rpc:
+  timeoutSeconds: 3
+
+log:
+  level: debug
+  encoding: console
+  outputs:
+    - stdout
+  errorOutputs:
+    - stderr
+  development: true
