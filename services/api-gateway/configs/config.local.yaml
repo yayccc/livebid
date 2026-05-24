@@ -9,7 +9,7 @@ shopService:
 jwt:
   secret: "local-dev-jwt-secret-change-me"
   issuer: "livebid"
-  accessTokenTTLSeconds: 1800
+  accessTokenTTLSeconds: 604800
 
 rpc:
   timeoutSeconds: 3

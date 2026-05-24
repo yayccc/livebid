@@ -16,22 +16,11 @@ var (
 	ErrTokenExpired     = errors.New("auth: jwt token expired")
 )
 
-type SubjectType string
-
-const (
-	SubjectTypeUser  SubjectType = "user"
-	SubjectTypeShop  SubjectType = "shop"
-	SubjectTypeAdmin SubjectType = "admin"
-)
-
 type Claims struct {
-	Issuer    string      // 签发方 例如 livebid
-	Subject   string      // 主体 ID，用户 ID、商铺 ID 或管理员 ID
-	UserType  SubjectType // 主体类型：user、shop、admin
-	ShopID    string      // 商铺身份场景下的商铺 ID
-	TokenID   string      // token 唯一 ID，用于审计和吊销，开发初期暂不需要，后续可用于实现 token 黑名单
-	IssuedAt  time.Time   // 签发时间
-	ExpiresAt time.Time   // 过期时间
+	Issuer    string    // 签发方 例如 livebid
+	Subject   string    // 主体 ID，用户 ID、商铺 ID 或管理员 ID
+	ID        string    // token 唯一 ID，对应 JWT jti，可选
+	ExpiresAt time.Time // 过期时间
 }
 
 type JWTManager struct {
@@ -80,9 +69,6 @@ func (m *JWTManager) Sign(claims Claims) (string, error) {
 	}
 
 	now := m.now().UTC()
-	if claims.IssuedAt.IsZero() {
-		claims.IssuedAt = now
-	}
 	if claims.Issuer == "" {
 		claims.Issuer = m.issuer
 	}
@@ -130,20 +116,15 @@ func (m *JWTManager) Verify(token string) (Claims, error) {
 }
 
 type jwtClaims struct {
-	UserType SubjectType `json:"typ,omitempty"`
-	ShopID   string      `json:"shop_id,omitempty"`
 	jwt.RegisteredClaims
 }
 
 func (c Claims) toJWTClaims() jwtClaims {
 	return jwtClaims{
-		UserType: c.UserType,
-		ShopID:   c.ShopID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    c.Issuer,
 			Subject:   c.Subject,
-			ID:        c.TokenID,
-			IssuedAt:  jwt.NewNumericDate(c.IssuedAt.UTC()),
+			ID:        c.ID,
 			ExpiresAt: jwt.NewNumericDate(c.ExpiresAt.UTC()),
 		},
 	}
@@ -153,10 +134,7 @@ func (c jwtClaims) toClaims() Claims {
 	return Claims{
 		Issuer:    c.Issuer,
 		Subject:   c.Subject,
-		UserType:  c.UserType,
-		ShopID:    c.ShopID,
-		TokenID:   c.ID,
-		IssuedAt:  numericDateTime(c.IssuedAt),
+		ID:        c.ID,
 		ExpiresAt: numericDateTime(c.ExpiresAt),
 	}
 }

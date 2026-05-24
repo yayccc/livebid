@@ -30,7 +30,7 @@ type ShopHandler struct {
 
 func NewShopHandler(shopClient shopServiceClient, jwtManager *auth.JWTManager, accessTokenTTL time.Duration, rpcTimeout time.Duration) *ShopHandler {
 	if accessTokenTTL <= 0 {
-		accessTokenTTL = 30 * time.Minute
+		accessTokenTTL = 7 * 24 * time.Hour
 	}
 	if rpcTimeout <= 0 {
 		rpcTimeout = 3 * time.Second
@@ -150,9 +150,6 @@ func (h *ShopHandler) Login(c *gin.Context) {
 	expiresAt := now.Add(h.accessTokenTTL)
 	token, err := h.jwt.Sign(auth.Claims{
 		Subject:   strconv.FormatInt(shop.GetId(), 10),
-		UserType:  auth.SubjectTypeShop,
-		ShopID:    strconv.FormatInt(shop.GetId(), 10),
-		IssuedAt:  now,
 		ExpiresAt: expiresAt,
 	})
 	if err != nil {

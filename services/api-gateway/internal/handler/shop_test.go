@@ -143,7 +143,7 @@ func TestShopHandlerLoginSignsJWT(t *testing.T) {
 	if err != nil {
 		t.Fatalf("verify token: %v", err)
 	}
-	if claims.Subject != "1001" || claims.ShopID != "1001" || claims.UserType != auth.SubjectTypeShop {
+	if claims.Subject != "1001" {
 		t.Fatalf("unexpected claims: %#v", claims)
 	}
 }

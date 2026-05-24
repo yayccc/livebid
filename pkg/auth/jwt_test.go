@@ -18,9 +18,7 @@ func TestJWTManagerSignAndVerify(t *testing.T) {
 
 	token, err := manager.Sign(Claims{
 		Subject:   "10001",
-		UserType:  SubjectTypeShop,
-		ShopID:    "10001",
-		TokenID:   "token-1",
+		ID:        "token-1",
 		ExpiresAt: now.Add(30 * time.Minute),
 	})
 	if err != nil {
@@ -34,11 +32,11 @@ func TestJWTManagerSignAndVerify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Verify() error = %v", err)
 	}
-	if claims.Issuer != "livebid" || claims.Subject != "10001" || claims.UserType != SubjectTypeShop {
+	if claims.Issuer != "livebid" || claims.Subject != "10001" {
 		t.Fatalf("unexpected claims: %#v", claims)
 	}
-	if claims.ShopID != "10001" || claims.TokenID != "token-1" {
-		t.Fatalf("unexpected shop/token claims: %#v", claims)
+	if claims.ID != "token-1" {
+		t.Fatalf("unexpected token id: %#v", claims)
 	}
 }
 

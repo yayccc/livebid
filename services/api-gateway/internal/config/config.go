@@ -70,7 +70,7 @@ func defaultConfig() Config {
 		JWT: JWTConfig{
 			Secret:                "local-dev-jwt-secret-change-me",
 			Issuer:                "livebid",
-			AccessTokenTTLSeconds: 1800,
+			AccessTokenTTLSeconds: 604800,
 		},
 		RPC: RPCConfig{
 			TimeoutSeconds: 3,
@@ -160,7 +160,7 @@ func normalize(cfg *Config) {
 		cfg.JWT.Issuer = "livebid"
 	}
 	if cfg.JWT.AccessTokenTTLSeconds <= 0 {
-		cfg.JWT.AccessTokenTTLSeconds = 1800
+		cfg.JWT.AccessTokenTTLSeconds = 604800
 	}
 	if cfg.RPC.TimeoutSeconds <= 0 {
 		cfg.RPC.TimeoutSeconds = 3
