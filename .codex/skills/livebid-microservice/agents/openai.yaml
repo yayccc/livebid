@@ -1,0 +1,4 @@
+interface:
+  display_name: "LiveBid 微服务开发"
+  short_description: "按 LiveBid 模板开发 Go 微服务流程"
+  default_prompt: "使用 $livebid-microservice，读取 docs/services/<service-name>/ 下的需求与设计文档，先澄清不明确或不合理设计并补充文档，再以 proto 优先的方式开发 LiveBid Go 微服务并记录开发进度。"

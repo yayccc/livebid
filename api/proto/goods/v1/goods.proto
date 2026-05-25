@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package livebid.goods.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/yayccc/livebid/gen/proto/goods/v1;goodsv1";
+
+service GoodsService {
+  rpc CreateGoods(CreateGoodsRequest) returns (CreateGoodsResponse);
+  rpc UpdateGoods(UpdateGoodsRequest) returns (UpdateGoodsResponse);
+  rpc DeleteGoods(DeleteGoodsRequest) returns (DeleteGoodsResponse);
+  rpc GetGoods(GetGoodsRequest) returns (GetGoodsResponse);
+  rpc ListGoods(ListGoodsRequest) returns (ListGoodsResponse);
+  rpc ListShopGoods(ListShopGoodsRequest) returns (ListShopGoodsResponse);
+  rpc BatchGetGoods(BatchGetGoodsRequest) returns (BatchGetGoodsResponse);
+  rpc PutGoodsOnSale(PutGoodsOnSaleRequest) returns (PutGoodsOnSaleResponse);
+  rpc PutGoodsOffSale(PutGoodsOffSaleRequest) returns (PutGoodsOffSaleResponse);
+}
+
+message CreateGoodsRequest {
+  int64 shop_id = 1;
+  string title = 2;
+  string cover_url = 3;
+  string description = 4;
+}
+
+message CreateGoodsResponse {
+  Goods goods = 1;
+}
+
+message UpdateGoodsRequest {
+  int64 id = 1;
+  int64 shop_id = 2;
+  optional string title = 3;
+  optional string cover_url = 4;
+  optional string description = 5;
+}
+
+message UpdateGoodsResponse {
+  Goods goods = 1;
+}
+
+message DeleteGoodsRequest {
+  int64 id = 1;
+  int64 shop_id = 2;
+}
+
+message DeleteGoodsResponse {}
+
+message GetGoodsRequest {
+  int64 id = 1;
+}
+
+message GetGoodsResponse {
+  Goods goods = 1;
+}
+
+message ListGoodsRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+  string keyword = 3;
+  optional int64 shop_id = 4;
+  optional int32 is_deleted = 5;
+  optional int32 status = 6;
+}
+
+message ListGoodsResponse {
+  int64 total = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  repeated Goods list = 4;
+}
+
+message ListShopGoodsRequest {
+  int64 shop_id = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  string keyword = 4;
+}
+
+message ListShopGoodsResponse {
+  int64 total = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  repeated Goods list = 4;
+}
+
+message BatchGetGoodsRequest {
+  repeated int64 ids = 1;
+}
+
+message BatchGetGoodsResponse {
+  repeated Goods list = 1;
+}
+
+message PutGoodsOnSaleRequest {
+  int64 id = 1;
+  int64 shop_id = 2;
+}
+
+message PutGoodsOnSaleResponse {}
+
+message PutGoodsOffSaleRequest {
+  int64 id = 1;
+  int64 shop_id = 2;
+}
+
+message PutGoodsOffSaleResponse {}
+
+message Goods {
+  int64 id = 1;
+  int64 shop_id = 2;
+  string title = 3;
+  string cover_url = 4;
+  string description = 5;
+  int32 status = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
