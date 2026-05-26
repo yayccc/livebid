@@ -1,0 +1,25 @@
+env: local
+workerID: 2
+
+grpc:
+  addr: ":9002"
+
+mysql:
+  dsn: "root:123456@tcp(127.0.0.1:3306)/mydb?charset=utf8mb4&parseTime=True&loc=Local"
+  autoMigrate: true
+  maxOpenConns: 20
+  maxIdleConns: 10
+  connMaxLifetimeSeconds: 1800
+
+srs:
+  rtmpPushBaseURL: "rtmp://127.0.0.1/live"
+  webrtcPlayBaseURL: "webrtc://127.0.0.1/live"
+
+log:
+  level: debug
+  encoding: console
+  outputs:
+    - stdout
+  errorOutputs:
+    - stderr
+  development: true

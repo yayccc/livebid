@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package livebid.live.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/yayccc/livebid/gen/proto/live/v1;livev1";
+
+service LiveService {
+  rpc CreateLiveRoom(CreateLiveRoomRequest) returns (CreateLiveRoomResponse);
+  rpc GetLiveRoom(GetLiveRoomRequest) returns (GetLiveRoomResponse);
+  rpc ListLiveRooms(ListLiveRoomsRequest) returns (ListLiveRoomsResponse);
+  rpc StartLive(StartLiveRequest) returns (StartLiveResponse);
+  rpc EndLive(EndLiveRequest) returns (EndLiveResponse);
+  rpc ValidateLiveRoomForAuction(ValidateLiveRoomForAuctionRequest) returns (ValidateLiveRoomForAuctionResponse);
+  rpc GetLiveStreamInfo(GetLiveStreamInfoRequest) returns (GetLiveStreamInfoResponse);
+}
+
+message CreateLiveRoomRequest {
+  int64 shop_id = 1;
+  string title = 2;
+  string cover = 3;
+  string description = 4;
+}
+
+message CreateLiveRoomResponse {
+  LiveRoom live_room = 1;
+  string initial_stream_code = 2;
+  string rtmp_push_url = 3;
+  string webrtc_play_url = 4;
+}
+
+message GetLiveRoomRequest {
+  int64 id = 1;
+}
+
+message GetLiveRoomResponse {
+  LiveRoom live_room = 1;
+}
+
+message ListLiveRoomsRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message ListLiveRoomsResponse {
+  repeated LiveRoom live_rooms = 1;
+  int64 total = 2;
+}
+
+message StartLiveRequest {
+  int64 id = 1;
+  int64 shop_id = 2;
+}
+
+message StartLiveResponse {
+  LiveRoom live_room = 1;
+}
+
+message EndLiveRequest {
+  int64 id = 1;
+  int64 shop_id = 2;
+}
+
+message EndLiveResponse {
+  LiveRoom live_room = 1;
+}
+
+message ValidateLiveRoomForAuctionRequest {
+  int64 id = 1;
+  int64 shop_id = 2;
+  bool require_living = 3;
+}
+
+message ValidateLiveRoomForAuctionResponse {
+  LiveRoom live_room = 1;
+}
+
+message GetLiveStreamInfoRequest {
+  int64 id = 1;
+  int64 shop_id = 2;
+}
+
+message GetLiveStreamInfoResponse {
+  LiveStreamInfo stream_info = 1;
+}
+
+message LiveRoom {
+  int64 id = 1;
+  int64 shop_id = 2;
+  string title = 3;
+  string cover = 4;
+  string description = 5;
+  LiveRoomStatus status = 6;
+  MediaStreamStatus media_stream_status = 7;
+  google.protobuf.Timestamp actual_start_time = 8;
+  google.protobuf.Timestamp actual_end_time = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message LiveStreamInfo {
+  string stream_name = 1;
+  string rtmp_push_url = 2;
+  string webrtc_play_url = 3;
+  MediaStreamStatus media_stream_status = 4;
+}
+
+enum LiveRoomStatus {
+  LIVE_ROOM_STATUS_UNSPECIFIED = 0;
+  LIVE_ROOM_STATUS_NOT_LIVE = 1;
+  LIVE_ROOM_STATUS_LIVING = 2;
+}
+
+enum MediaStreamStatus {
+  MEDIA_STREAM_STATUS_UNSPECIFIED = 0;
+  MEDIA_STREAM_STATUS_OFFLINE = 1;
+  MEDIA_STREAM_STATUS_ONLINE = 2;
+}
