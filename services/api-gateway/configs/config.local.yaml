@@ -6,6 +6,9 @@ http:
 shopService:
   addr: "127.0.0.1:9001"
 
+liveService:
+  addr: "127.0.0.1:9002"
+
 jwt:
   secret: "local-dev-jwt-secret-change-me"
   issuer: "livebid"

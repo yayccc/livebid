@@ -51,6 +51,30 @@ HandleSRSUnpublishCallback
 
 对外 HTTP API 由 `api-gateway` 暴露，普通业务服务不直接提供外部 HTTP 业务接口。
 
+## api-gateway HTTP 接口
+
+第一版 HTTP 路由：
+
+```text
+POST /api/live/rooms
+GET  /api/live/rooms
+GET  /api/live/rooms/{id}
+POST /api/live/rooms/{id}/start
+POST /api/live/rooms/{id}/end
+GET  /api/live/rooms/{id}/stream
+
+POST /api/srs/callbacks/publish
+POST /api/srs/callbacks/unpublish
+```
+
+约定：
+
+- 商家创建、开播、关播、查询推流信息需要 `Authorization: Bearer <token>`。
+- `api-gateway` 从 JWT subject 解析 `shop_id`，不信任请求体里的 `shop_id`。
+- 用户侧直播间列表 `GET /api/live/rooms` 只查 `living` 直播间。
+- SRS callback 不走 JWT，由 SRS 调用并携带 `stream` 和 `param`。
+- `on_publish` 成功返回 HTTP 200 且响应体 `0`；认证失败返回非 0，SRS 拒绝推流。
+
 ## WebSocket 关系
 
 `live-service` 不管理 WebSocket 连接。

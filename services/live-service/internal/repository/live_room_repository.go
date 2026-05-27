@@ -26,6 +26,7 @@ type ListLiveRoomsFilter struct {
 type LiveRoomRepository interface {
 	Create(ctx context.Context, room *model.LiveRoom) error
 	FindByID(ctx context.Context, id int64) (*model.LiveRoom, error)
+	FindByStreamName(ctx context.Context, streamName string) (*model.LiveRoom, error)
 	List(ctx context.Context, filter ListLiveRoomsFilter) ([]*model.LiveRoom, int64, error)
 	Update(ctx context.Context, room *model.LiveRoom) error
 }
@@ -47,6 +48,20 @@ func (r *GormLiveRoomRepository) FindByID(ctx context.Context, id int64) (*model
 	var room model.LiveRoom
 	err := r.db.WithContext(ctx).
 		Where("id = ? AND is_deleted = 0", id).
+		First(&room).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrLiveRoomNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &room, nil
+}
+
+func (r *GormLiveRoomRepository) FindByStreamName(ctx context.Context, streamName string) (*model.LiveRoom, error) {
+	var room model.LiveRoom
+	err := r.db.WithContext(ctx).
+		Where("stream_name = ? AND is_deleted = 0", streamName).
 		First(&room).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrLiveRoomNotFound
@@ -86,7 +101,18 @@ func (r *GormLiveRoomRepository) Update(ctx context.Context, room *model.LiveRoo
 	tx := r.db.WithContext(ctx).
 		Model(&model.LiveRoom{}).
 		Where("id = ? AND is_deleted = 0", room.ID).
-		Updates(room)
+		Updates(map[string]any{
+			"title":               room.Title,
+			"cover":               room.Cover,
+			"description":         room.Description,
+			"status":              room.Status,
+			"stream_name":         room.StreamName,
+			"stream_key_hash":     room.StreamKeyHash,
+			"media_stream_status": room.MediaStreamStatus,
+			"actual_start_time":   room.ActualStartTime,
+			"actual_end_time":     room.ActualEndTime,
+			"extra":               room.Extra,
+		})
 	if tx.Error != nil {
 		return mapMySQLError(tx.Error)
 	}

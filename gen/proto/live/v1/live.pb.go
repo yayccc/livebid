@@ -840,6 +840,222 @@ func (x *GetLiveStreamInfoResponse) GetStreamInfo() *LiveStreamInfo {
 	return nil
 }
 
+type HandleSRSPublishCallbackRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StreamName    string                 `protobuf:"bytes,1,opt,name=stream_name,json=streamName,proto3" json:"stream_name,omitempty"`
+	StreamCode    string                 `protobuf:"bytes,2,opt,name=stream_code,json=streamCode,proto3" json:"stream_code,omitempty"`
+	ClientId      string                 `protobuf:"bytes,3,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	Ip            string                 `protobuf:"bytes,4,opt,name=ip,proto3" json:"ip,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HandleSRSPublishCallbackRequest) Reset() {
+	*x = HandleSRSPublishCallbackRequest{}
+	mi := &file_api_proto_live_v1_live_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HandleSRSPublishCallbackRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HandleSRSPublishCallbackRequest) ProtoMessage() {}
+
+func (x *HandleSRSPublishCallbackRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_live_v1_live_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HandleSRSPublishCallbackRequest.ProtoReflect.Descriptor instead.
+func (*HandleSRSPublishCallbackRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_live_v1_live_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *HandleSRSPublishCallbackRequest) GetStreamName() string {
+	if x != nil {
+		return x.StreamName
+	}
+	return ""
+}
+
+func (x *HandleSRSPublishCallbackRequest) GetStreamCode() string {
+	if x != nil {
+		return x.StreamCode
+	}
+	return ""
+}
+
+func (x *HandleSRSPublishCallbackRequest) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *HandleSRSPublishCallbackRequest) GetIp() string {
+	if x != nil {
+		return x.Ip
+	}
+	return ""
+}
+
+type HandleSRSPublishCallbackResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	LiveRoom      *LiveRoom              `protobuf:"bytes,1,opt,name=live_room,json=liveRoom,proto3" json:"live_room,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HandleSRSPublishCallbackResponse) Reset() {
+	*x = HandleSRSPublishCallbackResponse{}
+	mi := &file_api_proto_live_v1_live_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HandleSRSPublishCallbackResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HandleSRSPublishCallbackResponse) ProtoMessage() {}
+
+func (x *HandleSRSPublishCallbackResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_live_v1_live_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HandleSRSPublishCallbackResponse.ProtoReflect.Descriptor instead.
+func (*HandleSRSPublishCallbackResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_live_v1_live_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *HandleSRSPublishCallbackResponse) GetLiveRoom() *LiveRoom {
+	if x != nil {
+		return x.LiveRoom
+	}
+	return nil
+}
+
+type HandleSRSUnpublishCallbackRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StreamName    string                 `protobuf:"bytes,1,opt,name=stream_name,json=streamName,proto3" json:"stream_name,omitempty"`
+	ClientId      string                 `protobuf:"bytes,2,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	Ip            string                 `protobuf:"bytes,3,opt,name=ip,proto3" json:"ip,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HandleSRSUnpublishCallbackRequest) Reset() {
+	*x = HandleSRSUnpublishCallbackRequest{}
+	mi := &file_api_proto_live_v1_live_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HandleSRSUnpublishCallbackRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HandleSRSUnpublishCallbackRequest) ProtoMessage() {}
+
+func (x *HandleSRSUnpublishCallbackRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_live_v1_live_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HandleSRSUnpublishCallbackRequest.ProtoReflect.Descriptor instead.
+func (*HandleSRSUnpublishCallbackRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_live_v1_live_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *HandleSRSUnpublishCallbackRequest) GetStreamName() string {
+	if x != nil {
+		return x.StreamName
+	}
+	return ""
+}
+
+func (x *HandleSRSUnpublishCallbackRequest) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *HandleSRSUnpublishCallbackRequest) GetIp() string {
+	if x != nil {
+		return x.Ip
+	}
+	return ""
+}
+
+type HandleSRSUnpublishCallbackResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	LiveRoom      *LiveRoom              `protobuf:"bytes,1,opt,name=live_room,json=liveRoom,proto3" json:"live_room,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HandleSRSUnpublishCallbackResponse) Reset() {
+	*x = HandleSRSUnpublishCallbackResponse{}
+	mi := &file_api_proto_live_v1_live_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HandleSRSUnpublishCallbackResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HandleSRSUnpublishCallbackResponse) ProtoMessage() {}
+
+func (x *HandleSRSUnpublishCallbackResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_live_v1_live_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HandleSRSUnpublishCallbackResponse.ProtoReflect.Descriptor instead.
+func (*HandleSRSUnpublishCallbackResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_live_v1_live_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *HandleSRSUnpublishCallbackResponse) GetLiveRoom() *LiveRoom {
+	if x != nil {
+		return x.LiveRoom
+	}
+	return nil
+}
+
 type LiveRoom struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	Id                int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -859,7 +1075,7 @@ type LiveRoom struct {
 
 func (x *LiveRoom) Reset() {
 	*x = LiveRoom{}
-	mi := &file_api_proto_live_v1_live_proto_msgTypes[14]
+	mi := &file_api_proto_live_v1_live_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -871,7 +1087,7 @@ func (x *LiveRoom) String() string {
 func (*LiveRoom) ProtoMessage() {}
 
 func (x *LiveRoom) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_live_v1_live_proto_msgTypes[14]
+	mi := &file_api_proto_live_v1_live_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -884,7 +1100,7 @@ func (x *LiveRoom) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiveRoom.ProtoReflect.Descriptor instead.
 func (*LiveRoom) Descriptor() ([]byte, []int) {
-	return file_api_proto_live_v1_live_proto_rawDescGZIP(), []int{14}
+	return file_api_proto_live_v1_live_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *LiveRoom) GetId() int64 {
@@ -976,7 +1192,7 @@ type LiveStreamInfo struct {
 
 func (x *LiveStreamInfo) Reset() {
 	*x = LiveStreamInfo{}
-	mi := &file_api_proto_live_v1_live_proto_msgTypes[15]
+	mi := &file_api_proto_live_v1_live_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -988,7 +1204,7 @@ func (x *LiveStreamInfo) String() string {
 func (*LiveStreamInfo) ProtoMessage() {}
 
 func (x *LiveStreamInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_live_v1_live_proto_msgTypes[15]
+	mi := &file_api_proto_live_v1_live_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1001,7 +1217,7 @@ func (x *LiveStreamInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiveStreamInfo.ProtoReflect.Descriptor instead.
 func (*LiveStreamInfo) Descriptor() ([]byte, []int) {
-	return file_api_proto_live_v1_live_proto_rawDescGZIP(), []int{15}
+	return file_api_proto_live_v1_live_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *LiveStreamInfo) GetStreamName() string {
@@ -1079,7 +1295,23 @@ const file_api_proto_live_v1_live_proto_rawDesc = "" +
 	"\ashop_id\x18\x02 \x01(\x03R\x06shopId\"]\n" +
 	"\x19GetLiveStreamInfoResponse\x12@\n" +
 	"\vstream_info\x18\x01 \x01(\v2\x1f.livebid.live.v1.LiveStreamInfoR\n" +
-	"streamInfo\"\x90\x04\n" +
+	"streamInfo\"\x90\x01\n" +
+	"\x1fHandleSRSPublishCallbackRequest\x12\x1f\n" +
+	"\vstream_name\x18\x01 \x01(\tR\n" +
+	"streamName\x12\x1f\n" +
+	"\vstream_code\x18\x02 \x01(\tR\n" +
+	"streamCode\x12\x1b\n" +
+	"\tclient_id\x18\x03 \x01(\tR\bclientId\x12\x0e\n" +
+	"\x02ip\x18\x04 \x01(\tR\x02ip\"Z\n" +
+	" HandleSRSPublishCallbackResponse\x126\n" +
+	"\tlive_room\x18\x01 \x01(\v2\x19.livebid.live.v1.LiveRoomR\bliveRoom\"q\n" +
+	"!HandleSRSUnpublishCallbackRequest\x12\x1f\n" +
+	"\vstream_name\x18\x01 \x01(\tR\n" +
+	"streamName\x12\x1b\n" +
+	"\tclient_id\x18\x02 \x01(\tR\bclientId\x12\x0e\n" +
+	"\x02ip\x18\x03 \x01(\tR\x02ip\"\\\n" +
+	"\"HandleSRSUnpublishCallbackResponse\x126\n" +
+	"\tlive_room\x18\x01 \x01(\v2\x19.livebid.live.v1.LiveRoomR\bliveRoom\"\x90\x04\n" +
 	"\bLiveRoom\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x17\n" +
 	"\ashop_id\x18\x02 \x01(\x03R\x06shopId\x12\x14\n" +
@@ -1108,7 +1340,7 @@ const file_api_proto_live_v1_live_proto_rawDesc = "" +
 	"\x11MediaStreamStatus\x12#\n" +
 	"\x1fMEDIA_STREAM_STATUS_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bMEDIA_STREAM_STATUS_OFFLINE\x10\x01\x12\x1e\n" +
-	"\x1aMEDIA_STREAM_STATUS_ONLINE\x10\x022\xc0\x05\n" +
+	"\x1aMEDIA_STREAM_STATUS_ONLINE\x10\x022\xc9\a\n" +
 	"\vLiveService\x12a\n" +
 	"\x0eCreateLiveRoom\x12&.livebid.live.v1.CreateLiveRoomRequest\x1a'.livebid.live.v1.CreateLiveRoomResponse\x12X\n" +
 	"\vGetLiveRoom\x12#.livebid.live.v1.GetLiveRoomRequest\x1a$.livebid.live.v1.GetLiveRoomResponse\x12^\n" +
@@ -1116,7 +1348,9 @@ const file_api_proto_live_v1_live_proto_rawDesc = "" +
 	"\tStartLive\x12!.livebid.live.v1.StartLiveRequest\x1a\".livebid.live.v1.StartLiveResponse\x12L\n" +
 	"\aEndLive\x12\x1f.livebid.live.v1.EndLiveRequest\x1a .livebid.live.v1.EndLiveResponse\x12\x85\x01\n" +
 	"\x1aValidateLiveRoomForAuction\x122.livebid.live.v1.ValidateLiveRoomForAuctionRequest\x1a3.livebid.live.v1.ValidateLiveRoomForAuctionResponse\x12j\n" +
-	"\x11GetLiveStreamInfo\x12).livebid.live.v1.GetLiveStreamInfoRequest\x1a*.livebid.live.v1.GetLiveStreamInfoResponseB4Z2github.com/yayccc/livebid/gen/proto/live/v1;livev1b\x06proto3"
+	"\x11GetLiveStreamInfo\x12).livebid.live.v1.GetLiveStreamInfoRequest\x1a*.livebid.live.v1.GetLiveStreamInfoResponse\x12\x7f\n" +
+	"\x18HandleSRSPublishCallback\x120.livebid.live.v1.HandleSRSPublishCallbackRequest\x1a1.livebid.live.v1.HandleSRSPublishCallbackResponse\x12\x85\x01\n" +
+	"\x1aHandleSRSUnpublishCallback\x122.livebid.live.v1.HandleSRSUnpublishCallbackRequest\x1a3.livebid.live.v1.HandleSRSUnpublishCallbackResponseB4Z2github.com/yayccc/livebid/gen/proto/live/v1;livev1b\x06proto3"
 
 var (
 	file_api_proto_live_v1_live_proto_rawDescOnce sync.Once
@@ -1131,7 +1365,7 @@ func file_api_proto_live_v1_live_proto_rawDescGZIP() []byte {
 }
 
 var file_api_proto_live_v1_live_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_api_proto_live_v1_live_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_api_proto_live_v1_live_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_api_proto_live_v1_live_proto_goTypes = []any{
 	(LiveRoomStatus)(0),                        // 0: livebid.live.v1.LiveRoomStatus
 	(MediaStreamStatus)(0),                     // 1: livebid.live.v1.MediaStreamStatus
@@ -1149,44 +1383,54 @@ var file_api_proto_live_v1_live_proto_goTypes = []any{
 	(*ValidateLiveRoomForAuctionResponse)(nil), // 13: livebid.live.v1.ValidateLiveRoomForAuctionResponse
 	(*GetLiveStreamInfoRequest)(nil),           // 14: livebid.live.v1.GetLiveStreamInfoRequest
 	(*GetLiveStreamInfoResponse)(nil),          // 15: livebid.live.v1.GetLiveStreamInfoResponse
-	(*LiveRoom)(nil),                           // 16: livebid.live.v1.LiveRoom
-	(*LiveStreamInfo)(nil),                     // 17: livebid.live.v1.LiveStreamInfo
-	(*timestamppb.Timestamp)(nil),              // 18: google.protobuf.Timestamp
+	(*HandleSRSPublishCallbackRequest)(nil),    // 16: livebid.live.v1.HandleSRSPublishCallbackRequest
+	(*HandleSRSPublishCallbackResponse)(nil),   // 17: livebid.live.v1.HandleSRSPublishCallbackResponse
+	(*HandleSRSUnpublishCallbackRequest)(nil),  // 18: livebid.live.v1.HandleSRSUnpublishCallbackRequest
+	(*HandleSRSUnpublishCallbackResponse)(nil), // 19: livebid.live.v1.HandleSRSUnpublishCallbackResponse
+	(*LiveRoom)(nil),                           // 20: livebid.live.v1.LiveRoom
+	(*LiveStreamInfo)(nil),                     // 21: livebid.live.v1.LiveStreamInfo
+	(*timestamppb.Timestamp)(nil),              // 22: google.protobuf.Timestamp
 }
 var file_api_proto_live_v1_live_proto_depIdxs = []int32{
-	16, // 0: livebid.live.v1.CreateLiveRoomResponse.live_room:type_name -> livebid.live.v1.LiveRoom
-	16, // 1: livebid.live.v1.GetLiveRoomResponse.live_room:type_name -> livebid.live.v1.LiveRoom
-	16, // 2: livebid.live.v1.ListLiveRoomsResponse.live_rooms:type_name -> livebid.live.v1.LiveRoom
-	16, // 3: livebid.live.v1.StartLiveResponse.live_room:type_name -> livebid.live.v1.LiveRoom
-	16, // 4: livebid.live.v1.EndLiveResponse.live_room:type_name -> livebid.live.v1.LiveRoom
-	16, // 5: livebid.live.v1.ValidateLiveRoomForAuctionResponse.live_room:type_name -> livebid.live.v1.LiveRoom
-	17, // 6: livebid.live.v1.GetLiveStreamInfoResponse.stream_info:type_name -> livebid.live.v1.LiveStreamInfo
-	0,  // 7: livebid.live.v1.LiveRoom.status:type_name -> livebid.live.v1.LiveRoomStatus
-	1,  // 8: livebid.live.v1.LiveRoom.media_stream_status:type_name -> livebid.live.v1.MediaStreamStatus
-	18, // 9: livebid.live.v1.LiveRoom.actual_start_time:type_name -> google.protobuf.Timestamp
-	18, // 10: livebid.live.v1.LiveRoom.actual_end_time:type_name -> google.protobuf.Timestamp
-	18, // 11: livebid.live.v1.LiveRoom.created_at:type_name -> google.protobuf.Timestamp
-	18, // 12: livebid.live.v1.LiveRoom.updated_at:type_name -> google.protobuf.Timestamp
-	1,  // 13: livebid.live.v1.LiveStreamInfo.media_stream_status:type_name -> livebid.live.v1.MediaStreamStatus
-	2,  // 14: livebid.live.v1.LiveService.CreateLiveRoom:input_type -> livebid.live.v1.CreateLiveRoomRequest
-	4,  // 15: livebid.live.v1.LiveService.GetLiveRoom:input_type -> livebid.live.v1.GetLiveRoomRequest
-	6,  // 16: livebid.live.v1.LiveService.ListLiveRooms:input_type -> livebid.live.v1.ListLiveRoomsRequest
-	8,  // 17: livebid.live.v1.LiveService.StartLive:input_type -> livebid.live.v1.StartLiveRequest
-	10, // 18: livebid.live.v1.LiveService.EndLive:input_type -> livebid.live.v1.EndLiveRequest
-	12, // 19: livebid.live.v1.LiveService.ValidateLiveRoomForAuction:input_type -> livebid.live.v1.ValidateLiveRoomForAuctionRequest
-	14, // 20: livebid.live.v1.LiveService.GetLiveStreamInfo:input_type -> livebid.live.v1.GetLiveStreamInfoRequest
-	3,  // 21: livebid.live.v1.LiveService.CreateLiveRoom:output_type -> livebid.live.v1.CreateLiveRoomResponse
-	5,  // 22: livebid.live.v1.LiveService.GetLiveRoom:output_type -> livebid.live.v1.GetLiveRoomResponse
-	7,  // 23: livebid.live.v1.LiveService.ListLiveRooms:output_type -> livebid.live.v1.ListLiveRoomsResponse
-	9,  // 24: livebid.live.v1.LiveService.StartLive:output_type -> livebid.live.v1.StartLiveResponse
-	11, // 25: livebid.live.v1.LiveService.EndLive:output_type -> livebid.live.v1.EndLiveResponse
-	13, // 26: livebid.live.v1.LiveService.ValidateLiveRoomForAuction:output_type -> livebid.live.v1.ValidateLiveRoomForAuctionResponse
-	15, // 27: livebid.live.v1.LiveService.GetLiveStreamInfo:output_type -> livebid.live.v1.GetLiveStreamInfoResponse
-	21, // [21:28] is the sub-list for method output_type
-	14, // [14:21] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	20, // 0: livebid.live.v1.CreateLiveRoomResponse.live_room:type_name -> livebid.live.v1.LiveRoom
+	20, // 1: livebid.live.v1.GetLiveRoomResponse.live_room:type_name -> livebid.live.v1.LiveRoom
+	20, // 2: livebid.live.v1.ListLiveRoomsResponse.live_rooms:type_name -> livebid.live.v1.LiveRoom
+	20, // 3: livebid.live.v1.StartLiveResponse.live_room:type_name -> livebid.live.v1.LiveRoom
+	20, // 4: livebid.live.v1.EndLiveResponse.live_room:type_name -> livebid.live.v1.LiveRoom
+	20, // 5: livebid.live.v1.ValidateLiveRoomForAuctionResponse.live_room:type_name -> livebid.live.v1.LiveRoom
+	21, // 6: livebid.live.v1.GetLiveStreamInfoResponse.stream_info:type_name -> livebid.live.v1.LiveStreamInfo
+	20, // 7: livebid.live.v1.HandleSRSPublishCallbackResponse.live_room:type_name -> livebid.live.v1.LiveRoom
+	20, // 8: livebid.live.v1.HandleSRSUnpublishCallbackResponse.live_room:type_name -> livebid.live.v1.LiveRoom
+	0,  // 9: livebid.live.v1.LiveRoom.status:type_name -> livebid.live.v1.LiveRoomStatus
+	1,  // 10: livebid.live.v1.LiveRoom.media_stream_status:type_name -> livebid.live.v1.MediaStreamStatus
+	22, // 11: livebid.live.v1.LiveRoom.actual_start_time:type_name -> google.protobuf.Timestamp
+	22, // 12: livebid.live.v1.LiveRoom.actual_end_time:type_name -> google.protobuf.Timestamp
+	22, // 13: livebid.live.v1.LiveRoom.created_at:type_name -> google.protobuf.Timestamp
+	22, // 14: livebid.live.v1.LiveRoom.updated_at:type_name -> google.protobuf.Timestamp
+	1,  // 15: livebid.live.v1.LiveStreamInfo.media_stream_status:type_name -> livebid.live.v1.MediaStreamStatus
+	2,  // 16: livebid.live.v1.LiveService.CreateLiveRoom:input_type -> livebid.live.v1.CreateLiveRoomRequest
+	4,  // 17: livebid.live.v1.LiveService.GetLiveRoom:input_type -> livebid.live.v1.GetLiveRoomRequest
+	6,  // 18: livebid.live.v1.LiveService.ListLiveRooms:input_type -> livebid.live.v1.ListLiveRoomsRequest
+	8,  // 19: livebid.live.v1.LiveService.StartLive:input_type -> livebid.live.v1.StartLiveRequest
+	10, // 20: livebid.live.v1.LiveService.EndLive:input_type -> livebid.live.v1.EndLiveRequest
+	12, // 21: livebid.live.v1.LiveService.ValidateLiveRoomForAuction:input_type -> livebid.live.v1.ValidateLiveRoomForAuctionRequest
+	14, // 22: livebid.live.v1.LiveService.GetLiveStreamInfo:input_type -> livebid.live.v1.GetLiveStreamInfoRequest
+	16, // 23: livebid.live.v1.LiveService.HandleSRSPublishCallback:input_type -> livebid.live.v1.HandleSRSPublishCallbackRequest
+	18, // 24: livebid.live.v1.LiveService.HandleSRSUnpublishCallback:input_type -> livebid.live.v1.HandleSRSUnpublishCallbackRequest
+	3,  // 25: livebid.live.v1.LiveService.CreateLiveRoom:output_type -> livebid.live.v1.CreateLiveRoomResponse
+	5,  // 26: livebid.live.v1.LiveService.GetLiveRoom:output_type -> livebid.live.v1.GetLiveRoomResponse
+	7,  // 27: livebid.live.v1.LiveService.ListLiveRooms:output_type -> livebid.live.v1.ListLiveRoomsResponse
+	9,  // 28: livebid.live.v1.LiveService.StartLive:output_type -> livebid.live.v1.StartLiveResponse
+	11, // 29: livebid.live.v1.LiveService.EndLive:output_type -> livebid.live.v1.EndLiveResponse
+	13, // 30: livebid.live.v1.LiveService.ValidateLiveRoomForAuction:output_type -> livebid.live.v1.ValidateLiveRoomForAuctionResponse
+	15, // 31: livebid.live.v1.LiveService.GetLiveStreamInfo:output_type -> livebid.live.v1.GetLiveStreamInfoResponse
+	17, // 32: livebid.live.v1.LiveService.HandleSRSPublishCallback:output_type -> livebid.live.v1.HandleSRSPublishCallbackResponse
+	19, // 33: livebid.live.v1.LiveService.HandleSRSUnpublishCallback:output_type -> livebid.live.v1.HandleSRSUnpublishCallbackResponse
+	25, // [25:34] is the sub-list for method output_type
+	16, // [16:25] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_api_proto_live_v1_live_proto_init() }
@@ -1200,7 +1444,7 @@ func file_api_proto_live_v1_live_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_live_v1_live_proto_rawDesc), len(file_api_proto_live_v1_live_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   16,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

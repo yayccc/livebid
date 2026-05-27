@@ -26,6 +26,8 @@ const (
 	LiveService_EndLive_FullMethodName                    = "/livebid.live.v1.LiveService/EndLive"
 	LiveService_ValidateLiveRoomForAuction_FullMethodName = "/livebid.live.v1.LiveService/ValidateLiveRoomForAuction"
 	LiveService_GetLiveStreamInfo_FullMethodName          = "/livebid.live.v1.LiveService/GetLiveStreamInfo"
+	LiveService_HandleSRSPublishCallback_FullMethodName   = "/livebid.live.v1.LiveService/HandleSRSPublishCallback"
+	LiveService_HandleSRSUnpublishCallback_FullMethodName = "/livebid.live.v1.LiveService/HandleSRSUnpublishCallback"
 )
 
 // LiveServiceClient is the client API for LiveService service.
@@ -39,6 +41,8 @@ type LiveServiceClient interface {
 	EndLive(ctx context.Context, in *EndLiveRequest, opts ...grpc.CallOption) (*EndLiveResponse, error)
 	ValidateLiveRoomForAuction(ctx context.Context, in *ValidateLiveRoomForAuctionRequest, opts ...grpc.CallOption) (*ValidateLiveRoomForAuctionResponse, error)
 	GetLiveStreamInfo(ctx context.Context, in *GetLiveStreamInfoRequest, opts ...grpc.CallOption) (*GetLiveStreamInfoResponse, error)
+	HandleSRSPublishCallback(ctx context.Context, in *HandleSRSPublishCallbackRequest, opts ...grpc.CallOption) (*HandleSRSPublishCallbackResponse, error)
+	HandleSRSUnpublishCallback(ctx context.Context, in *HandleSRSUnpublishCallbackRequest, opts ...grpc.CallOption) (*HandleSRSUnpublishCallbackResponse, error)
 }
 
 type liveServiceClient struct {
@@ -119,6 +123,26 @@ func (c *liveServiceClient) GetLiveStreamInfo(ctx context.Context, in *GetLiveSt
 	return out, nil
 }
 
+func (c *liveServiceClient) HandleSRSPublishCallback(ctx context.Context, in *HandleSRSPublishCallbackRequest, opts ...grpc.CallOption) (*HandleSRSPublishCallbackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HandleSRSPublishCallbackResponse)
+	err := c.cc.Invoke(ctx, LiveService_HandleSRSPublishCallback_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *liveServiceClient) HandleSRSUnpublishCallback(ctx context.Context, in *HandleSRSUnpublishCallbackRequest, opts ...grpc.CallOption) (*HandleSRSUnpublishCallbackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HandleSRSUnpublishCallbackResponse)
+	err := c.cc.Invoke(ctx, LiveService_HandleSRSUnpublishCallback_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LiveServiceServer is the server API for LiveService service.
 // All implementations must embed UnimplementedLiveServiceServer
 // for forward compatibility.
@@ -130,6 +154,8 @@ type LiveServiceServer interface {
 	EndLive(context.Context, *EndLiveRequest) (*EndLiveResponse, error)
 	ValidateLiveRoomForAuction(context.Context, *ValidateLiveRoomForAuctionRequest) (*ValidateLiveRoomForAuctionResponse, error)
 	GetLiveStreamInfo(context.Context, *GetLiveStreamInfoRequest) (*GetLiveStreamInfoResponse, error)
+	HandleSRSPublishCallback(context.Context, *HandleSRSPublishCallbackRequest) (*HandleSRSPublishCallbackResponse, error)
+	HandleSRSUnpublishCallback(context.Context, *HandleSRSUnpublishCallbackRequest) (*HandleSRSUnpublishCallbackResponse, error)
 	mustEmbedUnimplementedLiveServiceServer()
 }
 
@@ -160,6 +186,12 @@ func (UnimplementedLiveServiceServer) ValidateLiveRoomForAuction(context.Context
 }
 func (UnimplementedLiveServiceServer) GetLiveStreamInfo(context.Context, *GetLiveStreamInfoRequest) (*GetLiveStreamInfoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetLiveStreamInfo not implemented")
+}
+func (UnimplementedLiveServiceServer) HandleSRSPublishCallback(context.Context, *HandleSRSPublishCallbackRequest) (*HandleSRSPublishCallbackResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method HandleSRSPublishCallback not implemented")
+}
+func (UnimplementedLiveServiceServer) HandleSRSUnpublishCallback(context.Context, *HandleSRSUnpublishCallbackRequest) (*HandleSRSUnpublishCallbackResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method HandleSRSUnpublishCallback not implemented")
 }
 func (UnimplementedLiveServiceServer) mustEmbedUnimplementedLiveServiceServer() {}
 func (UnimplementedLiveServiceServer) testEmbeddedByValue()                     {}
@@ -308,6 +340,42 @@ func _LiveService_GetLiveStreamInfo_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LiveService_HandleSRSPublishCallback_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HandleSRSPublishCallbackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LiveServiceServer).HandleSRSPublishCallback(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LiveService_HandleSRSPublishCallback_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LiveServiceServer).HandleSRSPublishCallback(ctx, req.(*HandleSRSPublishCallbackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LiveService_HandleSRSUnpublishCallback_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HandleSRSUnpublishCallbackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LiveServiceServer).HandleSRSUnpublishCallback(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LiveService_HandleSRSUnpublishCallback_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LiveServiceServer).HandleSRSUnpublishCallback(ctx, req.(*HandleSRSUnpublishCallbackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LiveService_ServiceDesc is the grpc.ServiceDesc for LiveService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -342,6 +410,14 @@ var LiveService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetLiveStreamInfo",
 			Handler:    _LiveService_GetLiveStreamInfo_Handler,
+		},
+		{
+			MethodName: "HandleSRSPublishCallback",
+			Handler:    _LiveService_HandleSRSPublishCallback_Handler,
+		},
+		{
+			MethodName: "HandleSRSUnpublishCallback",
+			Handler:    _LiveService_HandleSRSUnpublishCallback_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

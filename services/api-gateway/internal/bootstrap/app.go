@@ -22,6 +22,7 @@ type App struct {
 	log      *zap.Logger
 	server   *http.Server
 	shopConn *grpc.ClientConn
+	liveConn *grpc.ClientConn
 }
 
 func New(ctx context.Context, cfg config.Config) (*App, error) {
@@ -42,13 +43,21 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	shopClient := client.NewShopServiceClient(shopConn)
 	shopHandler := handler.NewShopHandler(shopClient, jwtManager, cfg.AccessTokenTTL(), cfg.RPCTimeout())
 
+	liveConn, err := client.NewLiveServiceConn(cfg.LiveService.Addr)
+	if err != nil {
+		_ = shopConn.Close()
+		return nil, err
+	}
+	liveClient := client.NewLiveServiceClient(liveConn)
+	liveHandler := handler.NewLiveHandler(liveClient, jwtManager, cfg.RPCTimeout())
+
 	gin.SetMode(gin.ReleaseMode)
 	if cfg.Env == "local" {
 		gin.SetMode(gin.DebugMode)
 	}
 	engine := gin.New()
 	engine.Use(logger.GinRecovery(log), logger.GinMiddleware(log))
-	router.Register(engine, shopHandler)
+	router.Register(engine, shopHandler, liveHandler)
 
 	server := &http.Server{
 		Addr:              cfg.HTTP.Addr,
@@ -61,6 +70,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		log:      log,
 		server:   server,
 		shopConn: shopConn,
+		liveConn: liveConn,
 	}, nil
 }
 
@@ -92,5 +102,8 @@ func (a *App) Stop(ctx context.Context) {
 	}
 	if a.shopConn != nil {
 		_ = a.shopConn.Close()
+	}
+	if a.liveConn != nil {
+		_ = a.liveConn.Close()
 	}
 }

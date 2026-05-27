@@ -52,6 +52,24 @@ https://srs.example.com/live/{stream_name}.m3u8
 
 具体域名、协议和 token 形式以部署环境为准。
 
+本地可以使用脚本启动 SRS：
+
+```bash
+scripts/start-srs.sh
+```
+
+常用可覆盖参数：
+
+```bash
+SRS_CALLBACK_BASE_URL=http://host.docker.internal:58080 \
+SRS_RTMP_PORT=1935 \
+SRS_HTTP_API_PORT=1985 \
+SRS_HTTP_SERVER_PORT=8088 \
+SRS_RTC_PORT=8000 \
+SRS_RTC_CANDIDATE=127.0.0.1 \
+scripts/start-srs.sh
+```
+
 ## SRS 回调
 
 第一版建议接入：

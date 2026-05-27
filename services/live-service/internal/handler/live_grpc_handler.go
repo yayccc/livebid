@@ -25,8 +25,9 @@ import (
 )
 
 var (
-	errInvalidArgument = errors.New("invalid argument")
-	errForbidden       = errors.New("forbidden")
+	errInvalidArgument   = errors.New("invalid argument")
+	errInvalidCredential = errors.New("invalid credential")
+	errForbidden         = errors.New("forbidden")
 )
 
 type LiveGRPCHandler struct {
@@ -272,6 +273,81 @@ func (h *LiveGRPCHandler) GetLiveStreamInfo(ctx context.Context, req *livev1.Get
 	}, nil
 }
 
+func (h *LiveGRPCHandler) HandleSRSPublishCallback(ctx context.Context, req *livev1.HandleSRSPublishCallbackRequest) (*livev1.HandleSRSPublishCallbackResponse, error) {
+	streamName := strings.TrimSpace(req.GetStreamName())
+	streamCode := strings.TrimSpace(req.GetStreamCode())
+	log := logger.FromContext(ctx).With(
+		zap.String("method", "HandleSRSPublishCallback"),
+		zap.String("stream_name", streamName),
+		zap.String("client_id", strings.TrimSpace(req.GetClientId())),
+		zap.String("ip", strings.TrimSpace(req.GetIp())),
+	)
+	log.Info("handle srs publish callback started")
+
+	if streamName == "" || streamCode == "" {
+		grpcErr := toGRPCError(errInvalidArgument)
+		log.Warn("handle srs publish callback rejected", zap.Error(grpcErr))
+		return nil, grpcErr
+	}
+	room, err := h.rooms.FindByStreamName(ctx, streamName)
+	if err != nil {
+		grpcErr := toGRPCError(err)
+		log.Warn("handle srs publish callback failed to find room", zap.Error(grpcErr))
+		return nil, grpcErr
+	}
+	if room.StreamKeyHash != hashStreamCode(streamCode) {
+		grpcErr := toGRPCError(errInvalidCredential)
+		log.Warn("handle srs publish callback rejected by stream code", zap.Int64("live_room_id", room.ID), zap.Error(grpcErr))
+		return nil, grpcErr
+	}
+	if room.Status != model.LiveRoomStatusLiving {
+		grpcErr := toGRPCError(repository.ErrLiveRoomStateConflict)
+		log.Warn("handle srs publish callback rejected by room status", zap.Int64("live_room_id", room.ID), zap.Int8("status", int8(room.Status)), zap.Error(grpcErr))
+		return nil, grpcErr
+	}
+
+	room.MediaStreamStatus = model.MediaStreamStatusOnline
+	if err := h.rooms.Update(ctx, room); err != nil {
+		grpcErr := toGRPCError(err)
+		log.Error("handle srs publish callback failed", zap.Int64("live_room_id", room.ID), zap.Error(grpcErr))
+		return nil, grpcErr
+	}
+	log.Info("handle srs publish callback succeeded", zap.Int64("live_room_id", room.ID), zap.Int8("media_stream_status", int8(room.MediaStreamStatus)))
+	return &livev1.HandleSRSPublishCallbackResponse{LiveRoom: toProtoLiveRoom(room)}, nil
+}
+
+func (h *LiveGRPCHandler) HandleSRSUnpublishCallback(ctx context.Context, req *livev1.HandleSRSUnpublishCallbackRequest) (*livev1.HandleSRSUnpublishCallbackResponse, error) {
+	streamName := strings.TrimSpace(req.GetStreamName())
+	log := logger.FromContext(ctx).With(
+		zap.String("method", "HandleSRSUnpublishCallback"),
+		zap.String("stream_name", streamName),
+		zap.String("client_id", strings.TrimSpace(req.GetClientId())),
+		zap.String("ip", strings.TrimSpace(req.GetIp())),
+	)
+	log.Info("handle srs unpublish callback started")
+
+	if streamName == "" {
+		grpcErr := toGRPCError(errInvalidArgument)
+		log.Warn("handle srs unpublish callback rejected", zap.Error(grpcErr))
+		return nil, grpcErr
+	}
+	room, err := h.rooms.FindByStreamName(ctx, streamName)
+	if err != nil {
+		grpcErr := toGRPCError(err)
+		log.Warn("handle srs unpublish callback failed to find room", zap.Error(grpcErr))
+		return nil, grpcErr
+	}
+
+	room.MediaStreamStatus = model.MediaStreamStatusOffline
+	if err := h.rooms.Update(ctx, room); err != nil {
+		grpcErr := toGRPCError(err)
+		log.Error("handle srs unpublish callback failed", zap.Int64("live_room_id", room.ID), zap.Error(grpcErr))
+		return nil, grpcErr
+	}
+	log.Info("handle srs unpublish callback succeeded", zap.Int64("live_room_id", room.ID), zap.Int8("media_stream_status", int8(room.MediaStreamStatus)))
+	return &livev1.HandleSRSUnpublishCallbackResponse{LiveRoom: toProtoLiveRoom(room)}, nil
+}
+
 func (h *LiveGRPCHandler) findOwnedRoom(ctx context.Context, roomID int64, shopID int64) (*model.LiveRoom, error) {
 	if roomID <= 0 || shopID <= 0 {
 		return nil, errInvalidArgument
@@ -388,6 +464,8 @@ func toGRPCError(err error) error {
 	switch {
 	case errors.Is(err, errInvalidArgument):
 		return status.Error(codes.InvalidArgument, err.Error())
+	case errors.Is(err, errInvalidCredential):
+		return status.Error(codes.Unauthenticated, err.Error())
 	case errors.Is(err, repository.ErrLiveRoomNotFound):
 		return status.Error(codes.NotFound, err.Error())
 	case errors.Is(err, repository.ErrLiveRoomOwnerMismatch), errors.Is(err, errForbidden):

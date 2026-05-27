@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SRS WebRTC Player</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        background: #101215;
+        color: #f3f5f7;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          linear-gradient(180deg, rgba(28, 35, 42, 0.86), rgba(16, 18, 21, 0.96)),
+          #101215;
+      }
+
+      main {
+        width: min(1040px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 28px 0;
+      }
+
+      h1 {
+        margin: 0 0 18px;
+        font-size: 24px;
+        line-height: 1.2;
+        font-weight: 700;
+      }
+
+      .player {
+        display: grid;
+        gap: 16px;
+      }
+
+      video {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        background: #050607;
+        border: 1px solid #2d333a;
+        border-radius: 8px;
+        object-fit: contain;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+        color: #b8c0ca;
+        font-size: 13px;
+      }
+
+      input {
+        width: 100%;
+        height: 40px;
+        border: 1px solid #343b44;
+        border-radius: 6px;
+        padding: 0 10px;
+        background: #171b20;
+        color: #f3f5f7;
+        font: inherit;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+
+      button {
+        height: 38px;
+        border: 1px solid #4c5967;
+        border-radius: 6px;
+        padding: 0 14px;
+        background: #e6edf3;
+        color: #11151a;
+        font: inherit;
+        font-weight: 650;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        background: #1d232a;
+        color: #edf2f7;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      pre {
+        min-height: 92px;
+        max-height: 220px;
+        margin: 0;
+        overflow: auto;
+        white-space: pre-wrap;
+        border: 1px solid #2d333a;
+        border-radius: 8px;
+        padding: 12px;
+        background: #0b0d10;
+        color: #cbd5df;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      @media (max-width: 760px) {
+        .controls {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>SRS WebRTC Player</h1>
+      <section class="player">
+        <video id="video" autoplay playsinline controls muted></video>
+
+        <div class="controls">
+          <label>
+            SRS API
+            <input id="api" autocomplete="off" />
+          </label>
+          <label>
+            Stream URL
+            <input id="stream" autocomplete="off" />
+          </label>
+        </div>
+
+        <div class="actions">
+          <button id="play">播放</button>
+          <button id="stop" class="secondary" disabled>停止</button>
+        </div>
+
+        <pre id="log"></pre>
+      </section>
+    </main>
+
+    <script>
+      const video = document.querySelector("#video");
+      const apiInput = document.querySelector("#api");
+      const streamInput = document.querySelector("#stream");
+      const playButton = document.querySelector("#play");
+      const stopButton = document.querySelector("#stop");
+      const logBox = document.querySelector("#log");
+
+      let pc = null;
+      let statsTimer = null;
+
+      function params() {
+        return new URLSearchParams(window.location.search);
+      }
+
+      function log(message) {
+        const time = new Date().toLocaleTimeString();
+        logBox.textContent += `[${time}] ${message}\n`;
+        logBox.scrollTop = logBox.scrollHeight;
+      }
+
+      function defaultAPI() {
+        const p = params();
+        return p.get("api") || `${window.location.origin}/rtc/v1/play/`;
+      }
+
+      function defaultStream() {
+        const p = params();
+        return p.get("stream") || "";
+      }
+
+      function normalizeStreamURL(value) {
+        const streamURL = new URL(value);
+        if (streamURL.protocol !== "webrtc:") {
+          throw new Error("Stream URL 必须以 webrtc:// 开头");
+        }
+
+        if (streamURL.port === "1935") {
+          streamURL.port = "";
+          log("检测到 :1935，这是 RTMP 端口，已从 WebRTC Stream URL 中移除。");
+        }
+
+        return streamURL.toString();
+      }
+
+      function logRemoteCandidates(sdp) {
+        const candidates = sdp
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => line.startsWith("a=candidate:"));
+
+        if (candidates.length === 0) {
+          log("SRS answer 未返回 ICE candidate。");
+          return;
+        }
+
+        candidates.forEach((candidate) => {
+          log(`SRS candidate: ${candidate}`);
+        });
+      }
+
+      function startStats() {
+        let lastStatsAt = 0;
+        let lastFramesDecoded = 0;
+
+        statsTimer = window.setInterval(async () => {
+          if (!pc) {
+            return;
+          }
+
+          const report = await pc.getStats();
+          report.forEach((stat) => {
+            if (stat.type !== "inbound-rtp" || stat.kind !== "video") {
+              return;
+            }
+
+            const framesDecoded = stat.framesDecoded || 0;
+            const now = stat.timestamp || performance.now();
+            const elapsed = lastStatsAt ? (now - lastStatsAt) / 1000 : 0;
+            const fps = elapsed > 0 ? (framesDecoded - lastFramesDecoded) / elapsed : 0;
+            const jitterMs = typeof stat.jitter === "number" ? stat.jitter * 1000 : 0;
+            const jitterBufferMs =
+              stat.jitterBufferEmittedCount > 0
+                ? (stat.jitterBufferDelay / stat.jitterBufferEmittedCount) * 1000
+                : 0;
+
+            lastStatsAt = now;
+            lastFramesDecoded = framesDecoded;
+
+            log(
+              `stats video fps=${fps.toFixed(1)} jitter=${jitterMs.toFixed(1)}ms jitterBufferAvg=${jitterBufferMs.toFixed(1)}ms lost=${stat.packetsLost || 0}`,
+            );
+          });
+        }, 1000);
+      }
+
+      async function play() {
+        stop();
+
+        const api = apiInput.value.trim();
+        if (!streamInput.value.trim()) {
+          throw new Error("请填写 Stream URL，例如 webrtc://172.21.103.73/live/live_xxx");
+        }
+        const streamurl = normalizeStreamURL(streamInput.value.trim());
+        streamInput.value = streamurl;
+
+        pc = new RTCPeerConnection(null);
+        pc.addTransceiver("audio", { direction: "recvonly" });
+        pc.addTransceiver("video", { direction: "recvonly" });
+
+        pc.ontrack = (event) => {
+          if (video.srcObject !== event.streams[0]) {
+            video.srcObject = event.streams[0];
+            log("收到媒体轨道，开始播放。");
+          }
+        };
+
+        pc.onconnectionstatechange = () => {
+          log(`连接状态: ${pc.connectionState}`);
+        };
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        log(`请求 SRS: ${api}`);
+        log(`播放流: ${streamurl}`);
+
+        const response = await fetch(api, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            api,
+            streamurl,
+            clientip: null,
+            sdp: offer.sdp,
+          }),
+        });
+
+        const text = await response.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (error) {
+          throw new Error(`SRS play 失败: HTTP ${response.status}, ${text}`);
+        }
+
+        if (!response.ok || data.code !== 0) {
+          throw new Error(`SRS play 失败: HTTP ${response.status}, ${JSON.stringify(data)}`);
+        }
+
+        logRemoteCandidates(data.sdp);
+        await pc.setRemoteDescription({ type: "answer", sdp: data.sdp });
+        playButton.disabled = true;
+        stopButton.disabled = false;
+        log(`SRS session: ${data.sessionid || "-"}`);
+        startStats();
+      }
+
+      function stop() {
+        if (statsTimer) {
+          window.clearInterval(statsTimer);
+          statsTimer = null;
+        }
+        if (pc) {
+          pc.close();
+          pc = null;
+        }
+        video.srcObject = null;
+        playButton.disabled = false;
+        stopButton.disabled = true;
+      }
+
+      playButton.addEventListener("click", () => {
+        play().catch((error) => {
+          log(error.message);
+          stop();
+        });
+      });
+
+      stopButton.addEventListener("click", stop);
+
+      apiInput.value = defaultAPI();
+      streamInput.value = defaultStream();
+      log("页面已就绪。");
+    </script>
+  </body>
+</html>

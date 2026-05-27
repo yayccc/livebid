@@ -18,10 +18,11 @@ import (
 )
 
 type mockLiveRoomRepository struct {
-	create   func(ctx context.Context, room *model.LiveRoom) error
-	findByID func(ctx context.Context, id int64) (*model.LiveRoom, error)
-	list     func(ctx context.Context, filter repository.ListLiveRoomsFilter) ([]*model.LiveRoom, int64, error)
-	update   func(ctx context.Context, room *model.LiveRoom) error
+	create           func(ctx context.Context, room *model.LiveRoom) error
+	findByID         func(ctx context.Context, id int64) (*model.LiveRoom, error)
+	findByStreamName func(ctx context.Context, streamName string) (*model.LiveRoom, error)
+	list             func(ctx context.Context, filter repository.ListLiveRoomsFilter) ([]*model.LiveRoom, int64, error)
+	update           func(ctx context.Context, room *model.LiveRoom) error
 }
 
 func (m *mockLiveRoomRepository) Create(ctx context.Context, room *model.LiveRoom) error {
@@ -36,6 +37,13 @@ func (m *mockLiveRoomRepository) FindByID(ctx context.Context, id int64) (*model
 		return nil, repository.ErrLiveRoomNotFound
 	}
 	return m.findByID(ctx, id)
+}
+
+func (m *mockLiveRoomRepository) FindByStreamName(ctx context.Context, streamName string) (*model.LiveRoom, error) {
+	if m.findByStreamName == nil {
+		return nil, repository.ErrLiveRoomNotFound
+	}
+	return m.findByStreamName(ctx, streamName)
 }
 
 func (m *mockLiveRoomRepository) List(ctx context.Context, filter repository.ListLiveRoomsFilter) ([]*model.LiveRoom, int64, error) {
@@ -290,6 +298,93 @@ func TestLiveGRPCHandlerGetLiveStreamInfo(t *testing.T) {
 	}
 	if resp.GetStreamInfo().GetMediaStreamStatus() != livev1.MediaStreamStatus_MEDIA_STREAM_STATUS_ONLINE {
 		t.Fatalf("unexpected media status: %s", resp.GetStreamInfo().GetMediaStreamStatus())
+	}
+}
+
+func TestLiveGRPCHandlerHandleSRSPublishCallback(t *testing.T) {
+	initTestLogger(t)
+
+	streamCode := "secret-code"
+	room := testLiveRoom(2001, 1001, model.LiveRoomStatusLiving)
+	room.StreamKeyHash = hashStreamCode(streamCode)
+	handler := newTestLiveHandler(&mockLiveRoomRepository{
+		findByStreamName: func(ctx context.Context, streamName string) (*model.LiveRoom, error) {
+			if streamName != room.StreamName {
+				t.Fatalf("unexpected stream name: %s", streamName)
+			}
+			return room, nil
+		},
+		update: func(ctx context.Context, updated *model.LiveRoom) error {
+			if updated.MediaStreamStatus != model.MediaStreamStatusOnline {
+				t.Fatalf("expected media stream online, got %d", updated.MediaStreamStatus)
+			}
+			return nil
+		},
+	})
+
+	resp, err := handler.HandleSRSPublishCallback(context.Background(), &livev1.HandleSRSPublishCallbackRequest{
+		StreamName: room.StreamName,
+		StreamCode: streamCode,
+		ClientId:   "cid",
+		Ip:         "127.0.0.1",
+	})
+	if err != nil {
+		t.Fatalf("HandleSRSPublishCallback returned error: %v", err)
+	}
+	if resp.GetLiveRoom().GetMediaStreamStatus() != livev1.MediaStreamStatus_MEDIA_STREAM_STATUS_ONLINE {
+		t.Fatalf("unexpected media stream status: %s", resp.GetLiveRoom().GetMediaStreamStatus())
+	}
+}
+
+func TestLiveGRPCHandlerHandleSRSPublishCallbackRejectsBadStreamCode(t *testing.T) {
+	initTestLogger(t)
+
+	room := testLiveRoom(2001, 1001, model.LiveRoomStatusLiving)
+	room.StreamKeyHash = hashStreamCode("good-code")
+	handler := newTestLiveHandler(&mockLiveRoomRepository{
+		findByStreamName: func(ctx context.Context, streamName string) (*model.LiveRoom, error) {
+			return room, nil
+		},
+		update: func(ctx context.Context, room *model.LiveRoom) error {
+			t.Fatal("Update should not be called")
+			return nil
+		},
+	})
+
+	_, err := handler.HandleSRSPublishCallback(context.Background(), &livev1.HandleSRSPublishCallbackRequest{
+		StreamName: room.StreamName,
+		StreamCode: "bad-code",
+	})
+	assertCode(t, err, codes.Unauthenticated)
+}
+
+func TestLiveGRPCHandlerHandleSRSUnpublishCallback(t *testing.T) {
+	initTestLogger(t)
+
+	room := testLiveRoom(2001, 1001, model.LiveRoomStatusLiving)
+	room.MediaStreamStatus = model.MediaStreamStatusOnline
+	handler := newTestLiveHandler(&mockLiveRoomRepository{
+		findByStreamName: func(ctx context.Context, streamName string) (*model.LiveRoom, error) {
+			return room, nil
+		},
+		update: func(ctx context.Context, updated *model.LiveRoom) error {
+			if updated.MediaStreamStatus != model.MediaStreamStatusOffline {
+				t.Fatalf("expected media stream offline, got %d", updated.MediaStreamStatus)
+			}
+			return nil
+		},
+	})
+
+	resp, err := handler.HandleSRSUnpublishCallback(context.Background(), &livev1.HandleSRSUnpublishCallbackRequest{
+		StreamName: room.StreamName,
+		ClientId:   "cid",
+		Ip:         "127.0.0.1",
+	})
+	if err != nil {
+		t.Fatalf("HandleSRSUnpublishCallback returned error: %v", err)
+	}
+	if resp.GetLiveRoom().GetMediaStreamStatus() != livev1.MediaStreamStatus_MEDIA_STREAM_STATUS_OFFLINE {
+		t.Fatalf("unexpected media stream status: %s", resp.GetLiveRoom().GetMediaStreamStatus())
 	}
 }
 
