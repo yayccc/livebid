@@ -8,6 +8,7 @@
 - 受保护接口校验 `Authorization: Bearer <access_token>`。
 - `access_token` 有效期为 7 天。
 - JWT 只表示登录身份，不表示业务权限。
+- 商家端和用户端使用不同 `issuer` 隔离 token，不在 JWT 中额外放用户类型字段。
 - 网关鉴权通过后，通过 gRPC metadata 向底层服务透传当前身份。
 
 ## 代码落点
@@ -38,7 +39,7 @@ github.com/golang-jwt/jwt/v5
 
 | Go 字段 | JWT 字段 | 说明 |
 | --- | --- | --- |
-| `Issuer` | `iss` | 签发方，例如 `livebid` |
+| `Issuer` | `iss` | 签发方，例如商家端 `livebid-shop`、用户端 `livebid-user` |
 | `Subject` | `sub` | 当前登录主体 ID |
 | `ID` | `jti` | token ID，可选 |
 | `ExpiresAt` | `exp` | 过期时间 |
@@ -47,7 +48,7 @@ github.com/golang-jwt/jwt/v5
 
 ```json
 {
-  "iss": "livebid",
+  "iss": "livebid-shop",
   "sub": "10001",
   "jti": "token-1",
   "exp": 1779520200
@@ -59,7 +60,9 @@ github.com/golang-jwt/jwt/v5
 - `roles`
 - `scopes`
 - `typ`
+- `subject_type`
 - `shop_id`
+- `user_id`
 - 业务权限
 - 资源权限
 
@@ -90,11 +93,21 @@ token, err := manager.Sign(auth.Claims{
 Authorization: Bearer <access_token>
 ```
 
-验证通过后使用 `claims.Subject` 作为当前登录主体 ID。
+验证通过后使用 `claims.Subject` 作为当前登录主体 ID。商家端接口只接受商家端 issuer，用户端接口只接受用户端 issuer；同一个 `sub` 在不同端的接口语义不同。
 
 ## HTTP 鉴权约定
 
 受保护接口由 `api-gateway` 统一校验 JWT。
+
+商家端接口使用商家鉴权中间件：
+
+- 只接受 `iss = livebid-shop` 的 token。
+- 将 `claims.Subject` 解析为 `shop_id` 并写入 Gin Context。
+
+用户端接口后续使用用户鉴权中间件：
+
+- 只接受 `iss = livebid-user` 的 token。
+- 将 `claims.Subject` 解析为 `user_id` 并写入 Gin Context。
 
 没有 token、token 无效或 token 过期时：
 
@@ -116,7 +129,7 @@ Authorization: Bearer <access_token>
 
 底层服务需要当前登录身份时，只读取 `livebid-auth-subject`。不要相信前端请求参数中的 `user_id`、`shop_id` 等身份字段。
 
-不同服务自行解释 `Subject`为shop_id或user_id
+不同服务按接口语义解释 `Subject`：商家管理类接口解释为 `shop_id`，用户侧接口解释为 `user_id`。
 
 信任边界：
 
@@ -155,6 +168,7 @@ Authorization: Bearer <access_token>
 
 - `Claims` 只包含 `Issuer`、`Subject`、`ID`、`ExpiresAt`。
 - JWT payload 只使用 `iss`、`sub`、`jti`、`exp`。
+- 商家端 token 使用商家 issuer，用户端 token 使用用户 issuer。
 - `access_token` 有效期为 7 天。
 - 受保护接口必须校验 `Authorization: Bearer <access_token>`。
 - 鉴权失败返回 `401`，且不得调用底层服务。

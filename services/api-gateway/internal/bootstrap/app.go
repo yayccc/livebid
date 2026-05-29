@@ -32,7 +32,11 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		return nil, err
 	}
 
-	jwtManager, err := auth.NewJWTManager(cfg.JWT.Secret, auth.WithIssuer(cfg.JWT.Issuer))
+	shopJWTManager, err := auth.NewJWTManager(cfg.JWT.Secret, auth.WithIssuer(cfg.JWT.ShopIssuer))
+	if err != nil {
+		return nil, err
+	}
+	userJWTManager, err := auth.NewJWTManager(cfg.JWT.Secret, auth.WithIssuer(cfg.JWT.UserIssuer))
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +46,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		return nil, err
 	}
 	shopClient := client.NewShopServiceClient(shopConn)
-	shopHandler := handler.NewShopHandler(shopClient, jwtManager, cfg.AccessTokenTTL(), cfg.RPCTimeout())
+	shopHandler := handler.NewShopHandler(shopClient, shopJWTManager, cfg.AccessTokenTTL(), cfg.RPCTimeout())
 
 	goodsConn, err := client.NewGoodsServiceConn(cfg.GoodsService.Addr)
 	if err != nil {
@@ -58,7 +62,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		return nil, err
 	}
 	liveClient := client.NewLiveServiceClient(liveConn)
-	liveHandler := handler.NewLiveHandler(liveClient, jwtManager, cfg.RPCTimeout())
+	liveHandler := handler.NewLiveHandler(liveClient, cfg.RPCTimeout())
 
 	gin.SetMode(gin.ReleaseMode)
 	if cfg.Env == "local" {
@@ -66,7 +70,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	}
 	engine := gin.New()
 	engine.Use(logger.GinRecovery(log), logger.GinMiddleware(log))
-	router.Register(engine, shopHandler, goodsHandler, liveHandler)
+	router.Register(engine, shopHandler, goodsHandler, liveHandler, shopJWTManager, userJWTManager)
 
 	server := &http.Server{
 		Addr:              cfg.HTTP.Addr,

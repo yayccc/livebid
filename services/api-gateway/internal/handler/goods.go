@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -15,13 +14,11 @@ import (
 )
 
 const (
-	defaultFakeShopID = int64(10001)
-	maxCoverFileSize  = 10 << 20
+	maxCoverFileSize = 10 << 20
 )
 
 type GoodsHandler struct {
 	goodsClient goodsServiceClient
-	fakeShopID  int64
 	rpcTimeout  time.Duration
 }
 
@@ -38,13 +35,9 @@ type goodsServiceClient interface {
 }
 
 func NewGoodsHandler(goodsClient goodsServiceClient, rpcTimeout time.Duration) *GoodsHandler {
-	if rpcTimeout <= 0 {
-		rpcTimeout = 3 * time.Second
-	}
 	return &GoodsHandler{
 		goodsClient: goodsClient,
-		fakeShopID:  defaultFakeShopID,
-		rpcTimeout:  rpcTimeout,
+		rpcTimeout:  normalizeRPCTimeout(rpcTimeout),
 	}
 }
 
@@ -87,6 +80,11 @@ type uploadGoodsCoverResponse struct {
 }
 
 func (h *GoodsHandler) Create(c *gin.Context) {
+	shopID, ok := currentShopID(c)
+	if !ok {
+		return
+	}
+
 	var req createGoodsRequest
 	if err := c.ShouldBind(&req); err != nil {
 		recordRequestError(c, err)
@@ -98,7 +96,7 @@ func (h *GoodsHandler) Create(c *gin.Context) {
 	defer cancel()
 
 	resp, err := h.goodsClient.CreateGoods(ctx, &goodsv1.CreateGoodsRequest{
-		ShopId:      h.currentShopID(c),
+		ShopId:      shopID,
 		Title:       req.Title,
 		CoverUrl:    req.CoverURL,
 		Description: req.Description,
@@ -111,6 +109,10 @@ func (h *GoodsHandler) Create(c *gin.Context) {
 }
 
 func (h *GoodsHandler) Update(c *gin.Context) {
+	shopID, ok := currentShopID(c)
+	if !ok {
+		return
+	}
 	id, ok := parseIDParam(c, "id")
 	if !ok {
 		return
@@ -127,7 +129,7 @@ func (h *GoodsHandler) Update(c *gin.Context) {
 
 	resp, err := h.goodsClient.UpdateGoods(ctx, &goodsv1.UpdateGoodsRequest{
 		Id:          id,
-		ShopId:      h.currentShopID(c),
+		ShopId:      shopID,
 		Title:       req.Title,
 		CoverUrl:    req.CoverURL,
 		Description: req.Description,
@@ -140,6 +142,10 @@ func (h *GoodsHandler) Update(c *gin.Context) {
 }
 
 func (h *GoodsHandler) Delete(c *gin.Context) {
+	shopID, ok := currentShopID(c)
+	if !ok {
+		return
+	}
 	id, ok := parseIDParam(c, "id")
 	if !ok {
 		return
@@ -150,7 +156,7 @@ func (h *GoodsHandler) Delete(c *gin.Context) {
 
 	_, err := h.goodsClient.DeleteGoods(ctx, &goodsv1.DeleteGoodsRequest{
 		Id:     id,
-		ShopId: h.currentShopID(c),
+		ShopId: shopID,
 	})
 	if err != nil {
 		respondGRPCError(c, err)
@@ -199,6 +205,10 @@ func (h *GoodsHandler) List(c *gin.Context) {
 }
 
 func (h *GoodsHandler) ListShopGoods(c *gin.Context) {
+	shopID, ok := currentShopID(c)
+	if !ok {
+		return
+	}
 	page, ok := parseOptionalInt32Query(c, "page")
 	if !ok {
 		return
@@ -212,9 +222,9 @@ func (h *GoodsHandler) ListShopGoods(c *gin.Context) {
 	defer cancel()
 
 	resp, err := h.goodsClient.ListShopGoods(ctx, &goodsv1.ListShopGoodsRequest{
-		ShopId:   h.currentShopID(c),
-		Page:     valueOrZero(page),
-		PageSize: valueOrZero(pageSize),
+		ShopId:   shopID,
+		Page:     int32ValueOrZero(page),
+		PageSize: int32ValueOrZero(pageSize),
 		Keyword:  c.Query("keyword"),
 	})
 	if err != nil {
@@ -249,6 +259,10 @@ func (h *GoodsHandler) BatchGetGoods(c *gin.Context) {
 }
 
 func (h *GoodsHandler) PutOnSale(c *gin.Context) {
+	shopID, ok := currentShopID(c)
+	if !ok {
+		return
+	}
 	id, ok := parseIDParam(c, "id")
 	if !ok {
 		return
@@ -259,7 +273,7 @@ func (h *GoodsHandler) PutOnSale(c *gin.Context) {
 
 	_, err := h.goodsClient.PutGoodsOnSale(ctx, &goodsv1.PutGoodsOnSaleRequest{
 		Id:     id,
-		ShopId: h.currentShopID(c),
+		ShopId: shopID,
 	})
 	if err != nil {
 		respondGRPCError(c, err)
@@ -269,6 +283,10 @@ func (h *GoodsHandler) PutOnSale(c *gin.Context) {
 }
 
 func (h *GoodsHandler) PutOffSale(c *gin.Context) {
+	shopID, ok := currentShopID(c)
+	if !ok {
+		return
+	}
 	id, ok := parseIDParam(c, "id")
 	if !ok {
 		return
@@ -279,7 +297,7 @@ func (h *GoodsHandler) PutOffSale(c *gin.Context) {
 
 	_, err := h.goodsClient.PutGoodsOffSale(ctx, &goodsv1.PutGoodsOffSaleRequest{
 		Id:     id,
-		ShopId: h.currentShopID(c),
+		ShopId: shopID,
 	})
 	if err != nil {
 		respondGRPCError(c, err)
@@ -300,15 +318,13 @@ func (h *GoodsHandler) UploadCover(c *gin.Context) {
 		return
 	}
 
-	shopID := h.currentShopID(c)
+	shopID, ok := currentShopID(c)
+	if !ok {
+		return
+	}
 	respondOK(c, uploadGoodsCoverResponse{
 		CoverURL: fakeCoverURL(shopID, file.Filename),
 	})
-}
-
-func (h *GoodsHandler) currentShopID(_ *gin.Context) int64 {
-	// TODO: Replace this fake value with the shop_id injected by auth middleware.
-	return h.fakeShopID
 }
 
 func listGoodsRequest(c *gin.Context) (*goodsv1.ListGoodsRequest, bool) {
@@ -333,47 +349,13 @@ func listGoodsRequest(c *gin.Context) (*goodsv1.ListGoodsRequest, bool) {
 		return nil, false
 	}
 	return &goodsv1.ListGoodsRequest{
-		Page:      valueOrZero(page),
-		PageSize:  valueOrZero(pageSize),
+		Page:      int32ValueOrZero(page),
+		PageSize:  int32ValueOrZero(pageSize),
 		Keyword:   c.Query("keyword"),
 		ShopId:    shopID,
 		IsDeleted: isDeleted,
 		Status:    status,
 	}, true
-}
-
-func parseOptionalInt64Query(c *gin.Context, key string) (*int64, bool) {
-	raw := strings.TrimSpace(c.Query(key))
-	if raw == "" {
-		return nil, true
-	}
-	value, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil {
-		respondError(c, http.StatusBadRequest, "invalid request")
-		return nil, false
-	}
-	return &value, true
-}
-
-func parseOptionalInt32Query(c *gin.Context, key string) (*int32, bool) {
-	raw := strings.TrimSpace(c.Query(key))
-	if raw == "" {
-		return nil, true
-	}
-	value, err := strconv.ParseInt(raw, 10, 32)
-	if err != nil {
-		respondError(c, http.StatusBadRequest, "invalid request")
-		return nil, false
-	}
-	parsed := int32(value)
-	return &parsed, true
-}
-
-func valueOrZero(value *int32) int32 {
-	if value == nil {
-		return 0
-	}
-	return *value
 }
 
 func toGoodsResponse(goods *goodsv1.Goods) goodsResponse {

@@ -24,11 +24,11 @@
 
 当前 `/api/goods/cover/upload` 是占位实现：只校验请求中存在 `file` 且大小不超过 10MiB，然后返回形如 `https://static.livebid.local/goods/cover/{shop_id}/{timestamp}.jpg` 的假 URL。
 
-`shop_id` 后续应由鉴权中间件注入；当前代码使用 `10001` 作为临时假数据，并保留 TODO。
+`shop_id` 由商家端 JWT 鉴权中间件注入，请求必须携带 `Authorization: Bearer <token>`。
 
 ## 商品接口说明
 
-当前商品创建、编辑、删除、当前商铺列表、上下架请求中的 `shop_id` 仍使用临时假数据 `10001`。后续鉴权中间件确定后，应统一替换为从 JWT claims 或请求上下文注入的真实 `shop_id`。
+商品创建、编辑、删除、当前商铺列表、上下架请求中的 `shop_id` 均来自商家端 JWT 的 subject。网关中间件会校验 token，并把当前认证主体写入请求 identity。
 
 ## 本地启动
 
@@ -66,7 +66,8 @@ services/api-gateway/configs/config.local.yaml
 | `API_GATEWAY_SHOP_SERVICE_ADDR` | `shop-service` gRPC 地址 |
 | `API_GATEWAY_GOODS_SERVICE_ADDR` | `goods-service` gRPC 地址 |
 | `API_GATEWAY_JWT_SECRET` | JWT HS256 签名密钥 |
-| `API_GATEWAY_JWT_ISSUER` | JWT 签发方 |
+| `API_GATEWAY_JWT_SHOP_ISSUER` | 商家端 JWT 签发方 |
+| `API_GATEWAY_JWT_USER_ISSUER` | 用户端 JWT 签发方 |
 | `API_GATEWAY_JWT_ACCESS_TOKEN_TTL_SECONDS` | access token 有效期 |
 | `API_GATEWAY_RPC_TIMEOUT_SECONDS` | 调用底层 gRPC 服务超时时间 |
 

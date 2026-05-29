@@ -3,13 +3,11 @@ package handler
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	livev1 "github.com/yayccc/livebid/gen/proto/live/v1"
-	"github.com/yayccc/livebid/pkg/auth"
 	"google.golang.org/grpc"
 )
 
@@ -26,18 +24,13 @@ type liveServiceClient interface {
 
 type LiveHandler struct {
 	liveClient liveServiceClient
-	jwt        *auth.JWTManager
 	rpcTimeout time.Duration
 }
 
-func NewLiveHandler(liveClient liveServiceClient, jwtManager *auth.JWTManager, rpcTimeout time.Duration) *LiveHandler {
-	if rpcTimeout <= 0 {
-		rpcTimeout = 3 * time.Second
-	}
+func NewLiveHandler(liveClient liveServiceClient, rpcTimeout time.Duration) *LiveHandler {
 	return &LiveHandler{
 		liveClient: liveClient,
-		jwt:        jwtManager,
-		rpcTimeout: rpcTimeout,
+		rpcTimeout: normalizeRPCTimeout(rpcTimeout),
 	}
 }
 
@@ -78,7 +71,7 @@ type srsCallbackRequest struct {
 }
 
 func (h *LiveHandler) CreateLiveRoom(c *gin.Context) {
-	shopID, ok := h.requireShopID(c)
+	shopID, ok := currentShopID(c)
 	if !ok {
 		return
 	}
@@ -156,7 +149,7 @@ func (h *LiveHandler) ListLiveRooms(c *gin.Context) {
 }
 
 func (h *LiveHandler) StartLive(c *gin.Context) {
-	shopID, ok := h.requireShopID(c)
+	shopID, ok := currentShopID(c)
 	if !ok {
 		return
 	}
@@ -177,7 +170,7 @@ func (h *LiveHandler) StartLive(c *gin.Context) {
 }
 
 func (h *LiveHandler) EndLive(c *gin.Context) {
-	shopID, ok := h.requireShopID(c)
+	shopID, ok := currentShopID(c)
 	if !ok {
 		return
 	}
@@ -198,7 +191,7 @@ func (h *LiveHandler) EndLive(c *gin.Context) {
 }
 
 func (h *LiveHandler) GetLiveStreamInfo(c *gin.Context) {
-	shopID, ok := h.requireShopID(c)
+	shopID, ok := currentShopID(c)
 	if !ok {
 		return
 	}
@@ -263,59 +256,6 @@ func (h *LiveHandler) HandleSRSUnpublishCallback(c *gin.Context) {
 		recordRequestError(c, err)
 	}
 	c.String(http.StatusOK, "0")
-}
-
-// 从 Authorization header 中解析 JWT token，验证后返回 shopID
-func (h *LiveHandler) requireShopID(c *gin.Context) (int64, bool) {
-	if h.jwt == nil {
-		respondError(c, http.StatusUnauthorized, "missing auth")
-		return 0, false
-	}
-	authHeader := strings.TrimSpace(c.GetHeader("Authorization"))
-	token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
-	if token == "" || token == authHeader {
-		respondError(c, http.StatusUnauthorized, "missing auth")
-		return 0, false
-	}
-	claims, err := h.jwt.Verify(token)
-	if err != nil {
-		recordRequestError(c, err)
-		respondError(c, http.StatusUnauthorized, "invalid token")
-		return 0, false
-	}
-	shopID, err := strconv.ParseInt(claims.Subject, 10, 64)
-	if err != nil || shopID <= 0 {
-		if err != nil {
-			recordRequestError(c, err)
-		}
-		respondError(c, http.StatusUnauthorized, "invalid token")
-		return 0, false
-	}
-	return shopID, true
-}
-
-func parseIDParam(c *gin.Context, name string) (int64, bool) {
-	id, err := strconv.ParseInt(c.Param(name), 10, 64)
-	if err != nil || id <= 0 {
-		if err != nil {
-			recordRequestError(c, err)
-		}
-		respondError(c, http.StatusBadRequest, "invalid request")
-		return 0, false
-	}
-	return id, true
-}
-
-func parsePositiveQueryInt(c *gin.Context, name string, fallback int) int {
-	value := strings.TrimSpace(c.Query(name))
-	if value == "" {
-		return fallback
-	}
-	parsed, err := strconv.Atoi(value)
-	if err != nil || parsed <= 0 {
-		return fallback
-	}
-	return parsed
 }
 
 func streamCodeFromSRSParam(param string) string {

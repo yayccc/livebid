@@ -33,7 +33,8 @@ type ServiceConfig struct {
 
 type JWTConfig struct {
 	Secret                string `yaml:"secret"`
-	Issuer                string `yaml:"issuer"`
+	ShopIssuer            string `yaml:"shopIssuer"`
+	UserIssuer            string `yaml:"userIssuer"`
 	AccessTokenTTLSeconds int    `yaml:"accessTokenTTLSeconds"`
 }
 
@@ -77,7 +78,8 @@ func defaultConfig() Config {
 		},
 		JWT: JWTConfig{
 			Secret:                "local-dev-jwt-secret-change-me",
-			Issuer:                "livebid",
+			ShopIssuer:            "livebid-shop",
+			UserIssuer:            "livebid-user",
 			AccessTokenTTLSeconds: 604800,
 		},
 		RPC: RPCConfig{
@@ -121,8 +123,11 @@ func applyEnvOverrides(cfg *Config) {
 	if value := os.Getenv("API_GATEWAY_JWT_SECRET"); value != "" {
 		cfg.JWT.Secret = value
 	}
-	if value := os.Getenv("API_GATEWAY_JWT_ISSUER"); value != "" {
-		cfg.JWT.Issuer = value
+	if value := os.Getenv("API_GATEWAY_JWT_SHOP_ISSUER"); value != "" {
+		cfg.JWT.ShopIssuer = value
+	}
+	if value := os.Getenv("API_GATEWAY_JWT_USER_ISSUER"); value != "" {
+		cfg.JWT.UserIssuer = value
 	}
 	setIntEnv("API_GATEWAY_JWT_ACCESS_TOKEN_TTL_SECONDS", &cfg.JWT.AccessTokenTTLSeconds)
 	setIntEnv("API_GATEWAY_RPC_TIMEOUT_SECONDS", &cfg.RPC.TimeoutSeconds)
@@ -176,8 +181,11 @@ func normalize(cfg *Config) {
 	if cfg.LiveService.Addr == "" {
 		cfg.LiveService.Addr = "127.0.0.1:9007"
 	}
-	if cfg.JWT.Issuer == "" {
-		cfg.JWT.Issuer = "livebid"
+	if cfg.JWT.ShopIssuer == "" {
+		cfg.JWT.ShopIssuer = "livebid-shop"
+	}
+	if cfg.JWT.UserIssuer == "" {
+		cfg.JWT.UserIssuer = "livebid-user"
 	}
 	if cfg.JWT.AccessTokenTTLSeconds <= 0 {
 		cfg.JWT.AccessTokenTTLSeconds = 604800

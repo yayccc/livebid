@@ -14,7 +14,8 @@ liveService:
 
 jwt:
   secret: "local-dev-jwt-secret-change-me"
-  issuer: "livebid"
+  shopIssuer: "livebid-shop"
+  userIssuer: "livebid-user"
   accessTokenTTLSeconds: 604800
 
 rpc:

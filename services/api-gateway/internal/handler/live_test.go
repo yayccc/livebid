@@ -6,13 +6,14 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	livev1 "github.com/yayccc/livebid/gen/proto/live/v1"
-	"github.com/yayccc/livebid/pkg/auth"
+	"github.com/yayccc/livebid/services/api-gateway/internal/identity"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -58,8 +59,6 @@ func (m mockLiveClient) HandleSRSUnpublishCallback(ctx context.Context, in *live
 func TestLiveHandlerCreateLiveRoomUsesJWTSubjectAsShopID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	jwtManager := newTestJWTManager(t)
-	token := signTestToken(t, jwtManager, "1001")
 	handler := NewLiveHandler(mockLiveClient{
 		createLiveRoom: func(ctx context.Context, in *livev1.CreateLiveRoomRequest, opts ...grpc.CallOption) (*livev1.CreateLiveRoomResponse, error) {
 			if in.GetShopId() != 1001 || in.GetTitle() != "直播间" {
@@ -72,10 +71,10 @@ func TestLiveHandlerCreateLiveRoomUsesJWTSubjectAsShopID(t *testing.T) {
 				WebrtcPlayUrl:     "webrtc://srs.test/live/live_2001",
 			}, nil
 		},
-	}, jwtManager, time.Second)
+	}, time.Second)
 
 	body := bytes.NewBufferString(`{"title":"直播间"}`)
-	w := performLiveRequest(handler.CreateLiveRoom, http.MethodPost, "/api/live/rooms", body, "Bearer "+token)
+	w := performLiveRequestWithShopID(handler.CreateLiveRoom, http.MethodPost, "/api/live/rooms", body, 1001)
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
 	}
@@ -106,9 +105,9 @@ func TestLiveHandlerListLiveRooms(t *testing.T) {
 				Total:     1,
 			}, nil
 		},
-	}, newTestJWTManager(t), time.Second)
+	}, time.Second)
 
-	w := performLiveRequest(handler.ListLiveRooms, http.MethodGet, "/api/live/rooms?page=2&page_size=10", bytes.NewBuffer(nil), "")
+	w := performLiveRequest(handler.ListLiveRooms, http.MethodGet, "/api/live/rooms?page=2&page_size=10", bytes.NewBuffer(nil))
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
 	}
@@ -127,10 +126,10 @@ func TestLiveHandlerHandleSRSPublishCallback(t *testing.T) {
 			}
 			return &livev1.HandleSRSPublishCallbackResponse{LiveRoom: testLiveProtoRoom()}, nil
 		},
-	}, newTestJWTManager(t), time.Second)
+	}, time.Second)
 
 	body := bytes.NewBufferString(`{"action":"on_publish","client_id":"cid","ip":"127.0.0.1","app":"live","stream":"live_2001","param":"?token=abc123"}`)
-	w := performLiveRequest(handler.HandleSRSPublishCallback, http.MethodPost, "/api/srs/callbacks/publish", body, "")
+	w := performLiveRequest(handler.HandleSRSPublishCallback, http.MethodPost, "/api/srs/callbacks/publish", body)
 	if w.Code != http.StatusOK || strings.TrimSpace(w.Body.String()) != "0" {
 		t.Fatalf("unexpected response: status=%d body=%q", w.Code, w.Body.String())
 	}
@@ -143,37 +142,33 @@ func TestLiveHandlerHandleSRSPublishCallbackRejectsInvalidCredential(t *testing.
 		handleSRSPublishCallback: func(ctx context.Context, in *livev1.HandleSRSPublishCallbackRequest, opts ...grpc.CallOption) (*livev1.HandleSRSPublishCallbackResponse, error) {
 			return nil, status.Error(codes.Unauthenticated, "invalid credential")
 		},
-	}, newTestJWTManager(t), time.Second)
+	}, time.Second)
 
 	body := bytes.NewBufferString(`{"stream":"live_2001","param":"?token=bad"}`)
-	w := performLiveRequest(handler.HandleSRSPublishCallback, http.MethodPost, "/api/srs/callbacks/publish", body, "")
+	w := performLiveRequest(handler.HandleSRSPublishCallback, http.MethodPost, "/api/srs/callbacks/publish", body)
 	if w.Code != http.StatusForbidden || strings.TrimSpace(w.Body.String()) != "1" {
 		t.Fatalf("unexpected response: status=%d body=%q", w.Code, w.Body.String())
 	}
 }
 
-func performLiveRequest(handlerFunc gin.HandlerFunc, method string, path string, body *bytes.Buffer, bearerToken string) *httptest.ResponseRecorder {
+func performLiveRequest(handlerFunc gin.HandlerFunc, method string, path string, body *bytes.Buffer) *httptest.ResponseRecorder {
+	return performLiveRequestWithShopID(handlerFunc, method, path, body, 0)
+}
+
+func performLiveRequestWithShopID(handlerFunc gin.HandlerFunc, method string, path string, body *bytes.Buffer, shopID int64) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(method, path, body)
 	c.Request.Header.Set("Content-Type", "application/json")
-	if bearerToken != "" {
-		c.Request.Header.Set("Authorization", bearerToken)
+	if shopID > 0 {
+		identity.Set(c, identity.Principal{
+			Kind:    identity.KindShop,
+			ID:      shopID,
+			Subject: strconv.FormatInt(shopID, 10),
+		})
 	}
 	handlerFunc(c)
 	return w
-}
-
-func signTestToken(t *testing.T, jwtManager *auth.JWTManager, subject string) string {
-	t.Helper()
-	token, err := jwtManager.Sign(auth.Claims{
-		Subject:   subject,
-		ExpiresAt: time.Now().Add(time.Hour),
-	})
-	if err != nil {
-		t.Fatalf("sign token: %v", err)
-	}
-	return token
 }
 
 func testLiveProtoRoom() *livev1.LiveRoom {

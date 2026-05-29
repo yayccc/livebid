@@ -6,12 +6,15 @@ import (
 	"encoding/json"
 	"mime/multipart"
 	"net/http"
+	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	goodsv1 "github.com/yayccc/livebid/gen/proto/goods/v1"
+	"github.com/yayccc/livebid/services/api-gateway/internal/identity"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -69,7 +72,7 @@ func TestGoodsHandlerCreateForwardsToGoodsService(t *testing.T) {
 
 	handler := NewGoodsHandler(mockGoodsClient{
 		create: func(ctx context.Context, in *goodsv1.CreateGoodsRequest, opts ...grpc.CallOption) (*goodsv1.CreateGoodsResponse, error) {
-			if in.GetShopId() != defaultFakeShopID || in.GetTitle() != "翡翠手镯" || in.GetCoverUrl() != "https://example.com/cover.jpg" {
+			if in.GetShopId() != 1001 || in.GetTitle() != "翡翠手镯" || in.GetCoverUrl() != "https://example.com/cover.jpg" {
 				t.Fatalf("unexpected create request: %#v", in)
 			}
 			return &goodsv1.CreateGoodsResponse{Goods: testGoods()}, nil
@@ -77,19 +80,19 @@ func TestGoodsHandlerCreateForwardsToGoodsService(t *testing.T) {
 	}, time.Second)
 
 	body := bytes.NewBufferString(`{"title":"翡翠手镯","cover_url":"https://example.com/cover.jpg","description":"天然翡翠"}`)
-	w := performRequest(handler.Create, http.MethodPost, "/api/goods", body)
+	w := performRequestWithShopID(handler.Create, http.MethodPost, "/api/goods", body, 1001)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
 	}
 }
 
-func TestGoodsHandlerListShopGoodsUsesFakeShopID(t *testing.T) {
+func TestGoodsHandlerListShopGoodsUsesContextShopID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	handler := NewGoodsHandler(mockGoodsClient{
 		listShop: func(ctx context.Context, in *goodsv1.ListShopGoodsRequest, opts ...grpc.CallOption) (*goodsv1.ListShopGoodsResponse, error) {
-			if in.GetShopId() != defaultFakeShopID || in.GetPage() != 2 || in.GetPageSize() != 20 || in.GetKeyword() != "玉" {
+			if in.GetShopId() != 1001 || in.GetPage() != 2 || in.GetPageSize() != 20 || in.GetKeyword() != "玉" {
 				t.Fatalf("unexpected list shop goods request: %#v", in)
 			}
 			return &goodsv1.ListShopGoodsResponse{
@@ -101,7 +104,7 @@ func TestGoodsHandlerListShopGoodsUsesFakeShopID(t *testing.T) {
 		},
 	}, time.Second)
 
-	w := performRequest(handler.ListShopGoods, http.MethodGet, "/api/goods/shop/list?page=2&page_size=20&keyword=玉", bytes.NewBuffer(nil))
+	w := performRequestWithShopID(handler.ListShopGoods, http.MethodGet, "/api/goods/shop/list?page=2&page_size=20&keyword=玉", bytes.NewBuffer(nil), 1001)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
@@ -133,7 +136,7 @@ func TestGoodsHandlerUploadCoverReturnsFakeURL(t *testing.T) {
 
 	handler := NewGoodsHandler(mockGoodsClient{}, time.Second)
 	body, contentType := multipartFileBody(t, "file", "cover.JPG", []byte("fake image"))
-	w := performRequestWithContentType(handler.UploadCover, http.MethodPost, "/api/goods/cover/upload", body, contentType)
+	w := performRequestWithContentTypeAndShopID(handler.UploadCover, http.MethodPost, "/api/goods/cover/upload", body, contentType, 1001)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
@@ -151,7 +154,7 @@ func TestGoodsHandlerUploadCoverReturnsFakeURL(t *testing.T) {
 	if resp.Code != 0 {
 		t.Fatalf("unexpected code: %d", resp.Code)
 	}
-	if !strings.HasPrefix(resp.Data.CoverURL, "https://static.livebid.local/goods/cover/10001/") {
+	if !strings.HasPrefix(resp.Data.CoverURL, "https://static.livebid.local/goods/cover/1001/") {
 		t.Fatalf("unexpected cover url: %s", resp.Data.CoverURL)
 	}
 	if !strings.HasSuffix(resp.Data.CoverURL, ".jpg") {
@@ -193,7 +196,7 @@ func testGoods() *goodsv1.Goods {
 	now := timestamppb.New(time.Date(2026, 5, 25, 12, 0, 0, 0, time.UTC))
 	return &goodsv1.Goods{
 		Id:          1001,
-		ShopId:      defaultFakeShopID,
+		ShopId:      1001,
 		Title:       "翡翠手镯",
 		CoverUrl:    "https://example.com/cover.jpg",
 		Description: "天然翡翠",
@@ -201,4 +204,24 @@ func testGoods() *goodsv1.Goods {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
+}
+
+func performRequestWithShopID(handlerFunc gin.HandlerFunc, method string, path string, body *bytes.Buffer, shopID int64) *httptest.ResponseRecorder {
+	return performRequestWithContentTypeAndShopID(handlerFunc, method, path, body, "application/json", shopID)
+}
+
+func performRequestWithContentTypeAndShopID(handlerFunc gin.HandlerFunc, method string, path string, body *bytes.Buffer, contentType string, shopID int64) *httptest.ResponseRecorder {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(method, path, body)
+	c.Request.Header.Set("Content-Type", contentType)
+	if shopID > 0 {
+		identity.Set(c, identity.Principal{
+			Kind:    identity.KindShop,
+			ID:      shopID,
+			Subject: strconv.FormatInt(shopID, 10),
+		})
+	}
+	handlerFunc(c)
+	return w
 }

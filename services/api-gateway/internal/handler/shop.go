@@ -11,9 +11,6 @@ import (
 	shopv1 "github.com/yayccc/livebid/gen/proto/shop/v1"
 	"github.com/yayccc/livebid/pkg/auth"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type shopServiceClient interface {
@@ -32,14 +29,11 @@ func NewShopHandler(shopClient shopServiceClient, jwtManager *auth.JWTManager, a
 	if accessTokenTTL <= 0 {
 		accessTokenTTL = 7 * 24 * time.Hour
 	}
-	if rpcTimeout <= 0 {
-		rpcTimeout = 3 * time.Second
-	}
 	return &ShopHandler{
 		shopClient:     shopClient,
 		jwt:            jwtManager,
 		accessTokenTTL: accessTokenTTL,
-		rpcTimeout:     rpcTimeout,
+		rpcTimeout:     normalizeRPCTimeout(rpcTimeout),
 	}
 }
 
@@ -79,12 +73,6 @@ type loginShopResponse struct {
 	ExpiresIn   int64        `json:"expires_in"`
 	ExpiresAt   string       `json:"expires_at"`
 	Shop        shopResponse `json:"shop"`
-}
-
-type apiResponse struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    any    `json:"data,omitempty"`
 }
 
 func (h *ShopHandler) Register(c *gin.Context) {
@@ -185,58 +173,4 @@ func toShopResponse(shop *shopv1.Shop) shopResponse {
 		CreatedAt:   timestampString(shop.GetCreatedAt()),
 		UpdatedAt:   timestampString(shop.GetUpdatedAt()),
 	}
-}
-
-func timestampString(ts *timestamppb.Timestamp) string {
-	if ts == nil {
-		return ""
-	}
-	return ts.AsTime().UTC().Format(time.RFC3339)
-}
-
-func respondOK(c *gin.Context, data any) {
-	c.JSON(http.StatusOK, apiResponse{
-		Code:    0,
-		Message: "ok",
-		Data:    data,
-	})
-}
-
-func respondError(c *gin.Context, statusCode int, message string) {
-	c.JSON(statusCode, apiResponse{
-		Code:    statusCode,
-		Message: message,
-	})
-}
-
-func respondGRPCError(c *gin.Context, err error) {
-	recordRequestError(c, err)
-	code := status.Code(err)
-	switch code {
-	case codes.InvalidArgument:
-		respondError(c, http.StatusBadRequest, "invalid request")
-	case codes.Unauthenticated:
-		respondError(c, http.StatusUnauthorized, "invalid credential")
-	case codes.AlreadyExists:
-		respondError(c, http.StatusConflict, "shop already exists")
-	case codes.NotFound:
-		respondError(c, http.StatusNotFound, "resource not found")
-	case codes.DeadlineExceeded:
-		respondError(c, http.StatusGatewayTimeout, "upstream timeout")
-	case codes.Unavailable:
-		respondError(c, http.StatusBadGateway, "upstream unavailable")
-	default:
-		if errors.Is(err, context.DeadlineExceeded) {
-			respondError(c, http.StatusGatewayTimeout, "upstream timeout")
-			return
-		}
-		respondError(c, http.StatusInternalServerError, "internal error")
-	}
-}
-
-func recordRequestError(c *gin.Context, err error) {
-	if c == nil || err == nil {
-		return
-	}
-	_ = c.Error(err)
 }
