@@ -27,8 +27,11 @@ message CreateLiveRoomRequest {
 
 message CreateLiveRoomResponse {
   LiveRoom live_room = 1;
+  // Initial stream code returned only when the room is created. Store the hash in live-service.
   string initial_stream_code = 2;
+  // RTMP push URL for broadcaster tools such as OBS.
   string rtmp_push_url = 3;
+  // WebRTC play URL. The first version may use the same URL for merchant preview and user playback.
   string webrtc_play_url = 4;
 }
 
@@ -124,7 +127,9 @@ message LiveRoom {
 
 message LiveStreamInfo {
   string stream_name = 1;
+  // RTMP push URL for broadcaster tools such as OBS.
   string rtmp_push_url = 2;
+  // WebRTC play URL. It can be used by merchant preview and user playback in the first version.
   string webrtc_play_url = 3;
   MediaStreamStatus media_stream_status = 4;
 }

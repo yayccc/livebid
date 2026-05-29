@@ -37,7 +37,7 @@ living -> not_live
 - `stream_name`。
 - `stream_code`。
 - RTMP 推流地址。
-- WebRTC 播放地址。
+- WebRTC 播放地址，第一版可同时用于商家预览和用户播放。
 
 创建后状态为 `not_live`。
 
