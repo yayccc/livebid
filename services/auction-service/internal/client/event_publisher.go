@@ -47,6 +47,7 @@ func NewRocketMQEventPublisher(cfg config.RocketMQConfig) (*RocketMQEventPublish
 	p, err := rocketmq.NewProducer(
 		producer.WithNameServer(cfg.NameServers),
 		producer.WithGroupName(cfg.ProducerGroup),
+		producer.WithQueueSelector(producer.NewHashQueueSelector()),
 	)
 	if err != nil {
 		return nil, err
@@ -77,6 +78,7 @@ func (p *RocketMQEventPublisher) send(ctx context.Context, event AuctionEvent, d
 	msg := primitive.NewMessage(p.topic, body)
 	msg.WithTag(event.EventType)
 	msg.WithKeys([]string{fmt.Sprintf("auction_%d", event.AuctionID)})
+	msg.WithShardingKey(fmt.Sprintf("%d", event.AuctionID))
 	if delayLevel > 0 {
 		// RocketMQ delayLevel 是固定延迟等级，不是秒数；具体映射取决于 broker 配置。
 		msg.WithDelayTimeLevel(delayLevel)

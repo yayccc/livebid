@@ -47,37 +47,10 @@ type BidRecord struct {
 	IsDeleted bool      `gorm:"column:is_delete;type:tinyint;default:0;index:idx_is_delete"`
 }
 
-type AuctionEventConsumeStatus int8
-
-const (
-	// AuctionEventConsumeProcessing 用于抢占事件处理权，防止多实例重复回写。
-	AuctionEventConsumeProcessing AuctionEventConsumeStatus = 0
-	AuctionEventConsumeSucceeded  AuctionEventConsumeStatus = 1
-	AuctionEventConsumeFailed     AuctionEventConsumeStatus = 2
-)
-
-type AuctionEventConsumeLog struct {
-	EventID    string                    `gorm:"primaryKey;column:event_id;type:varchar(64)"`
-	EventType  string                    `gorm:"column:event_type;type:varchar(64);not null;index:idx_event_type"`
-	BizID      string                    `gorm:"column:biz_id;type:varchar(64);not null;index:idx_biz_id"`
-	AuctionID  int64                     `gorm:"column:auction_id;not null;index:idx_auction_id"`
-	MessageID  string                    `gorm:"column:message_id;type:varchar(128);index:idx_message_id"`
-	Status     AuctionEventConsumeStatus `gorm:"column:status;type:tinyint;not null;default:0;index:idx_status"`
-	RetryTimes int32                     `gorm:"column:retry_times;not null;default:0"`
-	LastError  string                    `gorm:"column:last_error;type:varchar(500)"`
-	ConsumedAt *time.Time                `gorm:"column:consumed_at"`
-	CreatedAt  time.Time                 `gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt  time.Time                 `gorm:"column:updated_at;autoUpdateTime"`
-}
-
 func (Auction) TableName() string {
 	return "auction"
 }
 
 func (BidRecord) TableName() string {
 	return "bid_record"
-}
-
-func (AuctionEventConsumeLog) TableName() string {
-	return "auction_event_consume_log"
 }

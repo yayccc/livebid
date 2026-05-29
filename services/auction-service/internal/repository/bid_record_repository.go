@@ -2,11 +2,14 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/yayccc/livebid/services/auction-service/internal/model"
 	"gorm.io/gorm"
 )
+
+var ErrBidRecordDuplicated = errors.New("bid record duplicated")
 
 type ListBidRecordFilter struct {
 	AuctionID int64
@@ -36,7 +39,7 @@ func (r *GormBidRecordRepository) CreateIfNotExists(ctx context.Context, record 
 	// RocketMQ 至少一次投递会导致重复消费，主键重复代表该出价记录已落库。
 	err := r.db.WithContext(ctx).Create(record).Error
 	if err != nil && strings.Contains(err.Error(), "Duplicate entry") {
-		return nil
+		return ErrBidRecordDuplicated
 	}
 	return err
 }

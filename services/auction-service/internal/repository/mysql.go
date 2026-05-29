@@ -26,7 +26,7 @@ func OpenDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 	configurePool(sqlDB, cfg)
 
 	if cfg.AutoMigrate {
-		if err := db.AutoMigrate(&model.Auction{}, &model.BidRecord{}, &model.AuctionEventConsumeLog{}); err != nil {
+		if err := db.AutoMigrate(&model.Auction{}, &model.BidRecord{}); err != nil {
 			return nil, err
 		}
 	}

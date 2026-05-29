@@ -26,12 +26,14 @@ type RocketMQEventConsumer struct {
 }
 
 func NewRocketMQEventConsumer(cfg config.RocketMQConfig, processor *AuctionEventProcessor) (*RocketMQEventConsumer, error) {
-	// 集群模式保证同一消费者组内单条消息只被一个实例处理，幂等表兜底重复投递。
+	// 集群模式保证同一消费者组内单条消息只被一个实例处理；业务表版本和主键兜底重复投递。
 	c, err := rocketmq.NewPushConsumer(
 		consumer.WithGroupName(cfg.ConsumerGroup),
 		consumer.WithNsResolver(primitive.NewPassthroughResolver(cfg.NameServers)),
 		consumer.WithConsumerModel(consumer.Clustering),
 		consumer.WithConsumeMessageBatchMaxSize(1),
+		consumer.WithConsumeGoroutineNums(1),
+		consumer.WithConsumerOrder(true),
 		consumer.WithMaxReconsumeTimes(cfg.MaxReconsumeTimes),
 	)
 	if err != nil {
@@ -54,7 +56,6 @@ func (c *RocketMQEventConsumer) Close() error {
 type AuctionEventProcessor struct {
 	auctions          repository.AuctionRepository
 	bids              repository.BidRecordRepository
-	events            repository.EventLogRepository
 	states            repository.AuctionStateStore
 	log               *zap.Logger
 	maxReconsumeTimes int32
@@ -63,7 +64,6 @@ type AuctionEventProcessor struct {
 func NewAuctionEventProcessor(
 	auctions repository.AuctionRepository,
 	bids repository.BidRecordRepository,
-	events repository.EventLogRepository,
 	states repository.AuctionStateStore,
 	log *zap.Logger,
 	maxReconsumeTimes int32,
@@ -74,7 +74,6 @@ func NewAuctionEventProcessor(
 	return &AuctionEventProcessor{
 		auctions:          auctions,
 		bids:              bids,
-		events:            events,
 		states:            states,
 		log:               log,
 		maxReconsumeTimes: maxReconsumeTimes,
@@ -85,7 +84,7 @@ func (p *AuctionEventProcessor) Consume(ctx context.Context, msgs ...*primitive.
 	for _, msg := range msgs {
 		if err := p.consumeOne(ctx, msg); err != nil {
 			if msg.ReconsumeTimes >= p.maxReconsumeTimes {
-				// 超过最大重试后 ack，失败详情留在幂等表，避免问题消息阻塞整个队列。
+				// 超过最大重试后 ack，避免问题消息阻塞整个队列。
 				p.log.Warn("auction event dropped after retries", zap.String("msg_id", msg.MsgId), zap.Error(err))
 				return consumer.ConsumeSuccess, nil
 			}
@@ -103,28 +102,7 @@ func (p *AuctionEventProcessor) consumeOne(ctx context.Context, msg *primitive.M
 	if event.EventID == "" || event.AuctionID <= 0 {
 		return errors.New("invalid auction event")
 	}
-	// 先抢占 event_id，确保重试、重复投递和多实例并发时只有一次业务回写生效。
-	shouldProcess, err := p.events.BeginConsume(ctx, &model.AuctionEventConsumeLog{
-		EventID:    event.EventID,
-		EventType:  event.EventType,
-		BizID:      event.BizID,
-		AuctionID:  event.AuctionID,
-		MessageID:  msg.MsgId,
-		Status:     model.AuctionEventConsumeProcessing,
-		RetryTimes: msg.ReconsumeTimes,
-	})
-	if err != nil {
-		return err
-	}
-	if !shouldProcess {
-		return nil
-	}
-
-	if err := p.applyEvent(ctx, event); err != nil {
-		_ = p.events.MarkFailed(ctx, event.EventID, err)
-		return err
-	}
-	return p.events.MarkSucceeded(ctx, event.EventID)
+	return p.applyEvent(ctx, event)
 }
 
 func (p *AuctionEventProcessor) applyEvent(ctx context.Context, event AuctionEvent) error {
@@ -142,8 +120,11 @@ func (p *AuctionEventProcessor) applySnapshotEvent(ctx context.Context, event Au
 	auction := auctionFromEvent(event)
 	if event.EventType == EventBidAccepted {
 		if record := bidRecordFromEvent(event); record != nil {
-			// bid_record_id 由出价路径预生成，重复消息再次插入时视为成功。
+			// bid_record_id 由出价路径预生成，重复插入代表整条消息已经处理过，直接 ack。
 			if err := p.bids.CreateIfNotExists(ctx, record); err != nil {
+				if errors.Is(err, repository.ErrBidRecordDuplicated) {
+					return nil
+				}
 				return err
 			}
 		}
