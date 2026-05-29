@@ -6,8 +6,11 @@ http:
 shopService:
   addr: "127.0.0.1:9001"
 
-liveService:
+goodsService:
   addr: "127.0.0.1:9002"
+
+liveService:
+  addr: "127.0.0.1:9007"
 
 jwt:
   secret: "local-dev-jwt-secret-change-me"

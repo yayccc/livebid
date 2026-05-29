@@ -1,6 +1,6 @@
 # api-gateway
 
-`api-gateway` 是对外 HTTP 入口。当前阶段只承接商铺注册、商铺登录两个接口，并通过 gRPC 调用内部 `shop-service`。
+`api-gateway` 是对外 HTTP 入口。当前阶段承接商铺注册、商铺登录和商品管理 HTTP API；商铺接口通过 gRPC 调用内部 `shop-service`，商品管理接口通过 gRPC 调用内部 `goods-service`。
 
 ## 当前接口
 
@@ -9,6 +9,26 @@
 | 健康检查 | GET | `/health` | 返回网关进程状态 |
 | 商铺注册 | POST | `/api/shop/register` | 转发到 `shop-service.RegisterShop` |
 | 商铺登录 | POST | `/api/shop/login` | 转发到 `shop-service.LoginShop`，成功后由网关签发 JWT |
+| 商品封面上传 | POST | `/api/goods/cover/upload` | 接收 multipart `file`，当前仅返回假 URL，不进行图片存储 |
+| 创建商品 | POST | `/api/goods` | 转发到 `goods-service.CreateGoods` |
+| 编辑商品 | PUT | `/api/goods/:id` | 转发到 `goods-service.UpdateGoods` |
+| 删除商品 | DELETE | `/api/goods/:id` | 转发到 `goods-service.DeleteGoods` |
+| 商品详情 | GET | `/api/goods/:id` | 转发到 `goods-service.GetGoods` |
+| 商品列表 | GET | `/api/goods` | 转发到 `goods-service.ListGoods` |
+| 当前商铺商品列表 | GET | `/api/goods/shop/list` | 转发到 `goods-service.ListShopGoods` |
+| 批量查询商品 | POST | `/api/goods/batch` | 转发到 `goods-service.BatchGetGoods` |
+| 商品上架 | PUT | `/api/goods/:id/on-sale` | 转发到 `goods-service.PutGoodsOnSale` |
+| 商品下架 | PUT | `/api/goods/:id/off-sale` | 转发到 `goods-service.PutGoodsOffSale` |
+
+## 商品封面上传说明
+
+当前 `/api/goods/cover/upload` 是占位实现：只校验请求中存在 `file` 且大小不超过 10MiB，然后返回形如 `https://static.livebid.local/goods/cover/{shop_id}/{timestamp}.jpg` 的假 URL。
+
+`shop_id` 后续应由鉴权中间件注入；当前代码使用 `10001` 作为临时假数据，并保留 TODO。
+
+## 商品接口说明
+
+当前商品创建、编辑、删除、当前商铺列表、上下架请求中的 `shop_id` 仍使用临时假数据 `10001`。后续鉴权中间件确定后，应统一替换为从 JWT claims 或请求上下文注入的真实 `shop_id`。
 
 ## 本地启动
 
@@ -28,6 +48,7 @@ API_GATEWAY_CONFIG=services/api-gateway/configs/config.local.yaml go run ./servi
 
 - HTTP：`:8080`
 - shop-service gRPC：`127.0.0.1:9001`
+- goods-service gRPC：`127.0.0.1:9002`
 
 ## 配置
 
@@ -43,6 +64,7 @@ services/api-gateway/configs/config.local.yaml
 | --- | --- |
 | `API_GATEWAY_HTTP_ADDR` | 网关 HTTP 监听地址 |
 | `API_GATEWAY_SHOP_SERVICE_ADDR` | `shop-service` gRPC 地址 |
+| `API_GATEWAY_GOODS_SERVICE_ADDR` | `goods-service` gRPC 地址 |
 | `API_GATEWAY_JWT_SECRET` | JWT HS256 签名密钥 |
 | `API_GATEWAY_JWT_ISSUER` | JWT 签发方 |
 | `API_GATEWAY_JWT_ACCESS_TOKEN_TTL_SECONDS` | access token 有效期 |
