@@ -1,0 +1,173 @@
+syntax = "proto3";
+
+package livebid.auction.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/yayccc/livebid/gen/proto/auction/v1;auctionv1";
+
+service AuctionService {
+  rpc CreateAuction(CreateAuctionRequest) returns (CreateAuctionResponse);
+  rpc GetAuction(GetAuctionRequest) returns (GetAuctionResponse);
+  rpc GetAuctionByGoods(GetAuctionByGoodsRequest) returns (GetAuctionByGoodsResponse);
+  rpc ListShopAuctions(ListShopAuctionsRequest) returns (ListShopAuctionsResponse);
+  rpc UpdateAuction(UpdateAuctionRequest) returns (UpdateAuctionResponse);
+  rpc StartAuction(StartAuctionRequest) returns (StartAuctionResponse);
+  rpc FinishAuction(FinishAuctionRequest) returns (FinishAuctionResponse);
+  rpc CancelAuction(CancelAuctionRequest) returns (CancelAuctionResponse);
+  rpc DeleteAuction(DeleteAuctionRequest) returns (DeleteAuctionResponse);
+  rpc PlaceBid(PlaceBidRequest) returns (PlaceBidResponse);
+  rpc ListBidRecords(ListBidRecordsRequest) returns (ListBidRecordsResponse);
+}
+
+message CreateAuctionRequest {
+  int64 goods_id = 1;
+  int64 shop_id = 2;
+  int64 start_price = 3;
+  int64 bid_increment = 4;
+  optional int64 seal_price = 5;
+  google.protobuf.Timestamp start_time = 6;
+  google.protobuf.Timestamp end_time = 7;
+}
+
+message CreateAuctionResponse {
+  Auction auction = 1;
+}
+
+message GetAuctionRequest {
+  int64 id = 1;
+}
+
+message GetAuctionResponse {
+  Auction auction = 1;
+}
+
+message GetAuctionByGoodsRequest {
+  int64 goods_id = 1;
+}
+
+message GetAuctionByGoodsResponse {
+  Auction auction = 1;
+}
+
+message ListShopAuctionsRequest {
+  int64 shop_id = 1;
+  optional int32 status = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message ListShopAuctionsResponse {
+  int64 total = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  repeated Auction list = 4;
+}
+
+message UpdateAuctionRequest {
+  int64 id = 1;
+  int64 shop_id = 2;
+  optional int64 start_price = 3;
+  optional int64 bid_increment = 4;
+  optional int64 seal_price = 5;
+  google.protobuf.Timestamp start_time = 6;
+  google.protobuf.Timestamp end_time = 7;
+}
+
+message UpdateAuctionResponse {
+  Auction auction = 1;
+}
+
+message StartAuctionRequest {
+  int64 id = 1;
+  int64 shop_id = 2;
+}
+
+message StartAuctionResponse {
+  Auction auction = 1;
+}
+
+message FinishAuctionRequest {
+  int64 id = 1;
+  int64 shop_id = 2;
+}
+
+message FinishAuctionResponse {
+  Auction auction = 1;
+}
+
+message CancelAuctionRequest {
+  int64 id = 1;
+  int64 shop_id = 2;
+}
+
+message CancelAuctionResponse {
+  Auction auction = 1;
+}
+
+message DeleteAuctionRequest {
+  int64 id = 1;
+  int64 shop_id = 2;
+}
+
+message DeleteAuctionResponse {}
+
+message PlaceBidRequest {
+  int64 auction_id = 1;
+  int64 user_id = 2;
+  int64 bid_price = 3;
+  string request_id = 4;
+}
+
+message PlaceBidResponse {
+  bool accepted = 1;
+  int64 current_price = 2;
+  int64 bid_count = 3;
+  int64 winner_user_id = 4;
+  google.protobuf.Timestamp server_time = 5;
+  google.protobuf.Timestamp expire_at = 6;
+}
+
+message ListBidRecordsRequest {
+  int64 auction_id = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+}
+
+message ListBidRecordsResponse {
+  int64 total = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  repeated BidRecord list = 4;
+}
+
+message Auction {
+  int64 id = 1;
+  int64 goods_id = 2;
+  int64 shop_id = 3;
+  int64 start_price = 4;
+  int64 bid_increment = 5;
+  optional int64 seal_price = 6;
+  int64 current_price = 7;
+  optional int64 deal_price = 8;
+  int64 bid_count = 9;
+  int32 status = 10;
+  google.protobuf.Timestamp start_time = 11;
+  google.protobuf.Timestamp end_time = 12;
+  optional int64 winner_user_id = 13;
+  int64 version = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+}
+
+message BidRecord {
+  int64 id = 1;
+  int64 auction_id = 2;
+  int64 goods_id = 3;
+  int64 shop_id = 4;
+  int64 user_id = 5;
+  int64 bid_price = 6;
+  google.protobuf.Timestamp bid_time = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}

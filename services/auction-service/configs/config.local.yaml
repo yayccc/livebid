@@ -1,0 +1,27 @@
+env: local
+grpc:
+  addr: ":9003"
+mysql:
+  dsn: "root:123456@tcp(127.0.0.1:3306)/mydb?charset=utf8mb4&parseTime=True&loc=Local"
+  autoMigrate: true
+  maxOpenConns: 20
+  maxIdleConns: 10
+  connMaxLifetimeSeconds: 1800
+redis:
+  addr: "127.0.0.1:6379"
+  password: ""
+  db: 0
+rocketmq:
+  nameServers:
+    - "127.0.0.1:9876"
+  producerGroup: "auction-service-producer"
+  consumerGroup: "auction-service-consumer"
+  topic: "auction_event"
+  delayLevel: 4
+  maxReconsumeTimes: 5
+goods:
+  addr: "127.0.0.1:9002"
+workerID: 3
+log:
+  level: debug
+  encoding: console
