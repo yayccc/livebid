@@ -42,7 +42,7 @@ func NewGoodsGRPCHandler(goods repository.GoodsRepository, ids *idgen.Generator)
 }
 
 func (h *GoodsGRPCHandler) CreateGoods(ctx context.Context, req *goodsv1.CreateGoodsRequest) (*goodsv1.CreateGoodsResponse, error) {
-	shopID, err := requireShopID(ctx)
+	shopID, err := currentShopID(ctx)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -68,7 +68,7 @@ func (h *GoodsGRPCHandler) CreateGoods(ctx context.Context, req *goodsv1.CreateG
 }
 
 func (h *GoodsGRPCHandler) UpdateGoods(ctx context.Context, req *goodsv1.UpdateGoodsRequest) (*goodsv1.UpdateGoodsResponse, error) {
-	shopID, err := requireShopID(ctx)
+	shopID, err := currentShopID(ctx)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -109,7 +109,7 @@ func (h *GoodsGRPCHandler) UpdateGoods(ctx context.Context, req *goodsv1.UpdateG
 }
 
 func (h *GoodsGRPCHandler) DeleteGoods(ctx context.Context, req *goodsv1.DeleteGoodsRequest) (*goodsv1.DeleteGoodsResponse, error) {
-	shopID, err := requireShopID(ctx)
+	shopID, err := currentShopID(ctx)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -151,7 +151,7 @@ func (h *GoodsGRPCHandler) ListGoods(ctx context.Context, req *goodsv1.ListGoods
 }
 
 func (h *GoodsGRPCHandler) ListShopGoods(ctx context.Context, req *goodsv1.ListShopGoodsRequest) (*goodsv1.ListShopGoodsResponse, error) {
-	shopID, err := requireShopID(ctx)
+	shopID, err := currentShopID(ctx)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -187,7 +187,7 @@ func (h *GoodsGRPCHandler) BatchGetGoods(ctx context.Context, req *goodsv1.Batch
 }
 
 func (h *GoodsGRPCHandler) PutGoodsOnSale(ctx context.Context, req *goodsv1.PutGoodsOnSaleRequest) (*goodsv1.PutGoodsOnSaleResponse, error) {
-	shopID, err := requireShopID(ctx)
+	shopID, err := currentShopID(ctx)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -201,7 +201,7 @@ func (h *GoodsGRPCHandler) PutGoodsOnSale(ctx context.Context, req *goodsv1.PutG
 }
 
 func (h *GoodsGRPCHandler) PutGoodsOffSale(ctx context.Context, req *goodsv1.PutGoodsOffSaleRequest) (*goodsv1.PutGoodsOffSaleResponse, error) {
-	shopID, err := requireShopID(ctx)
+	shopID, err := currentShopID(ctx)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -245,7 +245,7 @@ func listGoodsFilter(req *goodsv1.ListGoodsRequest) (repository.ListGoodsFilter,
 	return filter, page, pageSize, nil
 }
 
-func requireShopID(ctx context.Context) (int64, error) {
+func currentShopID(ctx context.Context) (int64, error) {
 	shopID, ok := identity.ShopID(ctx)
 	if !ok {
 		return 0, errInvalidCredential

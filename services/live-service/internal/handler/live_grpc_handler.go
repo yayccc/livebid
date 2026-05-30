@@ -50,7 +50,7 @@ func NewLiveGRPCHandler(rooms repository.LiveRoomRepository, ids *idgen.Generato
 }
 
 func (h *LiveGRPCHandler) CreateLiveRoom(ctx context.Context, req *livev1.CreateLiveRoomRequest) (*livev1.CreateLiveRoomResponse, error) {
-	shopID, authErr := requireShopID(ctx)
+	shopID, authErr := currentShopID(ctx)
 	log := logger.FromContext(ctx).With(
 		zap.String("method", "CreateLiveRoom"),
 		zap.Int64("shop_id", shopID),
@@ -162,7 +162,7 @@ func (h *LiveGRPCHandler) ListLiveRooms(ctx context.Context, req *livev1.ListLiv
 }
 
 func (h *LiveGRPCHandler) StartLive(ctx context.Context, req *livev1.StartLiveRequest) (*livev1.StartLiveResponse, error) {
-	shopID, authErr := requireShopID(ctx)
+	shopID, authErr := currentShopID(ctx)
 	log := logger.FromContext(ctx).With(
 		zap.String("method", "StartLive"),
 		zap.Int64("live_room_id", req.GetId()),
@@ -205,7 +205,7 @@ func (h *LiveGRPCHandler) StartLive(ctx context.Context, req *livev1.StartLiveRe
 }
 
 func (h *LiveGRPCHandler) EndLive(ctx context.Context, req *livev1.EndLiveRequest) (*livev1.EndLiveResponse, error) {
-	shopID, authErr := requireShopID(ctx)
+	shopID, authErr := currentShopID(ctx)
 	log := logger.FromContext(ctx).With(
 		zap.String("method", "EndLive"),
 		zap.Int64("live_room_id", req.GetId()),
@@ -247,7 +247,7 @@ func (h *LiveGRPCHandler) EndLive(ctx context.Context, req *livev1.EndLiveReques
 }
 
 func (h *LiveGRPCHandler) ValidateLiveRoomForAuction(ctx context.Context, req *livev1.ValidateLiveRoomForAuctionRequest) (*livev1.ValidateLiveRoomForAuctionResponse, error) {
-	shopID, authErr := requireShopID(ctx)
+	shopID, authErr := currentShopID(ctx)
 	log := logger.FromContext(ctx).With(
 		zap.String("method", "ValidateLiveRoomForAuction"),
 		zap.Int64("live_room_id", req.GetId()),
@@ -279,7 +279,7 @@ func (h *LiveGRPCHandler) ValidateLiveRoomForAuction(ctx context.Context, req *l
 }
 
 func (h *LiveGRPCHandler) GetLiveStreamInfo(ctx context.Context, req *livev1.GetLiveStreamInfoRequest) (*livev1.GetLiveStreamInfoResponse, error) {
-	shopID, authErr := requireShopID(ctx)
+	shopID, authErr := currentShopID(ctx)
 	log := logger.FromContext(ctx).With(
 		zap.String("method", "GetLiveStreamInfo"),
 		zap.Int64("live_room_id", req.GetId()),
@@ -393,7 +393,7 @@ func (h *LiveGRPCHandler) findOwnedRoom(ctx context.Context, roomID int64, shopI
 	return room, nil
 }
 
-func requireShopID(ctx context.Context) (int64, error) {
+func currentShopID(ctx context.Context) (int64, error) {
 	shopID, ok := identity.ShopID(ctx)
 	if !ok {
 		return 0, errInvalidCredential

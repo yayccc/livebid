@@ -128,9 +128,20 @@ Authorization: Bearer <access_token>
 | `livebid-auth-subject-type` | `shop` / `user` | 当前登录主体类型 |
 | `livebid-auth-subject-id` | `claims.Subject` | 当前登录主体 ID |
 
-底层服务需要当前登录身份时，从 gRPC `context.Context` 读取公共 `identity.Principal`。不要相信前端请求参数中的 `user_id`、`shop_id` 等身份字段。
+底层服务需要当前登录身份时，从 gRPC `context.Context` 读取公共 `identity.Principal`。不要相信前端请求参数中的 `user_id`、`shop_id` 等身份字段，也不要在业务代码中直接解析 metadata。
 
 不同服务按接口语义解释 `Subject`：商家管理类接口解释为 `shop_id`，用户侧接口解释为 `user_id`。
+
+下游服务读取商家身份示例：
+
+```go
+shopID, ok := identity.ShopID(ctx)
+if !ok {
+    return nil, status.Error(codes.Unauthenticated, "invalid credential")
+}
+```
+
+服务内继续调用其他 gRPC 服务时，保持传递当前 `ctx`；公共 gRPC client interceptor 会自动把 `identity.Principal` 写回 outgoing metadata。
 
 信任边界：
 

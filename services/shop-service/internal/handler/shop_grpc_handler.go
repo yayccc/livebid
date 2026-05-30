@@ -115,7 +115,7 @@ func (h *ShopGRPCHandler) LoginShop(ctx context.Context, req *shopv1.LoginShopRe
 }
 
 func (h *ShopGRPCHandler) GetShop(ctx context.Context, req *shopv1.GetShopRequest) (*shopv1.GetShopResponse, error) {
-	shopID, err := requireShopID(ctx)
+	shopID, err := currentShopID(ctx)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -127,7 +127,7 @@ func (h *ShopGRPCHandler) GetShop(ctx context.Context, req *shopv1.GetShopReques
 }
 
 func (h *ShopGRPCHandler) UpdateShop(ctx context.Context, req *shopv1.UpdateShopRequest) (*shopv1.UpdateShopResponse, error) {
-	shopID, err := requireShopID(ctx)
+	shopID, err := currentShopID(ctx)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -165,7 +165,7 @@ func (h *ShopGRPCHandler) UpdateShop(ctx context.Context, req *shopv1.UpdateShop
 	return &shopv1.UpdateShopResponse{Shop: toProtoShop(shop)}, nil
 }
 
-func requireShopID(ctx context.Context) (int64, error) {
+func currentShopID(ctx context.Context) (int64, error) {
 	shopID, ok := identity.ShopID(ctx)
 	if !ok {
 		return 0, errInvalidCredential
