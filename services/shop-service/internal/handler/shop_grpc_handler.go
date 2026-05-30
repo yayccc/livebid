@@ -9,6 +9,7 @@ import (
 	"time"
 
 	shopv1 "github.com/yayccc/livebid/gen/proto/shop/v1"
+	"github.com/yayccc/livebid/pkg/identity"
 	"github.com/yayccc/livebid/pkg/idgen"
 	"github.com/yayccc/livebid/services/shop-service/internal/model"
 	"github.com/yayccc/livebid/services/shop-service/internal/repository"
@@ -114,10 +115,11 @@ func (h *ShopGRPCHandler) LoginShop(ctx context.Context, req *shopv1.LoginShopRe
 }
 
 func (h *ShopGRPCHandler) GetShop(ctx context.Context, req *shopv1.GetShopRequest) (*shopv1.GetShopResponse, error) {
-	if req.GetId() <= 0 {
-		return nil, toGRPCError(errInvalidArgument)
+	shopID, err := requireShopID(ctx)
+	if err != nil {
+		return nil, toGRPCError(err)
 	}
-	shop, err := h.shops.FindByID(ctx, req.GetId())
+	shop, err := h.shops.FindByID(ctx, shopID)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -125,10 +127,11 @@ func (h *ShopGRPCHandler) GetShop(ctx context.Context, req *shopv1.GetShopReques
 }
 
 func (h *ShopGRPCHandler) UpdateShop(ctx context.Context, req *shopv1.UpdateShopRequest) (*shopv1.UpdateShopResponse, error) {
-	if req.GetId() <= 0 {
-		return nil, toGRPCError(errInvalidArgument)
+	shopID, err := requireShopID(ctx)
+	if err != nil {
+		return nil, toGRPCError(err)
 	}
-	shop, err := h.shops.FindByID(ctx, req.GetId())
+	shop, err := h.shops.FindByID(ctx, shopID)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -160,6 +163,14 @@ func (h *ShopGRPCHandler) UpdateShop(ctx context.Context, req *shopv1.UpdateShop
 		return nil, toGRPCError(err)
 	}
 	return &shopv1.UpdateShopResponse{Shop: toProtoShop(shop)}, nil
+}
+
+func requireShopID(ctx context.Context) (int64, error) {
+	shopID, ok := identity.ShopID(ctx)
+	if !ok {
+		return 0, errInvalidCredential
+	}
+	return shopID, nil
 }
 
 func (h *ShopGRPCHandler) recordLogin(ctx context.Context, shopID int64, loginIP string, userAgent string, result int8) error {

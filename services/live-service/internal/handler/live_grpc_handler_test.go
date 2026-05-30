@@ -7,6 +7,7 @@ import (
 	"time"
 
 	livev1 "github.com/yayccc/livebid/gen/proto/live/v1"
+	"github.com/yayccc/livebid/pkg/identity"
 	"github.com/yayccc/livebid/pkg/idgen"
 	"github.com/yayccc/livebid/pkg/logger"
 	"github.com/yayccc/livebid/services/live-service/internal/config"
@@ -71,8 +72,8 @@ func TestLiveGRPCHandlerCreateLiveRoom(t *testing.T) {
 		},
 	})
 
-	resp, err := handler.CreateLiveRoom(context.Background(), &livev1.CreateLiveRoomRequest{
-		ShopId:      1001,
+	resp, err := handler.CreateLiveRoom(shopContext(1001), &livev1.CreateLiveRoomRequest{
+		ShopId:      9999,
 		Title:       "  晚场拍卖  ",
 		Cover:       "  https://example.com/cover.jpg  ",
 		Description: "  高货专场  ",
@@ -119,10 +120,24 @@ func TestLiveGRPCHandlerCreateLiveRoomRejectsInvalidArgument(t *testing.T) {
 		},
 	})
 
-	_, err := handler.CreateLiveRoom(context.Background(), &livev1.CreateLiveRoomRequest{
-		ShopId: 1001,
-	})
+	_, err := handler.CreateLiveRoom(shopContext(1001), &livev1.CreateLiveRoomRequest{})
 	assertCode(t, err, codes.InvalidArgument)
+}
+
+func TestLiveGRPCHandlerCreateLiveRoomRequiresShopIdentity(t *testing.T) {
+	initTestLogger(t)
+
+	handler := newTestLiveHandler(&mockLiveRoomRepository{
+		create: func(ctx context.Context, room *model.LiveRoom) error {
+			t.Fatal("Create should not be called")
+			return nil
+		},
+	})
+
+	_, err := handler.CreateLiveRoom(context.Background(), &livev1.CreateLiveRoomRequest{
+		Title: "直播间",
+	})
+	assertCode(t, err, codes.Unauthenticated)
 }
 
 func TestLiveGRPCHandlerListLiveRoomsUsesLivingFilter(t *testing.T) {
@@ -184,9 +199,9 @@ func TestLiveGRPCHandlerStartLive(t *testing.T) {
 		},
 	})
 
-	resp, err := handler.StartLive(context.Background(), &livev1.StartLiveRequest{
+	resp, err := handler.StartLive(shopContext(room.ShopID), &livev1.StartLiveRequest{
 		Id:     room.ID,
-		ShopId: room.ShopID,
+		ShopId: 9999,
 	})
 	if err != nil {
 		t.Fatalf("StartLive returned error: %v", err)
@@ -213,9 +228,9 @@ func TestLiveGRPCHandlerStartLiveRejectsOwnerMismatch(t *testing.T) {
 		},
 	})
 
-	_, err := handler.StartLive(context.Background(), &livev1.StartLiveRequest{
+	_, err := handler.StartLive(shopContext(9999), &livev1.StartLiveRequest{
 		Id:     room.ID,
-		ShopId: 9999,
+		ShopId: room.ShopID,
 	})
 	assertCode(t, err, codes.PermissionDenied)
 }
@@ -239,9 +254,9 @@ func TestLiveGRPCHandlerEndLive(t *testing.T) {
 		},
 	})
 
-	resp, err := handler.EndLive(context.Background(), &livev1.EndLiveRequest{
+	resp, err := handler.EndLive(shopContext(room.ShopID), &livev1.EndLiveRequest{
 		Id:     room.ID,
-		ShopId: room.ShopID,
+		ShopId: 9999,
 	})
 	if err != nil {
 		t.Fatalf("EndLive returned error: %v", err)
@@ -264,9 +279,9 @@ func TestLiveGRPCHandlerValidateLiveRoomForAuctionRequiresLiving(t *testing.T) {
 		},
 	})
 
-	_, err := handler.ValidateLiveRoomForAuction(context.Background(), &livev1.ValidateLiveRoomForAuctionRequest{
+	_, err := handler.ValidateLiveRoomForAuction(shopContext(room.ShopID), &livev1.ValidateLiveRoomForAuctionRequest{
 		Id:            room.ID,
-		ShopId:        room.ShopID,
+		ShopId:        9999,
 		RequireLiving: true,
 	})
 	assertCode(t, err, codes.FailedPrecondition)
@@ -283,9 +298,9 @@ func TestLiveGRPCHandlerGetLiveStreamInfo(t *testing.T) {
 		},
 	})
 
-	resp, err := handler.GetLiveStreamInfo(context.Background(), &livev1.GetLiveStreamInfoRequest{
+	resp, err := handler.GetLiveStreamInfo(shopContext(room.ShopID), &livev1.GetLiveStreamInfoRequest{
 		Id:     room.ID,
-		ShopId: room.ShopID,
+		ShopId: 9999,
 	})
 	if err != nil {
 		t.Fatalf("GetLiveStreamInfo returned error: %v", err)
@@ -413,6 +428,13 @@ func testLiveRoom(id int64, shopID int64, roomStatus model.LiveRoomStatus) *mode
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
+}
+
+func shopContext(shopID int64) context.Context {
+	return identity.NewContext(context.Background(), identity.Principal{
+		Kind: identity.KindShop,
+		ID:   shopID,
+	})
 }
 
 func assertCode(t *testing.T, err error, want codes.Code) {

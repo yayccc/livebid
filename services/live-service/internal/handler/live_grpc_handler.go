@@ -12,6 +12,7 @@ import (
 	"time"
 
 	livev1 "github.com/yayccc/livebid/gen/proto/live/v1"
+	"github.com/yayccc/livebid/pkg/identity"
 	"github.com/yayccc/livebid/pkg/idgen"
 	"github.com/yayccc/livebid/pkg/logger"
 	"github.com/yayccc/livebid/services/live-service/internal/config"
@@ -49,14 +50,20 @@ func NewLiveGRPCHandler(rooms repository.LiveRoomRepository, ids *idgen.Generato
 }
 
 func (h *LiveGRPCHandler) CreateLiveRoom(ctx context.Context, req *livev1.CreateLiveRoomRequest) (*livev1.CreateLiveRoomResponse, error) {
+	shopID, authErr := requireShopID(ctx)
 	log := logger.FromContext(ctx).With(
 		zap.String("method", "CreateLiveRoom"),
-		zap.Int64("shop_id", req.GetShopId()),
+		zap.Int64("shop_id", shopID),
 	)
 	log.Info("create live room started")
+	if authErr != nil {
+		grpcErr := toGRPCError(authErr)
+		log.Warn("create live room rejected", zap.Error(grpcErr))
+		return nil, grpcErr
+	}
 
 	title := strings.TrimSpace(req.GetTitle())
-	if req.GetShopId() <= 0 || title == "" {
+	if title == "" {
 		grpcErr := toGRPCError(errInvalidArgument)
 		log.Warn("create live room rejected", zap.Error(grpcErr))
 		return nil, grpcErr
@@ -70,7 +77,7 @@ func (h *LiveGRPCHandler) CreateLiveRoom(ctx context.Context, req *livev1.Create
 	}
 	room := &model.LiveRoom{
 		ID:                h.ids.Next(),
-		ShopID:            req.GetShopId(),
+		ShopID:            shopID,
 		Title:             title,
 		Cover:             strings.TrimSpace(req.GetCover()),
 		Description:       strings.TrimSpace(req.GetDescription()),
@@ -155,14 +162,20 @@ func (h *LiveGRPCHandler) ListLiveRooms(ctx context.Context, req *livev1.ListLiv
 }
 
 func (h *LiveGRPCHandler) StartLive(ctx context.Context, req *livev1.StartLiveRequest) (*livev1.StartLiveResponse, error) {
+	shopID, authErr := requireShopID(ctx)
 	log := logger.FromContext(ctx).With(
 		zap.String("method", "StartLive"),
 		zap.Int64("live_room_id", req.GetId()),
-		zap.Int64("shop_id", req.GetShopId()),
+		zap.Int64("shop_id", shopID),
 	)
 	log.Info("start live started")
+	if authErr != nil {
+		grpcErr := toGRPCError(authErr)
+		log.Warn("start live rejected", zap.Error(grpcErr))
+		return nil, grpcErr
+	}
 
-	room, err := h.findOwnedRoom(ctx, req.GetId(), req.GetShopId())
+	room, err := h.findOwnedRoom(ctx, req.GetId(), shopID)
 	if err != nil {
 		grpcErr := toGRPCError(err)
 		log.Warn("start live rejected", zap.Error(grpcErr))
@@ -192,14 +205,20 @@ func (h *LiveGRPCHandler) StartLive(ctx context.Context, req *livev1.StartLiveRe
 }
 
 func (h *LiveGRPCHandler) EndLive(ctx context.Context, req *livev1.EndLiveRequest) (*livev1.EndLiveResponse, error) {
+	shopID, authErr := requireShopID(ctx)
 	log := logger.FromContext(ctx).With(
 		zap.String("method", "EndLive"),
 		zap.Int64("live_room_id", req.GetId()),
-		zap.Int64("shop_id", req.GetShopId()),
+		zap.Int64("shop_id", shopID),
 	)
 	log.Info("end live started")
+	if authErr != nil {
+		grpcErr := toGRPCError(authErr)
+		log.Warn("end live rejected", zap.Error(grpcErr))
+		return nil, grpcErr
+	}
 
-	room, err := h.findOwnedRoom(ctx, req.GetId(), req.GetShopId())
+	room, err := h.findOwnedRoom(ctx, req.GetId(), shopID)
 	if err != nil {
 		grpcErr := toGRPCError(err)
 		log.Warn("end live rejected", zap.Error(grpcErr))
@@ -228,15 +247,21 @@ func (h *LiveGRPCHandler) EndLive(ctx context.Context, req *livev1.EndLiveReques
 }
 
 func (h *LiveGRPCHandler) ValidateLiveRoomForAuction(ctx context.Context, req *livev1.ValidateLiveRoomForAuctionRequest) (*livev1.ValidateLiveRoomForAuctionResponse, error) {
+	shopID, authErr := requireShopID(ctx)
 	log := logger.FromContext(ctx).With(
 		zap.String("method", "ValidateLiveRoomForAuction"),
 		zap.Int64("live_room_id", req.GetId()),
-		zap.Int64("shop_id", req.GetShopId()),
+		zap.Int64("shop_id", shopID),
 		zap.Bool("require_living", req.GetRequireLiving()),
 	)
 	log.Info("validate live room for auction started")
+	if authErr != nil {
+		grpcErr := toGRPCError(authErr)
+		log.Warn("validate live room for auction rejected", zap.Error(grpcErr))
+		return nil, grpcErr
+	}
 
-	room, err := h.findOwnedRoom(ctx, req.GetId(), req.GetShopId())
+	room, err := h.findOwnedRoom(ctx, req.GetId(), shopID)
 	if err != nil {
 		grpcErr := toGRPCError(err)
 		log.Warn("validate live room for auction rejected", zap.Error(grpcErr))
@@ -254,14 +279,20 @@ func (h *LiveGRPCHandler) ValidateLiveRoomForAuction(ctx context.Context, req *l
 }
 
 func (h *LiveGRPCHandler) GetLiveStreamInfo(ctx context.Context, req *livev1.GetLiveStreamInfoRequest) (*livev1.GetLiveStreamInfoResponse, error) {
+	shopID, authErr := requireShopID(ctx)
 	log := logger.FromContext(ctx).With(
 		zap.String("method", "GetLiveStreamInfo"),
 		zap.Int64("live_room_id", req.GetId()),
-		zap.Int64("shop_id", req.GetShopId()),
+		zap.Int64("shop_id", shopID),
 	)
 	log.Info("get live stream info started")
+	if authErr != nil {
+		grpcErr := toGRPCError(authErr)
+		log.Warn("get live stream info rejected", zap.Error(grpcErr))
+		return nil, grpcErr
+	}
 
-	room, err := h.findOwnedRoom(ctx, req.GetId(), req.GetShopId())
+	room, err := h.findOwnedRoom(ctx, req.GetId(), shopID)
 	if err != nil {
 		grpcErr := toGRPCError(err)
 		log.Warn("get live stream info rejected", zap.Error(grpcErr))
@@ -360,6 +391,14 @@ func (h *LiveGRPCHandler) findOwnedRoom(ctx context.Context, roomID int64, shopI
 		return nil, repository.ErrLiveRoomOwnerMismatch
 	}
 	return room, nil
+}
+
+func requireShopID(ctx context.Context) (int64, error) {
+	shopID, ok := identity.ShopID(ctx)
+	if !ok {
+		return 0, errInvalidCredential
+	}
+	return shopID, nil
 }
 
 func (h *LiveGRPCHandler) streamInfo(room *model.LiveRoom) *livev1.LiveStreamInfo {
