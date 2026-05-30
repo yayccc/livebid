@@ -24,7 +24,7 @@
 ## 鉴权约束
 
 - JWT 只在 `api-gateway` 校验。
-- 网关通过 gRPC metadata 透传 `livebid-auth-subject`。
+- 网关通过 gRPC metadata 透传 `livebid-auth-subject-type` 和 `livebid-auth-subject-id`。
 - 底层服务不信任请求参数中的 `user_id`、`shop_id`。
 - 当前 JWT 不承载 roles、scopes、shop_id 等业务权限字段。
 

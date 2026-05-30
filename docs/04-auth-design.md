@@ -125,9 +125,10 @@ Authorization: Bearer <access_token>
 
 | Metadata Key | 值 | 说明 |
 | --- | --- | --- |
-| `livebid-auth-subject` | `claims.Subject` | 当前登录主体 ID |
+| `livebid-auth-subject-type` | `shop` / `user` | 当前登录主体类型 |
+| `livebid-auth-subject-id` | `claims.Subject` | 当前登录主体 ID |
 
-底层服务需要当前登录身份时，只读取 `livebid-auth-subject`。不要相信前端请求参数中的 `user_id`、`shop_id` 等身份字段。
+底层服务需要当前登录身份时，从 gRPC `context.Context` 读取公共 `identity.Principal`。不要相信前端请求参数中的 `user_id`、`shop_id` 等身份字段。
 
 不同服务按接口语义解释 `Subject`：商家管理类接口解释为 `shop_id`，用户侧接口解释为 `user_id`。
 
@@ -172,5 +173,5 @@ Authorization: Bearer <access_token>
 - `access_token` 有效期为 7 天。
 - 受保护接口必须校验 `Authorization: Bearer <access_token>`。
 - 鉴权失败返回 `401`，且不得调用底层服务。
-- gRPC metadata 只透传 `livebid-auth-subject`。
+- gRPC metadata 只透传 `livebid-auth-subject-type` 和 `livebid-auth-subject-id`。
 - 不实现 `roles`、`scopes`、`refresh_token`、token 黑名单。

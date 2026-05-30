@@ -7,14 +7,13 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	goodsv1 "github.com/yayccc/livebid/gen/proto/goods/v1"
-	"github.com/yayccc/livebid/services/api-gateway/internal/identity"
+	"github.com/yayccc/livebid/pkg/identity"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -216,11 +215,11 @@ func performRequestWithContentTypeAndShopID(handlerFunc gin.HandlerFunc, method 
 	c.Request = httptest.NewRequest(method, path, body)
 	c.Request.Header.Set("Content-Type", contentType)
 	if shopID > 0 {
-		identity.Set(c, identity.Principal{
-			Kind:    identity.KindShop,
-			ID:      shopID,
-			Subject: strconv.FormatInt(shopID, 10),
-		})
+		principal := identity.Principal{
+			Kind: identity.KindShop,
+			ID:   shopID,
+		}
+		c.Request = c.Request.WithContext(identity.NewContext(c.Request.Context(), principal))
 	}
 	handlerFunc(c)
 	return w

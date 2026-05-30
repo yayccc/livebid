@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/yayccc/livebid/pkg/auth"
-	"github.com/yayccc/livebid/services/api-gateway/internal/identity"
+	"github.com/yayccc/livebid/pkg/identity"
 )
 
 func TestRequireShopAuthAcceptsShopIssuer(t *testing.T) {
@@ -40,7 +40,7 @@ func performAuthRequest(middleware gin.HandlerFunc, authorization string) *httpt
 	engine := gin.New()
 	engine.Use(middleware)
 	engine.GET("/protected", func(c *gin.Context) {
-		shopID, ok := identity.ShopID(c)
+		shopID, ok := identity.ShopID(c.Request.Context())
 		if !ok || shopID != 1001 {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "missing shop_id"})
 			return

@@ -52,7 +52,7 @@ func defaultConfig() Config {
 	return Config{
 		Env: "local",
 		GRPC: GRPCConfig{
-			Addr: ":9002",
+			Addr: ":9007",
 		},
 		MySQL: MySQLConfig{
 			DSN:                    "root:123456@tcp(127.0.0.1:3306)/mydb?charset=utf8mb4&parseTime=True&loc=Local",

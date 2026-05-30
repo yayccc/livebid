@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yayccc/livebid/pkg/identity"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -85,6 +86,15 @@ func int32ValueOrZero(value *int32) int32 {
 		return 0
 	}
 	return *value
+}
+
+func currentShopID(c *gin.Context) (int64, bool) {
+	shopID, ok := identity.ShopID(c.Request.Context())
+	if !ok {
+		respondError(c, http.StatusUnauthorized, "missing auth")
+		return 0, false
+	}
+	return shopID, true
 }
 
 func timestampString(ts *timestamppb.Timestamp) string {

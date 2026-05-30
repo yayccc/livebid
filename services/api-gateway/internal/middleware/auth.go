@@ -2,12 +2,11 @@ package middleware
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yayccc/livebid/pkg/auth"
-	"github.com/yayccc/livebid/services/api-gateway/internal/identity"
+	"github.com/yayccc/livebid/pkg/identity"
 )
 
 func RequireShopAuth(jwtManager *auth.JWTManager) gin.HandlerFunc {
@@ -38,20 +37,13 @@ func RequireAuth(jwtManager *auth.JWTManager, kind identity.Kind) gin.HandlerFun
 			return
 		}
 
-		id, err := strconv.ParseInt(claims.Subject, 10, 64)
-		if err != nil || id <= 0 {
-			if err != nil {
-				_ = c.Error(err)
-			}
+		principal, ok := identity.NewPrincipal(kind, claims.Subject)
+		if !ok {
 			abortUnauthorized(c, "invalid token")
 			return
 		}
 
-		identity.Set(c, identity.Principal{
-			Kind:    kind,
-			ID:      id,
-			Subject: claims.Subject,
-		})
+		c.Request = c.Request.WithContext(identity.NewContext(c.Request.Context(), principal))
 		c.Next()
 	}
 }

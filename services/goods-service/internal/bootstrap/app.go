@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 
+	"github.com/yayccc/livebid/pkg/identity"
 	"github.com/yayccc/livebid/pkg/idgen"
 	"github.com/yayccc/livebid/pkg/logger"
 	"github.com/yayccc/livebid/services/goods-service/internal/config"
@@ -36,7 +37,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	goodsRepo := repository.NewGormGoodsRepository(db)
 	goodsHandler := handler.NewGoodsGRPCHandler(goodsRepo, idgen.New(cfg.WorkerID))
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(identity.UnaryServerInterceptor()))
 	router.RegisterGRPC(grpcServer, goodsHandler)
 
 	_ = ctx
