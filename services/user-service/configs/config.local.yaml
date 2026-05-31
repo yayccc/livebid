@@ -1,0 +1,26 @@
+env: local
+workerID: 2
+
+grpc:
+  addr: ":9003"
+
+mysql:
+  dsn: "root:123456@tcp(127.0.0.1:3306)/mydb?charset=utf8mb4&parseTime=True&loc=Local"
+  autoMigrate: true
+  maxOpenConns: 20
+  maxIdleConns: 10
+  connMaxLifetimeSeconds: 1800
+
+jwt:
+  secret: "livebid-local-dev-secret"
+  issuer: "livebid"
+  accessTokenTTLSeconds: 604800
+
+log:
+  level: debug
+  encoding: console
+  outputs:
+    - stdout
+  errorOutputs:
+    - stderr
+  development: true
