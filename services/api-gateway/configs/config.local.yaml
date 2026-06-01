@@ -12,6 +12,9 @@ goodsService:
 liveService:
   addr: "127.0.0.1:9007"
 
+auctionService:
+  addr: "127.0.0.1:9003"
+
 jwt:
   secret: "local-dev-jwt-secret-change-me"
   shopIssuer: "livebid-shop"

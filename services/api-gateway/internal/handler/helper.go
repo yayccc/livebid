@@ -128,7 +128,7 @@ func respondGRPCError(c *gin.Context, err error) {
 	case codes.Unauthenticated:
 		respondError(c, http.StatusUnauthorized, "invalid credential")
 	case codes.AlreadyExists:
-		respondError(c, http.StatusConflict, "shop already exists")
+		respondError(c, http.StatusConflict, "resource already exists")
 	case codes.NotFound:
 		respondError(c, http.StatusNotFound, "resource not found")
 	case codes.DeadlineExceeded:

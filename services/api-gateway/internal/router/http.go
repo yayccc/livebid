@@ -10,7 +10,7 @@ import (
 )
 
 // 路由注册函数，预留了JWTManager参数以支持未来用户认证的扩展
-func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, goodsHandler *handler.GoodsHandler, liveHandler *handler.LiveHandler, shopJWTManager *auth.JWTManager, _ *auth.JWTManager) {
+func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, goodsHandler *handler.GoodsHandler, liveHandler *handler.LiveHandler, auctionHandler *handler.AuctionHandler, shopJWTManager *auth.JWTManager, _ *auth.JWTManager) {
 	engine.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    0,
@@ -47,6 +47,19 @@ func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, goodsHandler
 	live := api.Group("/live")
 	live.GET("/rooms", liveHandler.ListLiveRooms)
 	live.GET("/rooms/:id", liveHandler.GetLiveRoom)
+
+	auction := api.Group("/auction")
+	auction.POST("/auctions", auctionHandler.Create)
+	auction.GET("/auctions", auctionHandler.ListShop)
+	auction.GET("/auctions/by-goods/:goods_id", auctionHandler.GetByGoods)
+	auction.GET("/auctions/:id", auctionHandler.Get)
+	auction.PUT("/auctions/:id", auctionHandler.Update)
+	auction.POST("/auctions/:id/start", auctionHandler.Start)
+	auction.POST("/auctions/:id/finish", auctionHandler.Finish)
+	auction.POST("/auctions/:id/cancel", auctionHandler.Cancel)
+	auction.DELETE("/auctions/:id", auctionHandler.Delete)
+	auction.POST("/auctions/:id/bids", auctionHandler.PlaceBid)
+	auction.GET("/auctions/:id/bids", auctionHandler.ListBidRecords)
 
 	merchantLive := merchant.Group("/live")
 	merchantLive.POST("/rooms", liveHandler.CreateLiveRoom)

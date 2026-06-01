@@ -13,14 +13,15 @@ import (
 const ServiceName = "api-gateway"
 
 type Config struct {
-	Env          string        `yaml:"env"`
-	HTTP         HTTPConfig    `yaml:"http"`
-	ShopService  ServiceConfig `yaml:"shopService"`
-	GoodsService ServiceConfig `yaml:"goodsService"`
-	LiveService  ServiceConfig `yaml:"liveService"`
-	JWT          JWTConfig     `yaml:"jwt"`
-	RPC          RPCConfig     `yaml:"rpc"`
-	Log          logger.Config `yaml:"log"`
+	Env            string        `yaml:"env"`
+	HTTP           HTTPConfig    `yaml:"http"`
+	ShopService    ServiceConfig `yaml:"shopService"`
+	GoodsService   ServiceConfig `yaml:"goodsService"`
+	LiveService    ServiceConfig `yaml:"liveService"`
+	AuctionService ServiceConfig `yaml:"auctionService"`
+	JWT            JWTConfig     `yaml:"jwt"`
+	RPC            RPCConfig     `yaml:"rpc"`
+	Log            logger.Config `yaml:"log"`
 }
 
 type HTTPConfig struct {
@@ -76,6 +77,9 @@ func defaultConfig() Config {
 		LiveService: ServiceConfig{
 			Addr: "127.0.0.1:9007",
 		},
+		AuctionService: ServiceConfig{
+			Addr: "127.0.0.1:9003",
+		},
 		JWT: JWTConfig{
 			Secret:                "local-dev-jwt-secret-change-me",
 			ShopIssuer:            "livebid-shop",
@@ -119,6 +123,9 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if value := os.Getenv("API_GATEWAY_LIVE_SERVICE_ADDR"); value != "" {
 		cfg.LiveService.Addr = value
+	}
+	if value := os.Getenv("API_GATEWAY_AUCTION_SERVICE_ADDR"); value != "" {
+		cfg.AuctionService.Addr = value
 	}
 	if value := os.Getenv("API_GATEWAY_JWT_SECRET"); value != "" {
 		cfg.JWT.Secret = value
@@ -180,6 +187,9 @@ func normalize(cfg *Config) {
 	}
 	if cfg.LiveService.Addr == "" {
 		cfg.LiveService.Addr = "127.0.0.1:9007"
+	}
+	if cfg.AuctionService.Addr == "" {
+		cfg.AuctionService.Addr = "127.0.0.1:9003"
 	}
 	if cfg.JWT.ShopIssuer == "" {
 		cfg.JWT.ShopIssuer = "livebid-shop"

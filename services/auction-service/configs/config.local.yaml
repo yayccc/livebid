@@ -2,18 +2,18 @@ env: local
 grpc:
   addr: ":9003"
 mysql:
-  dsn: "root:123456@tcp(127.0.0.1:3306)/mydb?charset=utf8mb4&parseTime=True&loc=Local"
+  dsn: "root:123@tcp(172.31.85.64:3306)/mydb?charset=utf8mb4&parseTime=True&loc=Local"
   autoMigrate: true
   maxOpenConns: 20
   maxIdleConns: 10
   connMaxLifetimeSeconds: 1800
 redis:
-  addr: "127.0.0.1:6379"
-  password: ""
+  addr: "172.31.85.64:6379"
+  password: "123456"
   db: 0
 rocketmq:
   nameServers:
-    - "127.0.0.1:9876"
+    - "172.31.85.64:9876"
   producerGroup: "auction-service-producer"
   consumerGroup: "auction-service-consumer"
   topic: "auction_event"

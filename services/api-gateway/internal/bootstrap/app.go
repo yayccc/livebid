@@ -18,12 +18,13 @@ import (
 )
 
 type App struct {
-	cfg       config.Config
-	log       *zap.Logger
-	server    *http.Server
-	shopConn  *grpc.ClientConn
-	goodsConn *grpc.ClientConn
-	liveConn  *grpc.ClientConn
+	cfg         config.Config
+	log         *zap.Logger
+	server      *http.Server
+	shopConn    *grpc.ClientConn
+	goodsConn   *grpc.ClientConn
+	liveConn    *grpc.ClientConn
+	auctionConn *grpc.ClientConn
 }
 
 func New(ctx context.Context, cfg config.Config) (*App, error) {
@@ -59,10 +60,21 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	liveConn, err := client.NewLiveServiceConn(cfg.LiveService.Addr)
 	if err != nil {
 		_ = shopConn.Close()
+		_ = goodsConn.Close()
 		return nil, err
 	}
 	liveClient := client.NewLiveServiceClient(liveConn)
 	liveHandler := handler.NewLiveHandler(liveClient, cfg.RPCTimeout())
+
+	auctionConn, err := client.NewAuctionServiceConn(cfg.AuctionService.Addr)
+	if err != nil {
+		_ = shopConn.Close()
+		_ = goodsConn.Close()
+		_ = liveConn.Close()
+		return nil, err
+	}
+	auctionClient := client.NewAuctionServiceClient(auctionConn)
+	auctionHandler := handler.NewAuctionHandler(auctionClient, cfg.RPCTimeout())
 
 	gin.SetMode(gin.ReleaseMode)
 	if cfg.Env == "local" {
@@ -70,7 +82,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	}
 	engine := gin.New()
 	engine.Use(logger.GinRecovery(log), logger.GinMiddleware(log))
-	router.Register(engine, shopHandler, goodsHandler, liveHandler, shopJWTManager, userJWTManager)
+	router.Register(engine, shopHandler, goodsHandler, liveHandler, auctionHandler, shopJWTManager, userJWTManager)
 
 	server := &http.Server{
 		Addr:              cfg.HTTP.Addr,
@@ -79,12 +91,13 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	}
 
 	return &App{
-		cfg:       cfg,
-		log:       log,
-		server:    server,
-		shopConn:  shopConn,
-		goodsConn: goodsConn,
-		liveConn:  liveConn,
+		cfg:         cfg,
+		log:         log,
+		server:      server,
+		shopConn:    shopConn,
+		goodsConn:   goodsConn,
+		liveConn:    liveConn,
+		auctionConn: auctionConn,
 	}, nil
 }
 
@@ -122,5 +135,8 @@ func (a *App) Stop(ctx context.Context) {
 	}
 	if a.liveConn != nil {
 		_ = a.liveConn.Close()
+	}
+	if a.auctionConn != nil {
+		_ = a.auctionConn.Close()
 	}
 }
