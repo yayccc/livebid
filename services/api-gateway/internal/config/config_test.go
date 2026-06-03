@@ -5,6 +5,7 @@ import "testing"
 func TestLoadAppliesTargetAndNacosEnvOverrides(t *testing.T) {
 	t.Setenv("API_GATEWAY_CONFIG", "not-exists.yaml")
 	t.Setenv("API_GATEWAY_SHOP_SERVICE_TARGET", "nacos:///shop-service")
+	t.Setenv("API_GATEWAY_USER_SERVICE_TARGET", "nacos:///user-service")
 	t.Setenv("API_GATEWAY_GOODS_SERVICE_TARGET", "nacos:///goods-service")
 	t.Setenv("API_GATEWAY_NACOS_ENABLED", "true")
 	t.Setenv("API_GATEWAY_NACOS_SERVERS", "nacos:8848")
@@ -13,6 +14,9 @@ func TestLoadAppliesTargetAndNacosEnvOverrides(t *testing.T) {
 	cfg := Load()
 	if cfg.ShopService.Target != "nacos:///shop-service" {
 		t.Fatalf("shop target = %q", cfg.ShopService.Target)
+	}
+	if cfg.UserService.Target != "nacos:///user-service" {
+		t.Fatalf("user target = %q", cfg.UserService.Target)
 	}
 	if cfg.GoodsService.Target != "nacos:///goods-service" {
 		t.Fatalf("goods target = %q", cfg.GoodsService.Target)

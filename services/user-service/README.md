@@ -29,10 +29,10 @@ services/user-service/configs/config.local.yaml
 USER_SERVICE_CONFIG=services/user-service/configs/config.local.yaml go run ./services/user-service/cmd/server
 ```
 
-环境变量优先级高于配置文件。默认监听地址为 `:9003`，可通过环境变量覆盖：
+环境变量优先级高于配置文件。默认监听地址为 `:9004`，可通过环境变量覆盖：
 
 ```bash
-USER_SERVICE_GRPC_ADDR=:9003 go run ./services/user-service/cmd/server
+USER_SERVICE_GRPC_ADDR=:9004 go run ./services/user-service/cmd/server
 ```
 
 默认 MySQL 连接为：
@@ -82,4 +82,4 @@ protoc --go_out=. --go_opt=module=github.com/yayccc/livebid \
 
 当前 repository 使用 GORM 操作 MySQL。服务启动时默认执行 `AutoMigrate`，会自动创建或更新 `user`、`user_address` 表结构；生产环境可通过 `USER_SERVICE_MYSQL_AUTO_MIGRATE=false` 关闭。
 
-受保护的当前用户资料和地址接口从 gRPC metadata `livebid-auth-subject` 读取当前 user_id。头像上传接口本阶段不在 `user-service` 中实现，仅保存头像 URL。
+受保护的当前用户资料和地址接口通过公共 identity gRPC metadata 读取当前 user_id。头像上传接口本阶段不在 `user-service` 中实现，仅保存头像 URL。

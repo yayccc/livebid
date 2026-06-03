@@ -1,6 +1,6 @@
 # api-gateway
 
-`api-gateway` 是对外 HTTP 入口。当前阶段承接商铺、商品和直播 HTTP API；商铺接口通过 gRPC 调用内部 `shop-service`，商品接口调用 `goods-service`，直播接口调用 `live-service`。
+`api-gateway` 是对外 HTTP 入口。当前阶段承接商铺、用户、商品和直播 HTTP API；商铺接口通过 gRPC 调用内部 `shop-service`，用户接口调用 `user-service`，商品接口调用 `goods-service`，直播接口调用 `live-service`。
 
 ## 当前接口
 
@@ -12,6 +12,17 @@
 | 商铺信息 | GET | `/api/shop/:id` | 转发到 `shop-service.GetShop` |
 | 当前商铺信息 | GET | `/api/shop/me` | 需要商家 JWT，通过 gRPC metadata 透传身份到 `shop-service.GetShop` |
 | 更新商铺信息 | PUT | `/api/shop/:id` | 需要商家 JWT，通过 gRPC metadata 透传身份到 `shop-service.UpdateShop` 并校验只能更新当前商铺 |
+| 用户注册 | POST | `/api/users/register` | 转发到 `user-service.RegisterUser` |
+| 用户登录 | POST | `/api/users/login` | 转发到 `user-service.LoginUser`，透传 `access_token` |
+| 用户信息 | GET | `/api/users/:id` | 转发到 `user-service.GetUser` |
+| 更新当前用户 | PUT | `/api/users/:id` | 需要用户 JWT，通过 gRPC metadata 透传身份到 `user-service.UpdateCurrentUser` |
+| 上传头像 | POST | `/api/users/avatar/upload` | 需要用户 JWT，复用文件上传能力，返回头像 URL |
+| 新增收货地址 | POST | `/api/users/address` | 需要用户 JWT，转发到 `user-service.CreateAddress` |
+| 收货地址列表 | GET | `/api/users/address/list` | 需要用户 JWT，转发到 `user-service.ListAddresses` |
+| 收货地址详情 | GET | `/api/users/address/:id` | 需要用户 JWT，转发到 `user-service.GetAddress` |
+| 修改收货地址 | PUT | `/api/users/address/:id` | 需要用户 JWT，转发到 `user-service.UpdateAddress` |
+| 删除收货地址 | DELETE | `/api/users/address/:id` | 需要用户 JWT，转发到 `user-service.DeleteAddress` |
+| 设置默认地址 | PUT | `/api/users/address/:id/default` | 需要用户 JWT，转发到 `user-service.SetDefaultAddress` |
 | 文件上传 | POST | `/api/files/upload` | 接收 multipart `file`，通过 S3 协议上传到 RustFS 对象存储 |
 | 创建商品 | POST | `/api/goods` | 转发到 `goods-service.CreateGoods` |
 | 编辑商品 | PUT | `/api/goods/:id` | 转发到 `goods-service.UpdateGoods` |
@@ -41,9 +52,13 @@
 
 商品创建、编辑、删除、当前商铺列表、上下架请求中的 `shop_id` 均来自商家端 JWT 的 subject。网关中间件会校验 token，并把当前认证主体写入请求上下文，再通过 gRPC metadata 透传给下游服务。
 
+## 用户接口说明
+
+用户资料修改、头像上传和收货地址接口中的 `user_id` 均来自用户端 JWT 的 subject。用户登录 token 当前由 `user-service` 签发，网关只做 HTTP 到 gRPC 转发与响应格式统一。
+
 ## 本地启动
 
-本地端到端测试至少需要 MySQL 和三个内部 gRPC 服务。默认 MySQL DSN 为：
+本地端到端测试至少需要 MySQL 和四个内部 gRPC 服务。默认 MySQL DSN 为：
 
 ```text
 root:123456@tcp(127.0.0.1:3306)/mydb?charset=utf8mb4&parseTime=True&loc=Local
@@ -68,6 +83,11 @@ GOODS_SERVICE_CONFIG=services/goods-service/configs/config.local.yaml \
 ```
 
 ```bash
+USER_SERVICE_CONFIG=services/user-service/configs/config.local.yaml \
+  go run ./services/user-service/cmd/server
+```
+
+```bash
 LIVE_SERVICE_CONFIG=services/live-service/configs/config.local.yaml \
   go run ./services/live-service/cmd/server
 ```
@@ -81,6 +101,7 @@ API_GATEWAY_CONFIG=services/api-gateway/configs/config.local.yaml \
 
 - api-gateway HTTP：`:58080`
 - shop-service gRPC：`127.0.0.1:9001`
+- user-service gRPC：`127.0.0.1:9004`
 - goods-service gRPC：`127.0.0.1:9002`
 - live-service gRPC：`127.0.0.1:9007`
 
@@ -170,9 +191,11 @@ services/api-gateway/configs/config.local.yaml
 | --- | --- |
 | `API_GATEWAY_HTTP_ADDR` | 网关 HTTP 监听地址 |
 | `API_GATEWAY_SHOP_SERVICE_TARGET` | `shop-service` gRPC target，例如 `127.0.0.1:9001` 或 `nacos:///shop-service` |
+| `API_GATEWAY_USER_SERVICE_TARGET` | `user-service` gRPC target，例如 `127.0.0.1:9004` 或 `nacos:///user-service` |
 | `API_GATEWAY_GOODS_SERVICE_TARGET` | `goods-service` gRPC target，例如 `127.0.0.1:9002` 或 `nacos:///goods-service` |
 | `API_GATEWAY_LIVE_SERVICE_TARGET` | `live-service` gRPC target，例如 `127.0.0.1:9007` 或 `nacos:///live-service` |
 | `API_GATEWAY_SHOP_SERVICE_ADDR` | 兼容旧配置，未设置 target 时作为 target 兜底 |
+| `API_GATEWAY_USER_SERVICE_ADDR` | 兼容旧配置，未设置 target 时作为 target 兜底 |
 | `API_GATEWAY_GOODS_SERVICE_ADDR` | 兼容旧配置，未设置 target 时作为 target 兜底 |
 | `API_GATEWAY_LIVE_SERVICE_ADDR` | 兼容旧配置，未设置 target 时作为 target 兜底 |
 | `API_GATEWAY_STORAGE_ENDPOINT` | RustFS S3 endpoint，例如 `http://127.0.0.1:9000` |

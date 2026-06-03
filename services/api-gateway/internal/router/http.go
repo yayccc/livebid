@@ -9,8 +9,7 @@ import (
 	"github.com/yayccc/livebid/services/api-gateway/internal/middleware"
 )
 
-// 路由注册函数，预留了JWTManager参数以支持未来用户认证的扩展
-func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, goodsHandler *handler.GoodsHandler, fileHandler *handler.FileHandler, liveHandler *handler.LiveHandler, auctionHandler *handler.AuctionHandler, shopJWTManager *auth.JWTManager, _ *auth.JWTManager) {
+func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, userHandler *handler.UserHandler, goodsHandler *handler.GoodsHandler, fileHandler *handler.FileHandler, liveHandler *handler.LiveHandler, auctionHandler *handler.AuctionHandler, shopJWTManager *auth.JWTManager, userJWTManager *auth.JWTManager) {
 	engine.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    0,
@@ -25,6 +24,11 @@ func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, goodsHandler
 	// 商户注册和登录接口不需要认证,直接注册在对应分组下
 	shop.POST("/register", shopHandler.Register)
 	shop.POST("/login", shopHandler.Login)
+
+	users := api.Group("/users")
+	users.POST("/register", userHandler.Register)
+	users.POST("/login", userHandler.Login)
+	users.GET("/:id", userHandler.Get)
 
 	goods := api.Group("/goods")
 	goods.POST("/batch", goodsHandler.BatchGetGoods)
@@ -49,6 +53,19 @@ func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, goodsHandler
 	merchantGoods.DELETE("/:id", goodsHandler.Delete)
 	merchantGoods.PUT("/:id/on-sale", goodsHandler.PutOnSale)
 	merchantGoods.PUT("/:id/off-sale", goodsHandler.PutOffSale)
+
+	user := api.Group("")
+	user.Use(middleware.RequireUserAuth(userJWTManager))
+
+	userUsers := user.Group("/users")
+	userUsers.POST("/avatar/upload", fileHandler.Upload)
+	userUsers.POST("/address", userHandler.CreateAddress)
+	userUsers.GET("/address/list", userHandler.ListAddresses)
+	userUsers.GET("/address/:id", userHandler.GetAddress)
+	userUsers.PUT("/address/:id", userHandler.UpdateAddress)
+	userUsers.DELETE("/address/:id", userHandler.DeleteAddress)
+	userUsers.PUT("/address/:id/default", userHandler.SetDefaultAddress)
+	userUsers.PUT("/:id", userHandler.UpdateCurrent)
 
 	live := api.Group("/live")
 	live.GET("/rooms", liveHandler.ListLiveRooms)

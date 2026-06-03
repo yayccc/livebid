@@ -23,6 +23,7 @@ type App struct {
 	log         *zap.Logger
 	server      *http.Server
 	shopConn    *grpc.ClientConn
+	userConn    *grpc.ClientConn
 	goodsConn   *grpc.ClientConn
 	liveConn    *grpc.ClientConn
 	auctionConn *grpc.ClientConn
@@ -55,9 +56,18 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	shopClient := client.NewShopServiceClient(shopConn)
 	shopHandler := handler.NewShopHandler(shopClient, shopJWTManager, cfg.AccessTokenTTL(), cfg.RPCTimeout())
 
+	userConn, err := client.NewUserServiceConn(cfg.UserService.Target)
+	if err != nil {
+		_ = shopConn.Close()
+		return nil, err
+	}
+	userClient := client.NewUserServiceClient(userConn)
+	userHandler := handler.NewUserHandler(userClient, cfg.RPCTimeout())
+
 	goodsConn, err := client.NewGoodsServiceConn(cfg.GoodsService.Target)
 	if err != nil {
 		_ = shopConn.Close()
+		_ = userConn.Close()
 		return nil, err
 	}
 	goodsClient := client.NewGoodsServiceClient(goodsConn)
@@ -65,6 +75,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	fileStorage, err := handler.NewS3ObjectStorage(ctx, cfg.Storage)
 	if err != nil {
 		_ = shopConn.Close()
+		_ = userConn.Close()
 		_ = goodsConn.Close()
 		return nil, err
 	}
@@ -73,6 +84,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	liveConn, err := client.NewLiveServiceConn(cfg.LiveService.Target)
 	if err != nil {
 		_ = shopConn.Close()
+		_ = userConn.Close()
 		_ = goodsConn.Close()
 		return nil, err
 	}
@@ -82,6 +94,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	auctionConn, err := client.NewAuctionServiceConn(cfg.AuctionService.Addr)
 	if err != nil {
 		_ = shopConn.Close()
+		_ = userConn.Close()
 		_ = goodsConn.Close()
 		_ = liveConn.Close()
 		return nil, err
@@ -95,7 +108,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	}
 	engine := gin.New()
 	engine.Use(logger.GinRecovery(log), logger.GinMiddleware(log))
-	router.Register(engine, shopHandler, goodsHandler, fileHandler, liveHandler, auctionHandler, shopJWTManager, userJWTManager)
+	router.Register(engine, shopHandler, userHandler, goodsHandler, fileHandler, liveHandler, auctionHandler, shopJWTManager, userJWTManager)
 
 	server := &http.Server{
 		Addr:              cfg.HTTP.Addr,
@@ -108,6 +121,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		log:         log,
 		server:      server,
 		shopConn:    shopConn,
+		userConn:    userConn,
 		goodsConn:   goodsConn,
 		liveConn:    liveConn,
 		auctionConn: auctionConn,
@@ -142,6 +156,9 @@ func (a *App) Stop(ctx context.Context) {
 	}
 	if a.shopConn != nil {
 		_ = a.shopConn.Close()
+	}
+	if a.userConn != nil {
+		_ = a.userConn.Close()
 	}
 	if a.goodsConn != nil {
 		_ = a.goodsConn.Close()

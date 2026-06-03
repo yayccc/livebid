@@ -7,6 +7,10 @@ shopService:
   addr: "127.0.0.1:9001"
   target: "127.0.0.1:9001"
 
+userService:
+  addr: "127.0.0.1:9004"
+  target: "127.0.0.1:9004"
+
 goodsService:
   addr: "127.0.0.1:9002"
   target: "127.0.0.1:9002"

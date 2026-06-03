@@ -11,21 +11,18 @@ import (
 
 	userv1 "github.com/yayccc/livebid/gen/proto/user/v1"
 	"github.com/yayccc/livebid/pkg/auth"
+	"github.com/yayccc/livebid/pkg/identity"
 	"github.com/yayccc/livebid/pkg/idgen"
 	"github.com/yayccc/livebid/services/user-service/internal/model"
 	"github.com/yayccc/livebid/services/user-service/internal/repository"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/datatypes"
 )
 
-const (
-	authSubjectMetadataKey = "livebid-auth-subject"
-	defaultTokenTTL        = 7 * 24 * time.Hour
-)
+const defaultTokenTTL = 7 * 24 * time.Hour
 
 var (
 	errInvalidArgument   = errors.New("invalid argument")
@@ -333,19 +330,10 @@ func (h *UserGRPCHandler) SetDefaultAddress(ctx context.Context, req *userv1.Set
 }
 
 func currentUserID(ctx context.Context) (int64, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return 0, errMissingSubject
+	if userID, ok := identity.UserID(ctx); ok {
+		return userID, nil
 	}
-	values := md.Get(authSubjectMetadataKey)
-	if len(values) == 0 || strings.TrimSpace(values[0]) == "" {
-		return 0, errMissingSubject
-	}
-	id, err := strconv.ParseInt(strings.TrimSpace(values[0]), 10, 64)
-	if err != nil || id <= 0 {
-		return 0, errMissingSubject
-	}
-	return id, nil
+	return 0, errMissingSubject
 }
 
 func applyAddressUpdate(address *model.UserAddress, req *userv1.UpdateAddressRequest) {

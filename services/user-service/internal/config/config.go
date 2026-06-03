@@ -62,7 +62,7 @@ func defaultConfig() Config {
 	return Config{
 		Env: "local",
 		GRPC: GRPCConfig{
-			Addr: ":9003",
+			Addr: ":9004",
 		},
 		MySQL: MySQLConfig{
 			DSN:                    "root:123456@tcp(127.0.0.1:3306)/mydb?charset=utf8mb4&parseTime=True&loc=Local",
@@ -162,7 +162,7 @@ func normalize(cfg *Config) {
 		cfg.Env = "local"
 	}
 	if cfg.GRPC.Addr == "" {
-		cfg.GRPC.Addr = ":9003"
+		cfg.GRPC.Addr = ":9004"
 	}
 	if cfg.MySQL.DSN == "" {
 		cfg.MySQL.DSN = "root:123456@tcp(127.0.0.1:3306)/mydb?charset=utf8mb4&parseTime=True&loc=Local"

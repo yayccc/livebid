@@ -18,6 +18,7 @@ type Config struct {
 	Env            string                    `yaml:"env"`
 	HTTP           HTTPConfig                `yaml:"http"`
 	ShopService    ServiceConfig             `yaml:"shopService"`
+	UserService    ServiceConfig             `yaml:"userService"`
 	GoodsService   ServiceConfig             `yaml:"goodsService"`
 	LiveService    ServiceConfig             `yaml:"liveService"`
 	AuctionService ServiceConfig             `yaml:"auctionService"`
@@ -91,6 +92,10 @@ func defaultConfig() Config {
 			Addr:   "127.0.0.1:9001",
 			Target: "127.0.0.1:9001",
 		},
+		UserService: ServiceConfig{
+			Addr:   "127.0.0.1:9004",
+			Target: "127.0.0.1:9004",
+		},
 		GoodsService: ServiceConfig{
 			Addr:   "127.0.0.1:9002",
 			Target: "127.0.0.1:9002",
@@ -153,6 +158,12 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if value := os.Getenv("API_GATEWAY_SHOP_SERVICE_TARGET"); value != "" {
 		cfg.ShopService.Target = value
+	}
+	if value := os.Getenv("API_GATEWAY_USER_SERVICE_ADDR"); value != "" {
+		cfg.UserService.Addr = value
+	}
+	if value := os.Getenv("API_GATEWAY_USER_SERVICE_TARGET"); value != "" {
+		cfg.UserService.Target = value
 	}
 	if value := os.Getenv("API_GATEWAY_GOODS_SERVICE_ADDR"); value != "" {
 		cfg.GoodsService.Addr = value
@@ -249,6 +260,14 @@ func normalize(cfg *Config) {
 		cfg.ShopService.Target = cfg.ShopService.Addr
 	} else if cfg.ShopService.Addr == "" {
 		cfg.ShopService.Addr = cfg.ShopService.Target
+	}
+	if cfg.UserService.Addr == "" {
+		cfg.UserService.Addr = "127.0.0.1:9004"
+	}
+	if cfg.UserService.Target == "" {
+		cfg.UserService.Target = cfg.UserService.Addr
+	} else if cfg.UserService.Addr == "" {
+		cfg.UserService.Addr = cfg.UserService.Target
 	}
 	if cfg.GoodsService.Addr == "" {
 		cfg.GoodsService.Addr = "127.0.0.1:9002"
