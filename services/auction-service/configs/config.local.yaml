@@ -21,7 +21,36 @@ rocketmq:
   maxReconsumeTimes: 5
 goods:
   addr: "127.0.0.1:9002"
+  target: "127.0.0.1:9002"
 workerID: 3
 log:
   level: debug
   encoding: console
+
+nacos:
+  enabled: false
+  servers:
+    - host: "127.0.0.1"
+      port: 8848
+  namespaceId: "livebid-local"
+
+configCenter:
+  enabled: false
+  dataId: "livebid.local.auction-service.yaml"
+  group: "LIVEBID"
+
+registry:
+  enabled: false
+  provider: "nacos"
+  serviceName: "auction-service"
+  group: "LIVEBID"
+  cluster: "default"
+  ip: ""
+  port: 0
+  weight: 1
+
+healthCheck:
+  enabled: true
+  intervalSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 3

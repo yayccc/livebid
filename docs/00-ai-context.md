@@ -33,4 +33,5 @@
 - 项目总览先看 [01-overview.md](01-overview.md)。
 - 架构边界先看 [02-architecture.md](02-architecture.md)。
 - 服务结构先看 [03-service-structure.md](03-service-structure.md)。
+- 部署、服务发现与配置中心方案先看 [deployment/README.md](deployment/README.md)。
 - 直播服务先看 [services/live/README.md](services/live/README.md) 和 [services/live/decisions.md](services/live/decisions.md)。

@@ -1,23 +1,29 @@
 package config
 
 import (
+	"context"
 	"errors"
 	"os"
 	"strconv"
 
 	"github.com/yayccc/livebid/pkg/logger"
+	"github.com/yayccc/livebid/pkg/nacosx"
 	"gopkg.in/yaml.v3"
 )
 
 const ServiceName = "live-service"
 
 type Config struct {
-	Env      string        `yaml:"env"`
-	GRPC     GRPCConfig    `yaml:"grpc"`
-	MySQL    MySQLConfig   `yaml:"mysql"`
-	SRS      SRSConfig     `yaml:"srs"`
-	Log      logger.Config `yaml:"log"`
-	WorkerID int64         `yaml:"workerID"`
+	Env          string                    `yaml:"env"`
+	GRPC         GRPCConfig                `yaml:"grpc"`
+	MySQL        MySQLConfig               `yaml:"mysql"`
+	SRS          SRSConfig                 `yaml:"srs"`
+	Log          logger.Config             `yaml:"log"`
+	Nacos        nacosx.Config             `yaml:"nacos"`
+	ConfigCenter nacosx.ConfigCenterConfig `yaml:"configCenter"`
+	Registry     nacosx.RegistryConfig     `yaml:"registry"`
+	HealthCheck  nacosx.HealthCheckConfig  `yaml:"healthCheck"`
+	WorkerID     int64                     `yaml:"workerID"`
 }
 
 type GRPCConfig struct {
@@ -45,6 +51,9 @@ func Load() Config {
 	}
 	applyEnvOverrides(&cfg)
 	normalize(&cfg)
+	_ = nacosx.LoadConfigCenterYAML(context.Background(), cfg.Nacos, cfg.ConfigCenter, &cfg)
+	applyEnvOverrides(&cfg)
+	normalize(&cfg)
 	return cfg
 }
 
@@ -65,8 +74,12 @@ func defaultConfig() Config {
 			RTMPPushBaseURL:   "rtmp://127.0.0.1/live",
 			WebRTCPlayBaseURL: "webrtc://127.0.0.1/live",
 		},
-		Log:      logger.DevelopmentConfig(ServiceName),
-		WorkerID: 2,
+		Log:          logger.DevelopmentConfig(ServiceName),
+		Nacos:        nacosx.DefaultConfig(),
+		ConfigCenter: nacosx.DefaultConfigCenter("local", ServiceName),
+		Registry:     nacosx.DefaultRegistry(ServiceName),
+		HealthCheck:  nacosx.DefaultHealthCheck(),
+		WorkerID:     2,
 	}
 }
 
@@ -138,6 +151,7 @@ func applyEnvOverrides(cfg *Config) {
 	if os.Getenv("LIVE_SERVICE_LOG_FILE") != "" {
 		cfg.Log.File.Filename = envLog.File.Filename
 	}
+	nacosx.ApplyEnvOverrides("LIVE_SERVICE", &cfg.Nacos, &cfg.ConfigCenter, &cfg.Registry, &cfg.HealthCheck)
 }
 
 func normalize(cfg *Config) {
@@ -173,6 +187,10 @@ func normalize(cfg *Config) {
 	if cfg.Env == "local" && cfg.Log.Encoding == "" {
 		cfg.Log.Encoding = logger.EncodingConsole
 	}
+	nacosx.NormalizeConfig(&cfg.Nacos)
+	nacosx.NormalizeConfigCenter(&cfg.ConfigCenter, cfg.Env, ServiceName)
+	nacosx.NormalizeRegistry(&cfg.Registry, ServiceName)
+	nacosx.NormalizeHealthCheck(&cfg.HealthCheck)
 }
 
 func getenv(key string, fallback string) string {

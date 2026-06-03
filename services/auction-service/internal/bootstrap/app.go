@@ -4,8 +4,11 @@ import (
 	"context"
 	"net"
 
+	"github.com/nacos-group/nacos-sdk-go/v2/clients/naming_client"
+	"github.com/yayccc/livebid/pkg/grpcx"
 	"github.com/yayccc/livebid/pkg/idgen"
 	"github.com/yayccc/livebid/pkg/logger"
+	"github.com/yayccc/livebid/pkg/nacosx"
 	"github.com/yayccc/livebid/services/auction-service/internal/client"
 	"github.com/yayccc/livebid/services/auction-service/internal/config"
 	"github.com/yayccc/livebid/services/auction-service/internal/handler"
@@ -13,6 +16,7 @@ import (
 	"github.com/yayccc/livebid/services/auction-service/internal/router"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
 	"gorm.io/gorm"
 )
 
@@ -21,6 +25,9 @@ type App struct {
 	log           *zap.Logger
 	db            *gorm.DB
 	grpcServer    *grpc.Server
+	health        *health.Server
+	naming        naming_client.INamingClient
+	registration  *nacosx.Registration
 	stateStore    repository.AuctionStateStore
 	goods         client.GoodsClient
 	events        client.EventPublisher
@@ -37,8 +44,13 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	namingClient, err := nacosx.NewNamingClient(cfg.Nacos)
+	if err != nil {
+		return nil, err
+	}
+	nacosx.SetDefaultNamingClient(namingClient)
 
-	goodsClient, err := client.NewGRPCGoodsClient(cfg.Goods.Addr)
+	goodsClient, err := client.NewGRPCGoodsClient(cfg.Goods.Target)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +85,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	)
 
 	grpcServer := grpc.NewServer()
-	router.RegisterGRPC(grpcServer, auctionHandler)
+	healthServer := router.RegisterGRPC(grpcServer, auctionHandler)
 
 	_ = ctx
 	return &App{
@@ -81,6 +93,8 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		log:           log,
 		db:            db,
 		grpcServer:    grpcServer,
+		health:        healthServer,
+		naming:        namingClient,
 		stateStore:    stateStore,
 		goods:         goodsClient,
 		events:        eventPublisher,
@@ -100,15 +114,26 @@ func (a *App) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	registration, err := nacosx.RegisterInstance(ctx, a.naming, a.cfg.Registry, listener.Addr(), a.cfg.Env, a.log)
+	if err != nil {
+		_ = listener.Close()
+		return err
+	}
+	a.registration = registration
+	if a.registration != nil {
+		a.registration.StartHealthCheck(ctx, a.cfg.HealthCheck)
+	}
 
 	errCh := make(chan error, 1)
 	go func() {
-		a.log.Info("auction-service grpc server started", zap.String("addr", a.cfg.GRPC.Addr))
+		a.log.Info("auction-service grpc server started", zap.String("addr", listener.Addr().String()))
 		errCh <- a.grpcServer.Serve(listener)
 	}()
 
 	select {
 	case <-ctx.Done():
+		grpcx.SetNotServing(a.health, router.HealthServiceName)
+		_ = a.registration.Deregister(context.Background())
 		a.grpcServer.GracefulStop()
 		return nil
 	case err := <-errCh:
@@ -117,6 +142,8 @@ func (a *App) Run(ctx context.Context) error {
 }
 
 func (a *App) Stop() {
+	grpcx.SetNotServing(a.health, router.HealthServiceName)
+	_ = a.registration.Deregister(context.Background())
 	a.grpcServer.GracefulStop()
 	if a.stateStore != nil {
 		_ = a.stateStore.Close()

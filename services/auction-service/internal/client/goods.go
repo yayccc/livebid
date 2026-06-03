@@ -4,8 +4,8 @@ import (
 	"context"
 
 	goodsv1 "github.com/yayccc/livebid/gen/proto/goods/v1"
+	"github.com/yayccc/livebid/pkg/grpcx"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 type GoodsClient interface {
@@ -18,8 +18,8 @@ type GRPCGoodsClient struct {
 	client goodsv1.GoodsServiceClient
 }
 
-func NewGRPCGoodsClient(addr string) (*GRPCGoodsClient, error) {
-	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func NewGRPCGoodsClient(target string) (*GRPCGoodsClient, error) {
+	conn, err := grpcx.NewClient(target)
 	if err != nil {
 		return nil, err
 	}

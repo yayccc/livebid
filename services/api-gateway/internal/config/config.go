@@ -1,28 +1,32 @@
 package config
 
 import (
+	"context"
 	"errors"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/yayccc/livebid/pkg/logger"
+	"github.com/yayccc/livebid/pkg/nacosx"
 	"gopkg.in/yaml.v3"
 )
 
 const ServiceName = "api-gateway"
 
 type Config struct {
-	Env            string        `yaml:"env"`
-	HTTP           HTTPConfig    `yaml:"http"`
-	ShopService    ServiceConfig `yaml:"shopService"`
-	GoodsService   ServiceConfig `yaml:"goodsService"`
-	LiveService    ServiceConfig `yaml:"liveService"`
-	AuctionService ServiceConfig `yaml:"auctionService"`
-	Storage        StorageConfig `yaml:"storage"`
-	JWT            JWTConfig     `yaml:"jwt"`
-	RPC            RPCConfig     `yaml:"rpc"`
-	Log            logger.Config `yaml:"log"`
+	Env            string                    `yaml:"env"`
+	HTTP           HTTPConfig                `yaml:"http"`
+	ShopService    ServiceConfig             `yaml:"shopService"`
+	GoodsService   ServiceConfig             `yaml:"goodsService"`
+	LiveService    ServiceConfig             `yaml:"liveService"`
+	AuctionService ServiceConfig             `yaml:"auctionService"`
+	Storage        StorageConfig             `yaml:"storage"`
+	JWT            JWTConfig                 `yaml:"jwt"`
+	RPC            RPCConfig                 `yaml:"rpc"`
+	Log            logger.Config             `yaml:"log"`
+	Nacos          nacosx.Config             `yaml:"nacos"`
+	ConfigCenter   nacosx.ConfigCenterConfig `yaml:"configCenter"`
 }
 
 type HTTPConfig struct {
@@ -30,7 +34,8 @@ type HTTPConfig struct {
 }
 
 type ServiceConfig struct {
-	Addr string `yaml:"addr"`
+	Addr   string `yaml:"addr"`
+	Target string `yaml:"target"`
 }
 
 type StorageConfig struct {
@@ -70,6 +75,9 @@ func Load() Config {
 	}
 	applyEnvOverrides(&cfg)
 	normalize(&cfg)
+	_ = nacosx.LoadConfigCenterYAML(context.Background(), cfg.Nacos, cfg.ConfigCenter, &cfg)
+	applyEnvOverrides(&cfg)
+	normalize(&cfg)
 	return cfg
 }
 
@@ -80,13 +88,16 @@ func defaultConfig() Config {
 			Addr: ":8080",
 		},
 		ShopService: ServiceConfig{
-			Addr: "127.0.0.1:9001",
+			Addr:   "127.0.0.1:9001",
+			Target: "127.0.0.1:9001",
 		},
 		GoodsService: ServiceConfig{
-			Addr: "127.0.0.1:9002",
+			Addr:   "127.0.0.1:9002",
+			Target: "127.0.0.1:9002",
 		},
 		LiveService: ServiceConfig{
-			Addr: "127.0.0.1:9007",
+			Addr:   "127.0.0.1:9007",
+			Target: "127.0.0.1:9007",
 		},
 		AuctionService: ServiceConfig{
 			Addr: "127.0.0.1:9003",
@@ -109,7 +120,9 @@ func defaultConfig() Config {
 		RPC: RPCConfig{
 			TimeoutSeconds: 3,
 		},
-		Log: logger.DevelopmentConfig(ServiceName),
+		Log:          logger.DevelopmentConfig(ServiceName),
+		Nacos:        nacosx.DefaultConfig(),
+		ConfigCenter: nacosx.DefaultConfigCenter("local", ServiceName),
 	}
 }
 
@@ -138,11 +151,20 @@ func applyEnvOverrides(cfg *Config) {
 	if value := os.Getenv("API_GATEWAY_SHOP_SERVICE_ADDR"); value != "" {
 		cfg.ShopService.Addr = value
 	}
+	if value := os.Getenv("API_GATEWAY_SHOP_SERVICE_TARGET"); value != "" {
+		cfg.ShopService.Target = value
+	}
 	if value := os.Getenv("API_GATEWAY_GOODS_SERVICE_ADDR"); value != "" {
 		cfg.GoodsService.Addr = value
 	}
+	if value := os.Getenv("API_GATEWAY_GOODS_SERVICE_TARGET"); value != "" {
+		cfg.GoodsService.Target = value
+	}
 	if value := os.Getenv("API_GATEWAY_LIVE_SERVICE_ADDR"); value != "" {
 		cfg.LiveService.Addr = value
+	}
+	if value := os.Getenv("API_GATEWAY_LIVE_SERVICE_TARGET"); value != "" {
+		cfg.LiveService.Target = value
 	}
 	if value := os.Getenv("API_GATEWAY_AUCTION_SERVICE_ADDR"); value != "" {
 		cfg.AuctionService.Addr = value
@@ -166,6 +188,7 @@ func applyEnvOverrides(cfg *Config) {
 		cfg.Storage.SecretAccessKey = value
 	}
 	setBoolEnv("API_GATEWAY_STORAGE_PATH_STYLE", &cfg.Storage.PathStyle)
+
 	if value := os.Getenv("API_GATEWAY_JWT_SECRET"); value != "" {
 		cfg.JWT.Secret = value
 	}
@@ -209,6 +232,7 @@ func applyEnvOverrides(cfg *Config) {
 	if os.Getenv("API_GATEWAY_LOG_FILE") != "" {
 		cfg.Log.File.Filename = envLog.File.Filename
 	}
+	nacosx.ApplyEnvOverrides("API_GATEWAY", &cfg.Nacos, &cfg.ConfigCenter, nil, nil)
 }
 
 func normalize(cfg *Config) {
@@ -221,11 +245,26 @@ func normalize(cfg *Config) {
 	if cfg.ShopService.Addr == "" {
 		cfg.ShopService.Addr = "127.0.0.1:9001"
 	}
+	if cfg.ShopService.Target == "" {
+		cfg.ShopService.Target = cfg.ShopService.Addr
+	} else if cfg.ShopService.Addr == "" {
+		cfg.ShopService.Addr = cfg.ShopService.Target
+	}
 	if cfg.GoodsService.Addr == "" {
 		cfg.GoodsService.Addr = "127.0.0.1:9002"
 	}
+	if cfg.GoodsService.Target == "" {
+		cfg.GoodsService.Target = cfg.GoodsService.Addr
+	} else if cfg.GoodsService.Addr == "" {
+		cfg.GoodsService.Addr = cfg.GoodsService.Target
+	}
 	if cfg.LiveService.Addr == "" {
 		cfg.LiveService.Addr = "127.0.0.1:9007"
+	}
+	if cfg.LiveService.Target == "" {
+		cfg.LiveService.Target = cfg.LiveService.Addr
+	} else if cfg.LiveService.Addr == "" {
+		cfg.LiveService.Addr = cfg.LiveService.Target
 	}
 	if cfg.AuctionService.Addr == "" {
 		cfg.AuctionService.Addr = "127.0.0.1:9003"
@@ -265,6 +304,8 @@ func normalize(cfg *Config) {
 	if cfg.Env == "local" && cfg.Log.Encoding == "" {
 		cfg.Log.Encoding = logger.EncodingConsole
 	}
+	nacosx.NormalizeConfig(&cfg.Nacos)
+	nacosx.NormalizeConfigCenter(&cfg.ConfigCenter, cfg.Env, ServiceName)
 }
 
 func getenv(key string, fallback string) string {

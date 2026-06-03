@@ -2,17 +2,12 @@ package client
 
 import (
 	goodsv1 "github.com/yayccc/livebid/gen/proto/goods/v1"
-	"github.com/yayccc/livebid/pkg/identity"
+	"github.com/yayccc/livebid/pkg/grpcx"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
-func NewGoodsServiceConn(addr string) (*grpc.ClientConn, error) {
-	return grpc.NewClient(
-		addr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithUnaryInterceptor(identity.UnaryClientInterceptor()),
-	)
+func NewGoodsServiceConn(target string) (*grpc.ClientConn, error) {
+	return grpcx.NewClient(target)
 }
 
 func NewGoodsServiceClient(conn grpc.ClientConnInterface) goodsv1.GoodsServiceClient {
