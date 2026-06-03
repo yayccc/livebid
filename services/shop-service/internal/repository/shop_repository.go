@@ -10,9 +10,9 @@ import (
 )
 
 var (
-	ErrShopNotFound       = errors.New("shop not found")
-	ErrUsernameDuplicated = errors.New("username already exists")
-	ErrShopNameDuplicated = errors.New("shop name already exists")
+	ErrShopNotFound       = errors.New("商铺不存在或已被删除")
+	ErrUsernameDuplicated = errors.New("商铺账号已存在")
+	ErrShopNameDuplicated = errors.New("商铺名称已存在")
 )
 
 type ShopRepository interface {

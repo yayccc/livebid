@@ -20,26 +20,26 @@ func RequireUserAuth(jwtManager *auth.JWTManager) gin.HandlerFunc {
 func RequireAuth(jwtManager *auth.JWTManager, kind identity.Kind) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if jwtManager == nil {
-			abortUnauthorized(c, "missing auth")
+			abortUnauthorized(c, "认证服务未配置，无法校验登录状态")
 			return
 		}
 
 		token := bearerToken(c.GetHeader("Authorization"))
 		if token == "" {
-			abortUnauthorized(c, "missing auth")
+			abortUnauthorized(c, "请先登录并在 Authorization 请求头中携带 Bearer Token")
 			return
 		}
 
 		claims, err := jwtManager.Verify(token)
 		if err != nil {
 			_ = c.Error(err)
-			abortUnauthorized(c, "invalid token")
+			abortUnauthorized(c, "登录凭证无效或已过期，请重新登录")
 			return
 		}
 
 		principal, ok := identity.NewPrincipal(kind, claims.Subject)
 		if !ok {
-			abortUnauthorized(c, "invalid token")
+			abortUnauthorized(c, "登录凭证中的身份信息无效")
 			return
 		}
 
@@ -64,5 +64,6 @@ func abortUnauthorized(c *gin.Context, message string) {
 	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 		"code":    http.StatusUnauthorized,
 		"message": message,
+		"data":    nil,
 	})
 }

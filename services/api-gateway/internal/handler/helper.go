@@ -20,7 +20,7 @@ const defaultRPCTimeout = 3 * time.Second
 type apiResponse struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
-	Data    any    `json:"data,omitempty"`
+	Data    any    `json:"data"`
 }
 
 func normalizeRPCTimeout(timeout time.Duration) time.Duration {
@@ -36,7 +36,7 @@ func parseIDParam(c *gin.Context, name string) (int64, bool) {
 		if err != nil {
 			recordRequestError(c, err)
 		}
-		respondError(c, http.StatusBadRequest, "invalid request")
+		respondError(c, http.StatusBadRequest, "请求路径中的ID无效，请传入大于0的数字ID")
 		return 0, false
 	}
 	return id, true
@@ -49,7 +49,7 @@ func parseOptionalInt64Query(c *gin.Context, key string) (*int64, bool) {
 	}
 	value, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
-		respondError(c, http.StatusBadRequest, "invalid request")
+		respondError(c, http.StatusBadRequest, "查询参数"+key+"格式无效，请传入数字")
 		return nil, false
 	}
 	return &value, true
@@ -62,7 +62,7 @@ func parseOptionalInt32Query(c *gin.Context, key string) (*int32, bool) {
 	}
 	value, err := strconv.ParseInt(raw, 10, 32)
 	if err != nil {
-		respondError(c, http.StatusBadRequest, "invalid request")
+		respondError(c, http.StatusBadRequest, "查询参数"+key+"格式无效，请传入数字")
 		return nil, false
 	}
 	parsed := int32(value)
@@ -91,7 +91,7 @@ func int32ValueOrZero(value *int32) int32 {
 func currentShopID(c *gin.Context) (int64, bool) {
 	shopID, ok := identity.ShopID(c.Request.Context())
 	if !ok {
-		respondError(c, http.StatusUnauthorized, "missing auth")
+		respondError(c, http.StatusUnauthorized, "未获取到商铺身份，请先登录")
 		return 0, false
 	}
 	return shopID, true
@@ -105,9 +105,13 @@ func timestampString(ts *timestamppb.Timestamp) string {
 }
 
 func respondOK(c *gin.Context, data any) {
+	respondOKWithMessage(c, "ok", data)
+}
+
+func respondOKWithMessage(c *gin.Context, message string, data any) {
 	c.JSON(http.StatusOK, apiResponse{
 		Code:    0,
-		Message: "ok",
+		Message: message,
 		Data:    data,
 	})
 }
@@ -124,24 +128,34 @@ func respondGRPCError(c *gin.Context, err error) {
 	code := status.Code(err)
 	switch code {
 	case codes.InvalidArgument:
-		respondError(c, http.StatusBadRequest, "invalid request")
+		respondError(c, http.StatusBadRequest, grpcMessageOrDefault(err, "请求参数无效，请检查后重试"))
 	case codes.Unauthenticated:
-		respondError(c, http.StatusUnauthorized, "invalid credential")
+		respondError(c, http.StatusUnauthorized, grpcMessageOrDefault(err, "未获取到有效身份，请先登录"))
 	case codes.AlreadyExists:
-		respondError(c, http.StatusConflict, "resource already exists")
+		respondError(c, http.StatusConflict, grpcMessageOrDefault(err, "资源已存在，请更换后重试"))
 	case codes.NotFound:
-		respondError(c, http.StatusNotFound, "resource not found")
+		respondError(c, http.StatusNotFound, grpcMessageOrDefault(err, "资源不存在或已被删除"))
+	case codes.PermissionDenied:
+		respondError(c, http.StatusForbidden, grpcMessageOrDefault(err, "无权执行该操作"))
 	case codes.DeadlineExceeded:
-		respondError(c, http.StatusGatewayTimeout, "upstream timeout")
+		respondError(c, http.StatusGatewayTimeout, "下游服务响应超时，请稍后重试")
 	case codes.Unavailable:
-		respondError(c, http.StatusBadGateway, "upstream unavailable")
+		respondError(c, http.StatusBadGateway, "下游服务暂不可用，请稍后重试")
 	default:
 		if errors.Is(err, context.DeadlineExceeded) {
-			respondError(c, http.StatusGatewayTimeout, "upstream timeout")
+			respondError(c, http.StatusGatewayTimeout, "下游服务响应超时，请稍后重试")
 			return
 		}
-		respondError(c, http.StatusInternalServerError, "internal error")
+		respondError(c, http.StatusInternalServerError, "服务内部错误，请稍后重试")
 	}
+}
+
+func grpcMessageOrDefault(err error, fallback string) string {
+	message := strings.TrimSpace(status.Convert(err).Message())
+	if message == "" {
+		return fallback
+	}
+	return message
 }
 
 func recordRequestError(c *gin.Context, err error) {

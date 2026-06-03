@@ -9,6 +9,9 @@
 | 健康检查 | GET | `/health` | 返回网关进程状态 |
 | 商铺注册 | POST | `/api/shop/register` | 转发到 `shop-service.RegisterShop` |
 | 商铺登录 | POST | `/api/shop/login` | 转发到 `shop-service.LoginShop`，成功后由网关签发 JWT |
+| 商铺信息 | GET | `/api/shop/:id` | 转发到 `shop-service.GetShop` |
+| 当前商铺信息 | GET | `/api/shop/me` | 需要商家 JWT，通过 gRPC metadata 透传身份到 `shop-service.GetShop` |
+| 更新商铺信息 | PUT | `/api/shop/:id` | 需要商家 JWT，通过 gRPC metadata 透传身份到 `shop-service.UpdateShop` 并校验只能更新当前商铺 |
 | 商品封面上传 | POST | `/api/goods/cover/upload` | 接收 multipart `file`，当前仅返回假 URL，不进行图片存储 |
 | 创建商品 | POST | `/api/goods` | 转发到 `goods-service.CreateGoods` |
 | 编辑商品 | PUT | `/api/goods/:id` | 转发到 `goods-service.UpdateGoods` |
@@ -97,7 +100,7 @@ curl -X POST http://127.0.0.1:58080/api/shop/register \
   -d '{
     "username": "demo_shop",
     "password": "123456",
-    "shop_name": "端到端测试店铺"
+    "shopName": "端到端测试店铺"
   }'
 ```
 
@@ -107,7 +110,7 @@ curl -X POST http://127.0.0.1:58080/api/shop/register \
 TOKEN=$(curl -s -X POST http://127.0.0.1:58080/api/shop/login \
   -H 'Content-Type: application/json' \
   -d '{"username":"demo_shop","password":"123456"}' \
-  | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
+  | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 
 echo "$TOKEN"
 ```

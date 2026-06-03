@@ -21,9 +21,14 @@ import (
 )
 
 var (
-	errInvalidArgument   = errors.New("invalid argument")
-	errInvalidCredential = errors.New("invalid credential")
-	errShopDuplicated    = errors.New("shop duplicated")
+	errInvalidRegisterArgument = errors.New("注册参数无效：username、password、shopName 不能为空")
+	errInvalidLoginArgument    = errors.New("登录参数无效：username 和 password 不能为空")
+	errInvalidShopID           = errors.New("商铺ID无效，请传入大于0的商铺ID")
+	errInvalidCredential       = errors.New("账号或密码错误")
+	errMissingShopIdentity     = errors.New("未获取到商铺身份，请先登录")
+	errPermissionDenied        = errors.New("无权修改其他商铺信息")
+	errShopDuplicated          = errors.New("商铺账号或商铺名称已存在")
+	errEmptyShopName           = errors.New("商铺名称不能为空")
 )
 
 type ShopGRPCHandler struct {
@@ -52,7 +57,7 @@ func (h *ShopGRPCHandler) RegisterShop(ctx context.Context, req *shopv1.Register
 	phone := strings.TrimSpace(req.GetPhone())
 
 	if username == "" || password == "" || shopName == "" {
-		return nil, toGRPCError(errInvalidArgument)
+		return nil, toGRPCError(errInvalidRegisterArgument)
 	}
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -85,7 +90,7 @@ func (h *ShopGRPCHandler) LoginShop(ctx context.Context, req *shopv1.LoginShopRe
 	username := strings.TrimSpace(req.GetUsername())
 	password := req.GetPassword()
 	if username == "" || password == "" {
-		return nil, toGRPCError(errInvalidArgument)
+		return nil, toGRPCError(errInvalidLoginArgument)
 	}
 
 	shop, err := h.shops.FindByUsername(ctx, username)
@@ -115,9 +120,13 @@ func (h *ShopGRPCHandler) LoginShop(ctx context.Context, req *shopv1.LoginShopRe
 }
 
 func (h *ShopGRPCHandler) GetShop(ctx context.Context, req *shopv1.GetShopRequest) (*shopv1.GetShopResponse, error) {
-	shopID, err := currentShopID(ctx)
-	if err != nil {
-		return nil, toGRPCError(err)
+	shopID := req.GetId()
+	if shopID <= 0 {
+		var err error
+		shopID, err = currentShopID(ctx)
+		if err != nil {
+			return nil, toGRPCError(err)
+		}
 	}
 	shop, err := h.shops.FindByID(ctx, shopID)
 	if err != nil {
@@ -127,9 +136,16 @@ func (h *ShopGRPCHandler) GetShop(ctx context.Context, req *shopv1.GetShopReques
 }
 
 func (h *ShopGRPCHandler) UpdateShop(ctx context.Context, req *shopv1.UpdateShopRequest) (*shopv1.UpdateShopResponse, error) {
-	shopID, err := currentShopID(ctx)
+	shopID := req.GetId()
+	if shopID <= 0 {
+		return nil, toGRPCError(errInvalidShopID)
+	}
+	currentID, err := currentShopID(ctx)
 	if err != nil {
 		return nil, toGRPCError(err)
+	}
+	if shopID != currentID {
+		return nil, toGRPCError(errPermissionDenied)
 	}
 	shop, err := h.shops.FindByID(ctx, shopID)
 	if err != nil {
@@ -139,7 +155,7 @@ func (h *ShopGRPCHandler) UpdateShop(ctx context.Context, req *shopv1.UpdateShop
 	if req.ShopName != nil {
 		value := strings.TrimSpace(*req.ShopName)
 		if value == "" {
-			return nil, toGRPCError(errInvalidArgument)
+			return nil, toGRPCError(errEmptyShopName)
 		}
 		shop.ShopName = value
 	}
@@ -166,11 +182,14 @@ func (h *ShopGRPCHandler) UpdateShop(ctx context.Context, req *shopv1.UpdateShop
 }
 
 func currentShopID(ctx context.Context) (int64, error) {
-	shopID, ok := identity.ShopID(ctx)
-	if !ok {
-		return 0, errInvalidCredential
+	if shopID, ok := identity.ShopID(ctx); ok {
+		return shopID, nil
 	}
-	return shopID, nil
+	principal, ok := identity.FromIncomingContext(ctx)
+	if ok && principal.Kind == identity.KindShop {
+		return principal.ID, nil
+	}
+	return 0, errMissingShopIdentity
 }
 
 func (h *ShopGRPCHandler) recordLogin(ctx context.Context, shopID int64, loginIP string, userAgent string, result int8) error {
@@ -218,15 +237,22 @@ func toProtoShop(shop *model.Shop) *shopv1.Shop {
 
 func toGRPCError(err error) error {
 	switch {
-	case errors.Is(err, errInvalidArgument):
+	case errors.Is(err, errInvalidRegisterArgument),
+		errors.Is(err, errInvalidLoginArgument),
+		errors.Is(err, errInvalidShopID),
+		errors.Is(err, errEmptyShopName):
 		return status.Error(codes.InvalidArgument, err.Error())
 	case errors.Is(err, errInvalidCredential):
 		return status.Error(codes.Unauthenticated, err.Error())
+	case errors.Is(err, errMissingShopIdentity):
+		return status.Error(codes.Unauthenticated, err.Error())
+	case errors.Is(err, errPermissionDenied):
+		return status.Error(codes.PermissionDenied, err.Error())
 	case errors.Is(err, repository.ErrShopNotFound):
 		return status.Error(codes.NotFound, err.Error())
 	case errors.Is(err, errShopDuplicated):
 		return status.Error(codes.AlreadyExists, err.Error())
 	default:
-		return status.Error(codes.Internal, "internal error")
+		return status.Error(codes.Internal, "商铺服务内部错误，请稍后重试")
 	}
 }

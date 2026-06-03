@@ -35,6 +35,10 @@ func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, goodsHandler
 	merchant := api.Group("")
 	merchant.Use(middleware.RequireShopAuth(shopJWTManager))
 
+	merchantShop := merchant.Group("/shop")
+	merchantShop.GET("/me", shopHandler.GetCurrent)
+	merchantShop.PUT("/:id", shopHandler.Update)
+
 	merchantGoods := merchant.Group("/goods")
 	merchantGoods.POST("/cover/upload", goodsHandler.UploadCover)
 	merchantGoods.GET("/shop/list", goodsHandler.ListShopGoods)
