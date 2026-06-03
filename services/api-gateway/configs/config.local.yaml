@@ -15,6 +15,15 @@ liveService:
 auctionService:
   addr: "127.0.0.1:9003"
 
+storage:
+  endpoint: "http://127.0.0.1:9000"
+  publicBaseUrl: "http://127.0.0.1:9000/livebid"
+  bucket: "livebid"
+  region: "us-east-1"
+  accessKeyId: "rustfsadmin"
+  secretAccessKey: "rustfsadmin"
+  pathStyle: true
+
 jwt:
   secret: "local-dev-jwt-secret-change-me"
   shopIssuer: "livebid-shop"

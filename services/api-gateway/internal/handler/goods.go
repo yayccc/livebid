@@ -2,19 +2,12 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	goodsv1 "github.com/yayccc/livebid/gen/proto/goods/v1"
 	"google.golang.org/grpc"
-)
-
-const (
-	maxCoverFileSize = 10 << 20
 )
 
 type GoodsHandler struct {
@@ -73,10 +66,6 @@ type goodsListResponse struct {
 	Page     int32           `json:"page"`
 	PageSize int32           `json:"page_size"`
 	List     []goodsResponse `json:"list"`
-}
-
-type uploadGoodsCoverResponse struct {
-	CoverURL string `json:"cover_url"`
 }
 
 func (h *GoodsHandler) Create(c *gin.Context) {
@@ -306,27 +295,6 @@ func (h *GoodsHandler) PutOffSale(c *gin.Context) {
 	respondOK(c, gin.H{})
 }
 
-func (h *GoodsHandler) UploadCover(c *gin.Context) {
-	file, err := c.FormFile("file")
-	if err != nil {
-		recordRequestError(c, err)
-		respondError(c, http.StatusBadRequest, "file is required")
-		return
-	}
-	if file.Size > maxCoverFileSize {
-		respondError(c, http.StatusBadRequest, "file too large")
-		return
-	}
-
-	shopID, ok := currentShopID(c)
-	if !ok {
-		return
-	}
-	respondOK(c, uploadGoodsCoverResponse{
-		CoverURL: fakeCoverURL(shopID, file.Filename),
-	})
-}
-
 func listGoodsRequest(c *gin.Context) (*goodsv1.ListGoodsRequest, bool) {
 	page, ok := parseOptionalInt32Query(c, "page")
 	if !ok {
@@ -380,12 +348,4 @@ func toGoodsResponseList(list []*goodsv1.Goods) []goodsResponse {
 		result = append(result, toGoodsResponse(goods))
 	}
 	return result
-}
-
-func fakeCoverURL(shopID int64, filename string) string {
-	ext := strings.ToLower(filepath.Ext(filename))
-	if ext == "" {
-		ext = ".jpg"
-	}
-	return fmt.Sprintf("https://static.livebid.local/goods/cover/%d/%d%s", shopID, time.Now().UnixNano(), ext)
 }

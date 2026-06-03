@@ -3,11 +3,8 @@ package handler
 import (
 	"bytes"
 	"context"
-	"encoding/json"
-	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -128,67 +125,6 @@ func TestGoodsHandlerBatchGetForwardsIDs(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
 	}
-}
-
-func TestGoodsHandlerUploadCoverReturnsFakeURL(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	handler := NewGoodsHandler(mockGoodsClient{}, time.Second)
-	body, contentType := multipartFileBody(t, "file", "cover.JPG", []byte("fake image"))
-	w := performRequestWithContentTypeAndShopID(handler.UploadCover, http.MethodPost, "/api/goods/cover/upload", body, contentType, 1001)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
-	}
-
-	var resp struct {
-		Code int `json:"code"`
-		Data struct {
-			CoverURL string `json:"cover_url"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("unmarshal response: %v", err)
-	}
-	if resp.Code != 0 {
-		t.Fatalf("unexpected code: %d", resp.Code)
-	}
-	if !strings.HasPrefix(resp.Data.CoverURL, "https://static.livebid.local/goods/cover/1001/") {
-		t.Fatalf("unexpected cover url: %s", resp.Data.CoverURL)
-	}
-	if !strings.HasSuffix(resp.Data.CoverURL, ".jpg") {
-		t.Fatalf("expected lower-case extension, got %s", resp.Data.CoverURL)
-	}
-}
-
-func TestGoodsHandlerUploadCoverRequiresFile(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	handler := NewGoodsHandler(mockGoodsClient{}, time.Second)
-	body, contentType := multipartBody(t, map[string]string{"name": "cover"})
-	w := performRequestWithContentType(handler.UploadCover, http.MethodPost, "/api/goods/cover/upload", body, contentType)
-
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected status 400, got %d: %s", w.Code, w.Body.String())
-	}
-}
-
-func multipartFileBody(t *testing.T, fieldName string, filename string, content []byte) (*bytes.Buffer, string) {
-	t.Helper()
-
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-	part, err := writer.CreateFormFile(fieldName, filename)
-	if err != nil {
-		t.Fatalf("create form file: %v", err)
-	}
-	if _, err := part.Write(content); err != nil {
-		t.Fatalf("write form file: %v", err)
-	}
-	if err := writer.Close(); err != nil {
-		t.Fatalf("close multipart writer: %v", err)
-	}
-	return body, writer.FormDataContentType()
 }
 
 func testGoods() *goodsv1.Goods {

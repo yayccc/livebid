@@ -56,6 +56,13 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	}
 	goodsClient := client.NewGoodsServiceClient(goodsConn)
 	goodsHandler := handler.NewGoodsHandler(goodsClient, cfg.RPCTimeout())
+	fileStorage, err := handler.NewS3ObjectStorage(ctx, cfg.Storage)
+	if err != nil {
+		_ = shopConn.Close()
+		_ = goodsConn.Close()
+		return nil, err
+	}
+	fileHandler := handler.NewFileHandler(fileStorage)
 
 	liveConn, err := client.NewLiveServiceConn(cfg.LiveService.Addr)
 	if err != nil {
@@ -82,7 +89,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	}
 	engine := gin.New()
 	engine.Use(logger.GinRecovery(log), logger.GinMiddleware(log))
-	router.Register(engine, shopHandler, goodsHandler, liveHandler, auctionHandler, shopJWTManager, userJWTManager)
+	router.Register(engine, shopHandler, goodsHandler, fileHandler, liveHandler, auctionHandler, shopJWTManager, userJWTManager)
 
 	server := &http.Server{
 		Addr:              cfg.HTTP.Addr,

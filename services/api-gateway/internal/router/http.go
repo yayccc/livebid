@@ -10,7 +10,7 @@ import (
 )
 
 // 路由注册函数，预留了JWTManager参数以支持未来用户认证的扩展
-func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, goodsHandler *handler.GoodsHandler, liveHandler *handler.LiveHandler, auctionHandler *handler.AuctionHandler, shopJWTManager *auth.JWTManager, _ *auth.JWTManager) {
+func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, goodsHandler *handler.GoodsHandler, fileHandler *handler.FileHandler, liveHandler *handler.LiveHandler, auctionHandler *handler.AuctionHandler, shopJWTManager *auth.JWTManager, _ *auth.JWTManager) {
 	engine.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    0,
@@ -31,6 +31,9 @@ func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, goodsHandler
 	goods.GET("", goodsHandler.List)
 	goods.GET("/:id", goodsHandler.Get)
 
+	files := api.Group("/files")
+	files.POST("/upload", fileHandler.Upload)
+
 	// 需要商户认证的接口，使用RequireShopAuth中间件进行保护
 	merchant := api.Group("")
 	merchant.Use(middleware.RequireShopAuth(shopJWTManager))
@@ -40,7 +43,6 @@ func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, goodsHandler
 	merchantShop.PUT("/:id", shopHandler.Update)
 
 	merchantGoods := merchant.Group("/goods")
-	merchantGoods.POST("/cover/upload", goodsHandler.UploadCover)
 	merchantGoods.GET("/shop/list", goodsHandler.ListShopGoods)
 	merchantGoods.POST("", goodsHandler.Create)
 	merchantGoods.PUT("/:id", goodsHandler.Update)

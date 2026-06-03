@@ -19,6 +19,7 @@ type Config struct {
 	GoodsService   ServiceConfig `yaml:"goodsService"`
 	LiveService    ServiceConfig `yaml:"liveService"`
 	AuctionService ServiceConfig `yaml:"auctionService"`
+	Storage        StorageConfig `yaml:"storage"`
 	JWT            JWTConfig     `yaml:"jwt"`
 	RPC            RPCConfig     `yaml:"rpc"`
 	Log            logger.Config `yaml:"log"`
@@ -30,6 +31,16 @@ type HTTPConfig struct {
 
 type ServiceConfig struct {
 	Addr string `yaml:"addr"`
+}
+
+type StorageConfig struct {
+	Endpoint        string `yaml:"endpoint"`
+	PublicBaseURL   string `yaml:"publicBaseUrl"`
+	Bucket          string `yaml:"bucket"`
+	Region          string `yaml:"region"`
+	AccessKeyID     string `yaml:"accessKeyId"`
+	SecretAccessKey string `yaml:"secretAccessKey"`
+	PathStyle       bool   `yaml:"pathStyle"`
 }
 
 type JWTConfig struct {
@@ -80,6 +91,15 @@ func defaultConfig() Config {
 		AuctionService: ServiceConfig{
 			Addr: "127.0.0.1:9003",
 		},
+		Storage: StorageConfig{
+			Endpoint:        "http://127.0.0.1:9000",
+			PublicBaseURL:   "http://127.0.0.1:9000/livebid",
+			Bucket:          "livebid",
+			Region:          "us-east-1",
+			AccessKeyID:     "rustfsadmin",
+			SecretAccessKey: "rustfsadmin",
+			PathStyle:       true,
+		},
 		JWT: JWTConfig{
 			Secret:                "local-dev-jwt-secret-change-me",
 			ShopIssuer:            "livebid-shop",
@@ -127,6 +147,25 @@ func applyEnvOverrides(cfg *Config) {
 	if value := os.Getenv("API_GATEWAY_AUCTION_SERVICE_ADDR"); value != "" {
 		cfg.AuctionService.Addr = value
 	}
+	if value := os.Getenv("API_GATEWAY_STORAGE_ENDPOINT"); value != "" {
+		cfg.Storage.Endpoint = value
+	}
+	if value := os.Getenv("API_GATEWAY_STORAGE_PUBLIC_BASE_URL"); value != "" {
+		cfg.Storage.PublicBaseURL = value
+	}
+	if value := os.Getenv("API_GATEWAY_STORAGE_BUCKET"); value != "" {
+		cfg.Storage.Bucket = value
+	}
+	if value := os.Getenv("API_GATEWAY_STORAGE_REGION"); value != "" {
+		cfg.Storage.Region = value
+	}
+	if value := os.Getenv("API_GATEWAY_STORAGE_ACCESS_KEY_ID"); value != "" {
+		cfg.Storage.AccessKeyID = value
+	}
+	if value := os.Getenv("API_GATEWAY_STORAGE_SECRET_ACCESS_KEY"); value != "" {
+		cfg.Storage.SecretAccessKey = value
+	}
+	setBoolEnv("API_GATEWAY_STORAGE_PATH_STYLE", &cfg.Storage.PathStyle)
 	if value := os.Getenv("API_GATEWAY_JWT_SECRET"); value != "" {
 		cfg.JWT.Secret = value
 	}
@@ -191,6 +230,24 @@ func normalize(cfg *Config) {
 	if cfg.AuctionService.Addr == "" {
 		cfg.AuctionService.Addr = "127.0.0.1:9003"
 	}
+	if cfg.Storage.Endpoint == "" {
+		cfg.Storage.Endpoint = "http://127.0.0.1:9000"
+	}
+	if cfg.Storage.PublicBaseURL == "" {
+		cfg.Storage.PublicBaseURL = "http://127.0.0.1:9000/livebid"
+	}
+	if cfg.Storage.Bucket == "" {
+		cfg.Storage.Bucket = "livebid"
+	}
+	if cfg.Storage.Region == "" {
+		cfg.Storage.Region = "us-east-1"
+	}
+	if cfg.Storage.AccessKeyID == "" {
+		cfg.Storage.AccessKeyID = "rustfsadmin"
+	}
+	if cfg.Storage.SecretAccessKey == "" {
+		cfg.Storage.SecretAccessKey = "rustfsadmin"
+	}
 	if cfg.JWT.ShopIssuer == "" {
 		cfg.JWT.ShopIssuer = "livebid-shop"
 	}
@@ -223,6 +280,17 @@ func setIntEnv(key string, target *int) {
 		return
 	}
 	parsed, err := strconv.Atoi(value)
+	if err == nil {
+		*target = parsed
+	}
+}
+
+func setBoolEnv(key string, target *bool) {
+	value := os.Getenv(key)
+	if value == "" {
+		return
+	}
+	parsed, err := strconv.ParseBool(value)
 	if err == nil {
 		*target = parsed
 	}

@@ -12,7 +12,7 @@
 | 商铺信息 | GET | `/api/shop/:id` | 转发到 `shop-service.GetShop` |
 | 当前商铺信息 | GET | `/api/shop/me` | 需要商家 JWT，通过 gRPC metadata 透传身份到 `shop-service.GetShop` |
 | 更新商铺信息 | PUT | `/api/shop/:id` | 需要商家 JWT，通过 gRPC metadata 透传身份到 `shop-service.UpdateShop` 并校验只能更新当前商铺 |
-| 商品封面上传 | POST | `/api/goods/cover/upload` | 接收 multipart `file`，当前仅返回假 URL，不进行图片存储 |
+| 文件上传 | POST | `/api/files/upload` | 接收 multipart `file`，通过 S3 协议上传到 RustFS 对象存储 |
 | 创建商品 | POST | `/api/goods` | 转发到 `goods-service.CreateGoods` |
 | 编辑商品 | PUT | `/api/goods/:id` | 转发到 `goods-service.UpdateGoods` |
 | 删除商品 | DELETE | `/api/goods/:id` | 转发到 `goods-service.DeleteGoods` |
@@ -31,11 +31,11 @@
 | SRS 推流回调 | POST | `/api/srs/callbacks/publish` | 转发到 `live-service.HandleSRSPublishCallback` |
 | SRS 断流回调 | POST | `/api/srs/callbacks/unpublish` | 转发到 `live-service.HandleSRSUnpublishCallback` |
 
-## 商品封面上传说明
+## 文件上传说明
 
-当前 `/api/goods/cover/upload` 是占位实现：只校验请求中存在 `file` 且大小不超过 10MiB，然后返回形如 `https://static.livebid.local/goods/cover/{shop_id}/{timestamp}.jpg` 的假 URL。
+`/api/files/upload` 不需要登录认证；接口会校验请求中存在 multipart `file` 且大小不超过 10MiB，然后通过 AWS SDK for Go v2 的 S3 client 将对象写入 RustFS。
 
-`shop_id` 由商家端 JWT 鉴权中间件注入，请求必须携带 `Authorization: Bearer <token>`。
+返回的 `url` 可作为商品封面、直播封面等业务字段保存，`object_key` 是 RustFS 中的对象 key。
 
 ## 商品接口说明
 
@@ -172,6 +172,13 @@ services/api-gateway/configs/config.local.yaml
 | `API_GATEWAY_SHOP_SERVICE_ADDR` | `shop-service` gRPC 地址 |
 | `API_GATEWAY_GOODS_SERVICE_ADDR` | `goods-service` gRPC 地址 |
 | `API_GATEWAY_LIVE_SERVICE_ADDR` | `live-service` gRPC 地址 |
+| `API_GATEWAY_STORAGE_ENDPOINT` | RustFS S3 endpoint，例如 `http://127.0.0.1:9000` |
+| `API_GATEWAY_STORAGE_PUBLIC_BASE_URL` | 对象公开访问基准地址，例如 `http://127.0.0.1:9000/livebid` |
+| `API_GATEWAY_STORAGE_BUCKET` | RustFS bucket 名称 |
+| `API_GATEWAY_STORAGE_REGION` | S3 签名 region，RustFS 本地默认可使用 `us-east-1` |
+| `API_GATEWAY_STORAGE_ACCESS_KEY_ID` | RustFS access key |
+| `API_GATEWAY_STORAGE_SECRET_ACCESS_KEY` | RustFS secret key |
+| `API_GATEWAY_STORAGE_PATH_STYLE` | 是否使用 path-style endpoint，本地 RustFS 默认 `true` |
 | `API_GATEWAY_JWT_SECRET` | JWT HS256 签名密钥 |
 | `API_GATEWAY_JWT_SHOP_ISSUER` | 商家端 JWT 签发方 |
 | `API_GATEWAY_JWT_USER_ISSUER` | 用户端 JWT 签发方 |
