@@ -5,12 +5,15 @@ http:
 
 shopService:
   addr: "127.0.0.1:9001"
+  target: "127.0.0.1:9001"
 
 goodsService:
   addr: "127.0.0.1:9002"
+  target: "127.0.0.1:9002"
 
 liveService:
   addr: "127.0.0.1:9007"
+  target: "127.0.0.1:9007"
 
 jwt:
   secret: "local-dev-jwt-secret-change-me"
@@ -29,3 +32,15 @@ log:
   errorOutputs:
     - stderr
   development: true
+
+nacos:
+  enabled: true
+  servers:
+    - host: "127.0.0.1"
+      port: 8848
+  namespaceId: "livebid-local"
+
+configCenter:
+  enabled: false
+  dataId: "livebid.local.api-gateway.yaml"
+  group: "LIVEBID"

@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/yayccc/livebid/pkg/auth"
 	"github.com/yayccc/livebid/pkg/logger"
+	"github.com/yayccc/livebid/pkg/nacosx"
 	"github.com/yayccc/livebid/services/api-gateway/internal/client"
 	"github.com/yayccc/livebid/services/api-gateway/internal/config"
 	"github.com/yayccc/livebid/services/api-gateway/internal/handler"
@@ -40,15 +41,20 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	namingClient, err := nacosx.NewNamingClient(cfg.Nacos)
+	if err != nil {
+		return nil, err
+	}
+	nacosx.SetDefaultNamingClient(namingClient)
 
-	shopConn, err := client.NewShopServiceConn(cfg.ShopService.Addr)
+	shopConn, err := client.NewShopServiceConn(cfg.ShopService.Target)
 	if err != nil {
 		return nil, err
 	}
 	shopClient := client.NewShopServiceClient(shopConn)
 	shopHandler := handler.NewShopHandler(shopClient, shopJWTManager, cfg.AccessTokenTTL(), cfg.RPCTimeout())
 
-	goodsConn, err := client.NewGoodsServiceConn(cfg.GoodsService.Addr)
+	goodsConn, err := client.NewGoodsServiceConn(cfg.GoodsService.Target)
 	if err != nil {
 		_ = shopConn.Close()
 		return nil, err
@@ -56,7 +62,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	goodsClient := client.NewGoodsServiceClient(goodsConn)
 	goodsHandler := handler.NewGoodsHandler(goodsClient, cfg.RPCTimeout())
 
-	liveConn, err := client.NewLiveServiceConn(cfg.LiveService.Addr)
+	liveConn, err := client.NewLiveServiceConn(cfg.LiveService.Target)
 	if err != nil {
 		_ = shopConn.Close()
 		return nil, err

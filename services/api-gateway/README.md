@@ -166,13 +166,18 @@ services/api-gateway/configs/config.local.yaml
 | 环境变量 | 说明 |
 | --- | --- |
 | `API_GATEWAY_HTTP_ADDR` | 网关 HTTP 监听地址 |
-| `API_GATEWAY_SHOP_SERVICE_ADDR` | `shop-service` gRPC 地址 |
-| `API_GATEWAY_GOODS_SERVICE_ADDR` | `goods-service` gRPC 地址 |
-| `API_GATEWAY_LIVE_SERVICE_ADDR` | `live-service` gRPC 地址 |
+| `API_GATEWAY_SHOP_SERVICE_TARGET` | `shop-service` gRPC target，例如 `127.0.0.1:9001` 或 `nacos:///shop-service` |
+| `API_GATEWAY_GOODS_SERVICE_TARGET` | `goods-service` gRPC target，例如 `127.0.0.1:9002` 或 `nacos:///goods-service` |
+| `API_GATEWAY_LIVE_SERVICE_TARGET` | `live-service` gRPC target，例如 `127.0.0.1:9007` 或 `nacos:///live-service` |
+| `API_GATEWAY_SHOP_SERVICE_ADDR` | 兼容旧配置，未设置 target 时作为 target 兜底 |
+| `API_GATEWAY_GOODS_SERVICE_ADDR` | 兼容旧配置，未设置 target 时作为 target 兜底 |
+| `API_GATEWAY_LIVE_SERVICE_ADDR` | 兼容旧配置，未设置 target 时作为 target 兜底 |
 | `API_GATEWAY_JWT_SECRET` | JWT HS256 签名密钥 |
 | `API_GATEWAY_JWT_SHOP_ISSUER` | 商家端 JWT 签发方 |
 | `API_GATEWAY_JWT_USER_ISSUER` | 用户端 JWT 签发方 |
 | `API_GATEWAY_JWT_ACCESS_TOKEN_TTL_SECONDS` | access token 有效期 |
 | `API_GATEWAY_RPC_TIMEOUT_SECONDS` | 调用底层 gRPC 服务超时时间 |
+| `API_GATEWAY_NACOS_ENABLED` | 是否初始化 Nacos client |
+| `API_GATEWAY_CONFIG_CENTER_ENABLED` | 是否从 Nacos 配置中心拉取配置 |
 
 本地配置中的 JWT secret 只是开发示例值，生产环境必须通过环境变量或部署系统注入。

@@ -23,3 +23,31 @@ log:
   errorOutputs:
     - stderr
   development: true
+
+nacos:
+  enabled: true
+  servers:
+    - host: "127.0.0.1"
+      port: 8848
+  namespaceId: "livebid-local"
+
+configCenter:
+  enabled: false
+  dataId: "livebid.local.live-service.yaml"
+  group: "LIVEBID"
+
+registry:
+  enabled: true
+  provider: "nacos"
+  serviceName: "live-service"
+  group: "LIVEBID"
+  cluster: "default"
+  ip: ""
+  port: 0
+  weight: 1
+
+healthCheck:
+  enabled: true
+  intervalSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 3
