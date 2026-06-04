@@ -13,11 +13,11 @@ import (
 	"google.golang.org/grpc/resolver"
 )
 
-const Scheme = "nacos"
+const Scheme = "nacosx"
 
 // globalResolver 在包初始化时注册到 gRPC，全进程共享同一个 Nacos resolver。
 // 业务启动时通过 SetDefaultNamingClient 注入 Nacos naming client，之后
-// grpc.NewClient("nacos:///goods-service") 才能解析到具体实例地址。
+// grpc.NewClient("nacosx:///goods-service") 才能解析到具体实例地址。
 var globalResolver = &resolverBuilder{
 	group:   DefaultGroup,
 	cluster: DefaultCluster,
@@ -70,8 +70,8 @@ func (b *resolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, 
 	if value := target.URL.Query().Get("cluster"); value != "" {
 		cluster = value
 	}
-	// nacos:///goods-service 的 Endpoint() 结果是 goods-service。
-	// 也支持 nacos:///goods-service?group=LIVEBID&cluster=default 覆盖默认分组。
+	// nacosx:///goods-service 的 Endpoint() 结果是 goods-service。
+	// 也支持 nacosx:///goods-service?group=LIVEBID&cluster=default 覆盖默认分组。
 	serviceName := target.Endpoint()
 	if serviceName == "" {
 		return nil, fmt.Errorf("nacos target requires service name")

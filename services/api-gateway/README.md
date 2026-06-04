@@ -190,10 +190,10 @@ services/api-gateway/configs/config.local.yaml
 | 环境变量 | 说明 |
 | --- | --- |
 | `API_GATEWAY_HTTP_ADDR` | 网关 HTTP 监听地址 |
-| `API_GATEWAY_SHOP_SERVICE_TARGET` | `shop-service` gRPC target，例如 `127.0.0.1:9001` 或 `nacos:///shop-service` |
-| `API_GATEWAY_USER_SERVICE_TARGET` | `user-service` gRPC target，例如 `127.0.0.1:9004` 或 `nacos:///user-service` |
-| `API_GATEWAY_GOODS_SERVICE_TARGET` | `goods-service` gRPC target，例如 `127.0.0.1:9002` 或 `nacos:///goods-service` |
-| `API_GATEWAY_LIVE_SERVICE_TARGET` | `live-service` gRPC target，例如 `127.0.0.1:9007` 或 `nacos:///live-service` |
+| `API_GATEWAY_SHOP_SERVICE_TARGET` | `shop-service` gRPC target，例如 `127.0.0.1:9001` 或 `nacosx:///shop-service` |
+| `API_GATEWAY_USER_SERVICE_TARGET` | `user-service` gRPC target，例如 `127.0.0.1:9004` 或 `nacosx:///user-service` |
+| `API_GATEWAY_GOODS_SERVICE_TARGET` | `goods-service` gRPC target，例如 `127.0.0.1:9002` 或 `nacosx:///goods-service` |
+| `API_GATEWAY_LIVE_SERVICE_TARGET` | `live-service` gRPC target，例如 `127.0.0.1:9007` 或 `nacosx:///live-service` |
 | `API_GATEWAY_SHOP_SERVICE_ADDR` | 兼容旧配置，未设置 target 时作为 target 兜底 |
 | `API_GATEWAY_USER_SERVICE_ADDR` | 兼容旧配置，未设置 target 时作为 target 兜底 |
 | `API_GATEWAY_GOODS_SERVICE_ADDR` | 兼容旧配置，未设置 target 时作为 target 兜底 |

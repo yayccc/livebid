@@ -105,7 +105,8 @@ func defaultConfig() Config {
 			Target: "127.0.0.1:9007",
 		},
 		AuctionService: ServiceConfig{
-			Addr: "127.0.0.1:9003",
+			Addr:   "127.0.0.1:9003",
+			Target: "127.0.0.1:9003",
 		},
 		Storage: StorageConfig{
 			Endpoint:        "http://127.0.0.1:9000",
@@ -179,6 +180,9 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if value := os.Getenv("API_GATEWAY_AUCTION_SERVICE_ADDR"); value != "" {
 		cfg.AuctionService.Addr = value
+	}
+	if value := os.Getenv("API_GATEWAY_AUCTION_SERVICE_TARGET"); value != "" {
+		cfg.AuctionService.Target = value
 	}
 	if value := os.Getenv("API_GATEWAY_STORAGE_ENDPOINT"); value != "" {
 		cfg.Storage.Endpoint = value
@@ -287,6 +291,11 @@ func normalize(cfg *Config) {
 	}
 	if cfg.AuctionService.Addr == "" {
 		cfg.AuctionService.Addr = "127.0.0.1:9003"
+	}
+	if cfg.AuctionService.Target == "" {
+		cfg.AuctionService.Target = cfg.AuctionService.Addr
+	} else if cfg.AuctionService.Addr == "" {
+		cfg.AuctionService.Addr = cfg.AuctionService.Target
 	}
 	if cfg.Storage.Endpoint == "" {
 		cfg.Storage.Endpoint = "http://127.0.0.1:9000"

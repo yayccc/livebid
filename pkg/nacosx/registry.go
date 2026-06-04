@@ -69,7 +69,7 @@ func RegisterInstance(ctx context.Context, client naming_client.INamingClient, c
 		GroupName:   cfg.Group,
 		Ephemeral:   true,
 	}
-	ok, err := client.RegisterInstance(param)
+	ok, err := registerInstanceWithRetry(ctx, client, param)
 	if err != nil {
 		return nil, err
 	}
@@ -87,6 +87,27 @@ func RegisterInstance(ctx context.Context, client naming_client.INamingClient, c
 	}
 	_ = ctx
 	return &Registration{client: client, param: param, log: log}, nil
+}
+
+func registerInstanceWithRetry(ctx context.Context, client naming_client.INamingClient, param vo.RegisterInstanceParam) (bool, error) {
+	var lastErr error
+	delay := 500 * time.Millisecond
+	for attempt := 0; attempt < 20; attempt++ {
+		ok, err := client.RegisterInstance(param)
+		if err == nil {
+			return ok, nil
+		}
+		lastErr = err
+		select {
+		case <-ctx.Done():
+			return false, ctx.Err()
+		case <-time.After(delay):
+		}
+		if delay < 3*time.Second {
+			delay *= 2
+		}
+	}
+	return false, lastErr
 }
 
 func (r *Registration) StartHealthCheck(ctx context.Context, cfg HealthCheckConfig) {

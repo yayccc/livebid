@@ -47,6 +47,19 @@ nacos:
 <SERVICE_PREFIX>_NACOS_PASSWORD
 ```
 
+Docker Compose 本地联调默认启用 Nacos 认证，各服务默认使用 `nacos` / `nacos` 作为客户端账号密码连接 Nacos。各服务通过自己的前缀注入，例如：
+
+```text
+SHOP_SERVICE_NACOS_USERNAME=nacos
+SHOP_SERVICE_NACOS_PASSWORD=nacos
+API_GATEWAY_NACOS_USERNAME=nacos
+API_GATEWAY_NACOS_PASSWORD=nacos
+```
+
+共享测试环境和生产环境必须替换默认账号密码和 `NACOS_AUTH_TOKEN`。
+
+注意：`<SERVICE_PREFIX>_NACOS_USERNAME` / `<SERVICE_PREFIX>_NACOS_PASSWORD` 只影响服务连接 Nacos 的 SDK 客户端账号，不会初始化 Nacos 服务端管理员密码。首次使用新的 Nacos 数据卷启动时，先访问 `http://localhost:8080` 按控制台提示初始化或确认管理员账号密码，再让 Compose 中的 `NACOS_USERNAME` / `NACOS_PASSWORD` 与该账号保持一致。
+
 按需覆盖项：
 
 ```text

@@ -91,7 +91,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	liveClient := client.NewLiveServiceClient(liveConn)
 	liveHandler := handler.NewLiveHandler(liveClient, cfg.RPCTimeout())
 
-	auctionConn, err := client.NewAuctionServiceConn(cfg.AuctionService.Addr)
+	auctionConn, err := client.NewAuctionServiceConn(cfg.AuctionService.Target)
 	if err != nil {
 		_ = shopConn.Close()
 		_ = userConn.Close()

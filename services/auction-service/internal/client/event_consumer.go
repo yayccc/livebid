@@ -26,10 +26,14 @@ type RocketMQEventConsumer struct {
 }
 
 func NewRocketMQEventConsumer(cfg config.RocketMQConfig, processor *AuctionEventProcessor) (*RocketMQEventConsumer, error) {
+	nameServers, err := resolveNameServers(cfg.NameServers)
+	if err != nil {
+		return nil, err
+	}
 	// 集群模式保证同一消费者组内单条消息只被一个实例处理；业务表版本和主键兜底重复投递。
 	c, err := rocketmq.NewPushConsumer(
 		consumer.WithGroupName(cfg.ConsumerGroup),
-		consumer.WithNsResolver(primitive.NewPassthroughResolver(cfg.NameServers)),
+		consumer.WithNsResolver(primitive.NewPassthroughResolver(nameServers)),
 		consumer.WithConsumerModel(consumer.Clustering),
 		consumer.WithConsumeMessageBatchMaxSize(1),
 		consumer.WithConsumeGoroutineNums(1),

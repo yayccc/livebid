@@ -21,6 +21,7 @@ liveService:
 
 auctionService:
   addr: "127.0.0.1:9003"
+  target: "127.0.0.1:9003"
 
 storage:
   endpoint: "http://127.0.0.1:9000"

@@ -2,7 +2,11 @@
 
 ## 定位
 
-当前阶段优先使用 Docker Compose 启动基础设施。业务服务可以本机裸跑，也可以容器化运行。
+当前阶段优先使用 Docker Compose 启动基础设施。业务服务可以本机裸跑，也可以容器化运行；仓库已提供一份用于端到端联调的完整 Compose 文件：
+
+```text
+deployments/docker-compose.yml
+```
 
 约定：
 
@@ -11,33 +15,65 @@
 - `api-gateway`：HTTP 端口映射到宿主机。
 - Nginx：只在测试多个 `api-gateway` 实例时作为可选 overlay，不作为第一阶段默认依赖。
 
+## 快速启动
+
+从仓库根目录执行：
+
+```bash
+docker compose -f deployments/docker-compose.yml up --build
+```
+
+首次启动会构建 `shop-service`、`user-service`、`goods-service`、`live-service`、`auction-service` 和 `api-gateway` 六个镜像，并启动 MySQL、Redis、Nacos、RocketMQ 与 RustFS。
+
+健康检查：
+
+```bash
+curl http://127.0.0.1:58080/health
+```
+
+端到端接口测试：
+
+```bash
+scripts/e2e-api-gateway.sh
+```
+
+脚本默认请求 `http://127.0.0.1:58080`，会自动注册测试商家和用户，并串起商铺、用户、地址、文件上传、商品、直播、SRS 回调和拍卖接口。若网关端口不同，可通过 `BASE_URL` 覆盖：
+
+```bash
+BASE_URL=http://127.0.0.1:58080 scripts/e2e-api-gateway.sh
+```
+
+停止但保留数据卷：
+
+```bash
+docker compose -f deployments/docker-compose.yml down
+```
+
+停止并清理本地数据：
+
+```bash
+docker compose -f deployments/docker-compose.yml down -v
+```
+
 ## Nacos 单机模式
 
-建议新增 `deployments/docker-compose.nacos.yml`：
+Compose 中内置 Nacos 单机模式，配置为：
 
-```yaml
-services:
-  nacos:
-    image: nacos/nacos-server:v2.4.3
-    environment:
-      MODE: standalone
-      NACOS_AUTH_ENABLE: "false"
-    ports:
-      - "8848:8848"
-      - "9848:9848"
-    volumes:
-      - nacos-data:/home/nacos/data
-
-volumes:
-  nacos-data:
-```
+- `MODE=standalone`
+- `NACOS_AUTH_ENABLE=true`
+- 默认认证 token：`MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=`
+- 服务侧默认使用 `NACOS_USERNAME=nacos`、`NACOS_PASSWORD=nacos` 连接 Nacos。
 
 端口说明：
 
-- `8848`：Nacos 控制台和 OpenAPI。
-- `9848`：Nacos 2.x gRPC 通信端口，Go SDK 访问服务发现时需要可达。
+- `8080`：Nacos 3.x 控制台。
+- `8848`：Nacos OpenAPI。
+- `9848`：Nacos SDK gRPC 通信端口。
+- `9849`：Nacos Raft/内部通信端口。
 
-本地调试可以先关闭鉴权；共享测试环境和生产环境必须开启鉴权。
+Compose 中保留了 `NACOS_AUTH_ENABLE`、`NACOS_AUTH_TOKEN`、`NACOS_AUTH_IDENTITY_KEY`、`NACOS_AUTH_IDENTITY_VALUE`、`NACOS_USERNAME`、`NACOS_PASSWORD` 覆盖项，便于和本机已有 Nacos 脚本保持一致。共享测试环境和生产环境必须替换默认认证信息。
+
+注意：`NACOS_USERNAME` / `NACOS_PASSWORD` 是业务服务连接 Nacos 时使用的客户端账号密码，不负责初始化 Nacos 服务端管理员密码。首次使用新的 `nacos-data` volume 启动且开启认证时，先打开 `http://localhost:8080` 按 Nacos 控制台提示初始化或确认管理员账号密码；之后保持 Compose 中的 `NACOS_USERNAME` / `NACOS_PASSWORD` 与该账号一致。
 
 ## 业务服务容器端口
 
@@ -48,10 +84,16 @@ services:
   goods-service:
     build:
       context: ..
-      dockerfile: services/goods-service/Dockerfile
+      dockerfile: Dockerfile
+      args:
+        SERVICE: goods-service
     environment:
       GOODS_SERVICE_GRPC_ADDR: ":9000"
       GOODS_SERVICE_NACOS_SERVERS: "nacos:8848"
+      GOODS_SERVICE_NACOS_USERNAME: "nacos"
+      GOODS_SERVICE_NACOS_PASSWORD: "nacos"
+      GOODS_SERVICE_REGISTRY_ENABLED: "true"
+      GOODS_SERVICE_REGISTRY_PORT: "9000"
     expose:
       - "9000"
     depends_on:
@@ -63,4 +105,34 @@ services:
 - `expose` 只声明容器网络内可访问端口，不占用宿主机端口。
 - 多个业务服务都可以监听容器内 `:9000`，因为每个容器都有独立 IP。
 - `api-gateway` 的 HTTP 端口需要映射到宿主机，例如 `58080:58080`。
-- Compose 阶段统一通过 Nacos 做服务发现，调用方 target 使用 `nacos:///<service-name>`。
+- Compose 阶段统一通过 Nacos 做服务发现，调用方 target 使用 `nacosx:///<service-name>`。
+
+## 配置策略
+
+本地 Compose 阶段不启用 Nacos 配置中心，只用环境变量覆盖本地默认配置：
+
+- MySQL DSN 使用 `mysql:3306`。
+- Redis 地址使用 `redis:6379`。
+- Nacos 地址使用 `nacos:8848`。
+- Nacos 客户端账号默认使用 `nacos` / `nacos`，服务侧通过各自的 `<SERVICE_PREFIX>_NACOS_USERNAME` 和 `<SERVICE_PREFIX>_NACOS_PASSWORD` 注入。
+- RocketMQ nameserver 使用 `rocketmq-namesrv:9876`。
+- api-gateway 下游 target 使用 `nacosx:///shop-service`、`nacosx:///user-service` 等。
+- RustFS S3 endpoint 使用容器内地址 `http://rustfs:9000`，对外返回 URL 使用宿主机地址 `http://127.0.0.1:9000/livebid`。
+
+## 对外端口
+
+| 组件 | 宿主机端口 | 说明 |
+| --- | --- | --- |
+| api-gateway | `58080` | 对外 HTTP 入口 |
+| MySQL | `3306` | 本地调试数据库 |
+| Redis | `6379` | 本地调试缓存 |
+| Nacos | `8080` / `8848` / `9848` / `9849` | 控制台、OpenAPI、SDK gRPC 与内部通信 |
+| RocketMQ | `9876` / `10909` / `10911` | nameserver 与 broker |
+| RustFS | `9000` / `9001` | S3 API 与控制台 |
+
+## 注意事项
+
+- 业务服务镜像共用根目录 `Dockerfile`，通过 build arg `SERVICE` 选择要构建的服务。
+- `api-gateway` 依赖 Nacos resolver，业务服务注册完成前短时间请求可能返回下游不可用；等待几秒或查看容器日志即可。
+- 当前 `auction-service` 启动依赖 RocketMQ broker，若本机资源较紧张，RocketMQ 启动可能需要更长时间。
+- 如果本机已经运行 MySQL、Nacos、Redis、RocketMQ 或 RustFS，启动前需要先释放对应宿主机端口，或在 `deployments/docker-compose.yml` 中调整端口映射。

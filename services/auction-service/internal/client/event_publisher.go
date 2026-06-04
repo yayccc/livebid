@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"time"
 
 	rocketmq "github.com/apache/rocketmq-client-go/v2"
@@ -44,8 +45,12 @@ type RocketMQEventPublisher struct {
 }
 
 func NewRocketMQEventPublisher(cfg config.RocketMQConfig) (*RocketMQEventPublisher, error) {
+	nameServers, err := resolveNameServers(cfg.NameServers)
+	if err != nil {
+		return nil, err
+	}
 	p, err := rocketmq.NewProducer(
-		producer.WithNameServer(cfg.NameServers),
+		producer.WithNameServer(nameServers),
 		producer.WithGroupName(cfg.ProducerGroup),
 		producer.WithQueueSelector(producer.NewHashQueueSelector()),
 	)
@@ -56,6 +61,29 @@ func NewRocketMQEventPublisher(cfg config.RocketMQConfig) (*RocketMQEventPublish
 		return nil, err
 	}
 	return &RocketMQEventPublisher{producer: p, topic: cfg.Topic}, nil
+}
+
+func resolveNameServers(addrs []string) ([]string, error) {
+	resolved := make([]string, 0, len(addrs))
+	for _, addr := range addrs {
+		host, port, err := net.SplitHostPort(addr)
+		if err != nil {
+			return nil, err
+		}
+		if net.ParseIP(host) != nil {
+			resolved = append(resolved, addr)
+			continue
+		}
+		ips, err := net.LookupIP(host)
+		if err != nil {
+			return nil, err
+		}
+		if len(ips) == 0 {
+			return nil, fmt.Errorf("resolve rocketmq nameserver %q: no ip found", host)
+		}
+		resolved = append(resolved, net.JoinHostPort(ips[0].String(), port))
+	}
+	return resolved, nil
 }
 
 func (p *RocketMQEventPublisher) Publish(ctx context.Context, event AuctionEvent) error {

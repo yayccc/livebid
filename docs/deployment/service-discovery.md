@@ -95,14 +95,14 @@ defaultConfig()
 
 ```yaml
 goodsService:
-  target: "nacos:///goods-service"
+  target: "nacosx:///goods-service"
   timeoutSeconds: 3
 ```
 
 | 场景 | target 示例 |
 | --- | --- |
-| 本机裸跑 + Nacos | `nacos:///goods-service` |
-| Docker Compose + Nacos | `nacos:///goods-service` |
+| 本机裸跑 + Nacos | `nacosx:///goods-service` |
+| Docker Compose + Nacos | `nacosx:///goods-service` |
 | Kubernetes DNS | `dns:///goods-service.livebid.svc.cluster.local:9000` |
 | 本机静态直连兜底 | `127.0.0.1:9002` |
 
@@ -128,6 +128,6 @@ grpc.health.v1.Health/Check
 
 - [ ] 本机裸跑时服务可以监听 `:0` 并注册真实随机端口。
 - [ ] Docker Compose 容器中多个业务服务可以同时监听 `:9000`。
-- [ ] `api-gateway` 可通过 `nacos:///goods-service` 调用业务服务。
+- [ ] `api-gateway` 可通过 `nacosx:///goods-service` 调用业务服务。
 - [ ] `api-gateway` 可通过 `dns:///goods-service.livebid.svc.cluster.local:9000` 在 Kubernetes 中调用业务服务。
-- [ ] 从 `nacos:///` target 切换到 `dns:///` target 不需要修改业务 handler 或 client 代码。
+- [ ] 从 `nacosx:///` target 切换到 `dns:///` target 不需要修改业务 handler 或 client 代码。
