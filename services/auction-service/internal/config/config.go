@@ -20,6 +20,7 @@ type Config struct {
 	Redis        RedisConfig               `yaml:"redis"`
 	RocketMQ     RocketMQConfig            `yaml:"rocketmq"`
 	Goods        GoodsConfig               `yaml:"goods"`
+	Live         LiveConfig                `yaml:"live"`
 	Log          logger.Config             `yaml:"log"`
 	Nacos        nacosx.Config             `yaml:"nacos"`
 	ConfigCenter nacosx.ConfigCenterConfig `yaml:"configCenter"`
@@ -56,6 +57,11 @@ type RocketMQConfig struct {
 }
 
 type GoodsConfig struct {
+	Addr   string `yaml:"addr"`
+	Target string `yaml:"target"`
+}
+
+type LiveConfig struct {
 	Addr   string `yaml:"addr"`
 	Target string `yaml:"target"`
 }
@@ -100,6 +106,9 @@ func defaultConfig() Config {
 		},
 		Goods: GoodsConfig{
 			Addr: "127.0.0.1:9002",
+		},
+		Live: LiveConfig{
+			Addr: "127.0.0.1:9007",
 		},
 		Log:          logger.DevelopmentConfig(ServiceName),
 		Nacos:        nacosx.DefaultConfig(),
@@ -146,6 +155,12 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if value := os.Getenv("AUCTION_SERVICE_GOODS_TARGET"); value != "" {
 		cfg.Goods.Target = value
+	}
+	if value := os.Getenv("AUCTION_SERVICE_LIVE_ADDR"); value != "" {
+		cfg.Live.Addr = value
+	}
+	if value := os.Getenv("AUCTION_SERVICE_LIVE_TARGET"); value != "" {
+		cfg.Live.Target = value
 	}
 	if value := os.Getenv("AUCTION_SERVICE_ROCKETMQ_NAME_SERVER"); value != "" {
 		cfg.RocketMQ.NameServers = []string{value}
@@ -249,6 +264,14 @@ func normalize(cfg *Config) {
 		cfg.Goods.Target = cfg.Goods.Addr
 	} else if cfg.Goods.Addr == "" {
 		cfg.Goods.Addr = cfg.Goods.Target
+	}
+	if cfg.Live.Addr == "" {
+		cfg.Live.Addr = "127.0.0.1:9007"
+	}
+	if cfg.Live.Target == "" {
+		cfg.Live.Target = cfg.Live.Addr
+	} else if cfg.Live.Addr == "" {
+		cfg.Live.Addr = cfg.Live.Target
 	}
 	if cfg.WorkerID <= 0 {
 		cfg.WorkerID = 3

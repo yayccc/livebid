@@ -18,12 +18,15 @@ var (
 	ErrBidTooLow           = errors.New("bid price too low")
 	ErrBidOverSealPrice    = errors.New("bid price over seal price")
 	ErrAuctionExpired      = errors.New("auction expired")
+	ErrAuctionRoomMismatch = errors.New("auction room mismatch")
+	ErrConsecutiveBid      = errors.New("consecutive bid forbidden")
 )
 
 type AuctionState struct {
 	AuctionID    int64
 	GoodsID      int64
 	ShopID       int64
+	RoomID       int64
 	StartPrice   int64
 	BidIncrement int64
 	SealPrice    *int64
@@ -45,7 +48,7 @@ type BidResult struct {
 
 type AuctionStateStore interface {
 	LoadAuction(ctx context.Context, auction *model.Auction, now time.Time) error
-	PlaceBid(ctx context.Context, auctionID int64, userID int64, bidPrice int64, requestID string, bidRecordID int64, now time.Time) (BidResult, error)
+	PlaceBid(ctx context.Context, auctionID int64, roomID int64, userID int64, bidPrice int64, requestID string, bidRecordID int64, now time.Time) (BidResult, error)
 	FinishAuction(ctx context.Context, auctionID int64, now time.Time) (AuctionState, error)
 	FinishExpiredAuction(ctx context.Context, auctionID int64, version int64, expireAt int64, now time.Time) (AuctionState, bool, error)
 	CancelAuction(ctx context.Context, auctionID int64, now time.Time) (AuctionState, error)
@@ -81,6 +84,7 @@ func (s *RedisAuctionStateStore) LoadAuction(ctx context.Context, auction *model
 		"auction_id":     auction.ID,
 		"goods_id":       auction.GoodsID,
 		"shop_id":        auction.ShopID,
+		"room_id":        auction.RoomID,
 		"start_price":    auction.StartPrice,
 		"bid_increment":  auction.BidIncrement,
 		"seal_price":     int64(0),
@@ -102,28 +106,28 @@ func (s *RedisAuctionStateStore) LoadAuction(ctx context.Context, auction *model
 	return s.client.HSet(ctx, stateKey(auction.ID), values).Err()
 }
 
-func (s *RedisAuctionStateStore) PlaceBid(ctx context.Context, auctionID int64, userID int64, bidPrice int64, requestID string, bidRecordID int64, now time.Time) (BidResult, error) {
+func (s *RedisAuctionStateStore) PlaceBid(ctx context.Context, auctionID int64, roomID int64, userID int64, bidPrice int64, requestID string, bidRecordID int64, now time.Time) (BidResult, error) {
 	// Lua 脚本同时完成请求幂等、金额校验、最高价更新和排行榜更新。
 	result, err := placeBidScript.Run(ctx, s.client, []string{
 		stateKey(auctionID),
 		bidRequestKey(auctionID, requestID),
 		lastBidKey(auctionID, userID),
 		rankKey(auctionID),
-	}, now.UnixMilli(), userID, bidPrice, bidRecordID).Result()
+	}, now.UnixMilli(), roomID, userID, bidPrice, bidRecordID).Result()
 	if err != nil {
 		return BidResult{}, mapRedisScriptError(err)
 	}
 	values, ok := result.([]any)
-	if !ok || len(values) < 15 {
+	if !ok || len(values) < 16 {
 		return BidResult{}, errors.New("invalid redis bid result")
 	}
-	state, err := stateFromScript(values[:14])
+	state, err := stateFromScript(values[:15])
 	if err != nil {
 		return BidResult{}, err
 	}
 	return BidResult{
 		State:       state,
-		BidRecordID: asInt64(values[14]),
+		BidRecordID: asInt64(values[15]),
 		BidTime:     now,
 	}, nil
 }
@@ -134,10 +138,10 @@ func (s *RedisAuctionStateStore) FinishAuction(ctx context.Context, auctionID in
 		return AuctionState{}, mapRedisScriptError(err)
 	}
 	values, ok := result.([]any)
-	if !ok || len(values) < 14 {
+	if !ok || len(values) < 15 {
 		return AuctionState{}, errors.New("invalid redis finish result")
 	}
-	return stateFromScript(values[:14])
+	return stateFromScript(values[:15])
 }
 
 func (s *RedisAuctionStateStore) FinishExpiredAuction(ctx context.Context, auctionID int64, version int64, expireAt int64, now time.Time) (AuctionState, bool, error) {
@@ -153,10 +157,10 @@ func (s *RedisAuctionStateStore) FinishExpiredAuction(ctx context.Context, aucti
 	if asInt64(values[0]) == 0 {
 		return AuctionState{}, false, nil
 	}
-	if len(values) < 15 {
+	if len(values) < 16 {
 		return AuctionState{}, false, errors.New("invalid redis expire state")
 	}
-	state, err := stateFromScript(values[1:15])
+	state, err := stateFromScript(values[1:16])
 	return state, true, err
 }
 
@@ -166,10 +170,10 @@ func (s *RedisAuctionStateStore) CancelAuction(ctx context.Context, auctionID in
 		return AuctionState{}, mapRedisScriptError(err)
 	}
 	values, ok := result.([]any)
-	if !ok || len(values) < 14 {
+	if !ok || len(values) < 15 {
 		return AuctionState{}, errors.New("invalid redis cancel result")
 	}
-	return stateFromScript(values[:14])
+	return stateFromScript(values[:15])
 }
 
 func (s *RedisAuctionStateStore) GetState(ctx context.Context, auctionID int64) (AuctionState, error) {
@@ -194,11 +198,15 @@ local req_key = KEYS[2]
 local last_bid_key = KEYS[3]
 local rank_key = KEYS[4]
 local now = tonumber(ARGV[1])
-local user_id = tonumber(ARGV[2])
-local bid_price = tonumber(ARGV[3])
-local bid_record_id = tonumber(ARGV[4])
+local room_id = tonumber(ARGV[2])
+local user_id = tonumber(ARGV[3])
+local bid_price = tonumber(ARGV[4])
+local bid_record_id = tonumber(ARGV[5])
 
 if redis.call("EXISTS", state_key) == 0 then return redis.error_reply("auction not found") end
+
+local state_room_id = tonumber(redis.call("HGET", state_key, "room_id") or "0")
+if state_room_id ~= room_id then return redis.error_reply("auction room mismatch") end
 if redis.call("SET", req_key, "1", "NX", "EX", 600) == false then return redis.error_reply("duplicate bid request") end
 
 local status = tonumber(redis.call("HGET", state_key, "status"))
@@ -206,11 +214,15 @@ local start_time = tonumber(redis.call("HGET", state_key, "start_time"))
 local end_time = tonumber(redis.call("HGET", state_key, "end_time"))
 if status ~= 1 then return redis.error_reply("invalid auction state") end
 if now < start_time or now > end_time then return redis.error_reply("auction expired") end
+local current_winner_user_id = tonumber(redis.call("HGET", state_key, "winner_user_id") or "0")
+if current_winner_user_id == user_id then return redis.error_reply("consecutive bid forbidden") end
 
 local current_price = tonumber(redis.call("HGET", state_key, "current_price"))
 local bid_increment = tonumber(redis.call("HGET", state_key, "bid_increment"))
 local seal_price = tonumber(redis.call("HGET", state_key, "seal_price") or "0")
-if bid_price < current_price + bid_increment then return redis.error_reply("bid price too low") end
+local min_bid_price = current_price + bid_increment
+if seal_price > 0 and min_bid_price > seal_price then min_bid_price = seal_price end
+if bid_price < min_bid_price then return redis.error_reply("bid price too low") end
 if seal_price > 0 and bid_price > seal_price then return redis.error_reply("bid price over seal price") end
 
 local bid_count = tonumber(redis.call("HINCRBY", state_key, "bid_count", 1))
@@ -223,6 +235,7 @@ return {
   redis.call("HGET", state_key, "auction_id"),
   redis.call("HGET", state_key, "goods_id"),
   redis.call("HGET", state_key, "shop_id"),
+  redis.call("HGET", state_key, "room_id"),
   redis.call("HGET", state_key, "start_price"),
   redis.call("HGET", state_key, "bid_increment"),
   redis.call("HGET", state_key, "seal_price"),
@@ -255,6 +268,7 @@ return {
   redis.call("HGET", state_key, "auction_id"),
   redis.call("HGET", state_key, "goods_id"),
   redis.call("HGET", state_key, "shop_id"),
+  redis.call("HGET", state_key, "room_id"),
   redis.call("HGET", state_key, "start_price"),
   redis.call("HGET", state_key, "bid_increment"),
   redis.call("HGET", state_key, "seal_price"),
@@ -294,6 +308,7 @@ return {
   redis.call("HGET", state_key, "auction_id"),
   redis.call("HGET", state_key, "goods_id"),
   redis.call("HGET", state_key, "shop_id"),
+  redis.call("HGET", state_key, "room_id"),
   redis.call("HGET", state_key, "start_price"),
   redis.call("HGET", state_key, "bid_increment"),
   redis.call("HGET", state_key, "seal_price"),
@@ -320,6 +335,7 @@ return {
   redis.call("HGET", state_key, "auction_id"),
   redis.call("HGET", state_key, "goods_id"),
   redis.call("HGET", state_key, "shop_id"),
+  redis.call("HGET", state_key, "room_id"),
   redis.call("HGET", state_key, "start_price"),
   redis.call("HGET", state_key, "bid_increment"),
   redis.call("HGET", state_key, "seal_price"),
@@ -339,20 +355,21 @@ func stateFromScript(values []any) (AuctionState, error) {
 		AuctionID:    asInt64(values[0]),
 		GoodsID:      asInt64(values[1]),
 		ShopID:       asInt64(values[2]),
-		StartPrice:   asInt64(values[3]),
-		BidIncrement: asInt64(values[4]),
-		CurrentPrice: asInt64(values[6]),
-		BidCount:     asInt64(values[7]),
-		Status:       model.AuctionStatus(asInt64(values[8])),
-		StartTime:    time.UnixMilli(asInt64(values[9])),
-		EndTime:      time.UnixMilli(asInt64(values[10])),
-		Version:      asInt64(values[12]),
-		ExpireAt:     time.UnixMilli(asInt64(values[13])),
+		RoomID:       asInt64(values[3]),
+		StartPrice:   asInt64(values[4]),
+		BidIncrement: asInt64(values[5]),
+		CurrentPrice: asInt64(values[7]),
+		BidCount:     asInt64(values[8]),
+		Status:       model.AuctionStatus(asInt64(values[9])),
+		StartTime:    time.UnixMilli(asInt64(values[10])),
+		EndTime:      time.UnixMilli(asInt64(values[11])),
+		Version:      asInt64(values[13]),
+		ExpireAt:     time.UnixMilli(asInt64(values[14])),
 	}
-	if seal := asInt64(values[5]); seal > 0 {
+	if seal := asInt64(values[6]); seal > 0 {
 		state.SealPrice = &seal
 	}
-	if winner := asInt64(values[11]); winner > 0 {
+	if winner := asInt64(values[12]); winner > 0 {
 		state.WinnerUserID = &winner
 	}
 	return state, nil
@@ -363,6 +380,7 @@ func stateFromMap(values map[string]string) (AuctionState, error) {
 		AuctionID:    parseInt(values["auction_id"]),
 		GoodsID:      parseInt(values["goods_id"]),
 		ShopID:       parseInt(values["shop_id"]),
+		RoomID:       parseInt(values["room_id"]),
 		StartPrice:   parseInt(values["start_price"]),
 		BidIncrement: parseInt(values["bid_increment"]),
 		CurrentPrice: parseInt(values["current_price"]),
@@ -399,6 +417,10 @@ func mapRedisScriptError(err error) error {
 		return ErrBidOverSealPrice
 	case contains(err, "auction expired"):
 		return ErrAuctionExpired
+	case contains(err, "auction room mismatch"):
+		return ErrAuctionRoomMismatch
+	case contains(err, "consecutive bid forbidden"):
+		return ErrConsecutiveBid
 	default:
 		return err
 	}

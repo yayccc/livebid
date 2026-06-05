@@ -6,6 +6,7 @@ import (
 
 	"github.com/nacos-group/nacos-sdk-go/v2/clients/naming_client"
 	"github.com/yayccc/livebid/pkg/grpcx"
+	"github.com/yayccc/livebid/pkg/identity"
 	"github.com/yayccc/livebid/pkg/idgen"
 	"github.com/yayccc/livebid/pkg/logger"
 	"github.com/yayccc/livebid/pkg/nacosx"
@@ -30,6 +31,7 @@ type App struct {
 	registration  *nacosx.Registration
 	stateStore    repository.AuctionStateStore
 	goods         client.GoodsClient
+	live          client.LiveClient
 	events        client.EventPublisher
 	eventConsumer client.EventConsumer
 }
@@ -51,6 +53,10 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	nacosx.SetDefaultNamingClient(namingClient)
 
 	goodsClient, err := client.NewGRPCGoodsClient(cfg.Goods.Target)
+	if err != nil {
+		return nil, err
+	}
+	liveClient, err := client.NewGRPCLiveClient(cfg.Live.Target)
 	if err != nil {
 		return nil, err
 	}
@@ -79,12 +85,13 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		bidRepo,
 		stateStore,
 		goodsClient,
+		liveClient,
 		eventPublisher,
 		idgen.New(cfg.WorkerID),
 		cfg.RocketMQ.DelayLevel,
 	)
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(identity.UnaryServerInterceptor()))
 	healthServer := router.RegisterGRPC(grpcServer, auctionHandler)
 
 	_ = ctx
@@ -97,6 +104,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		naming:        namingClient,
 		stateStore:    stateStore,
 		goods:         goodsClient,
+		live:          liveClient,
 		events:        eventPublisher,
 		eventConsumer: eventConsumer,
 	}, nil
@@ -150,6 +158,9 @@ func (a *App) Stop() {
 	}
 	if a.goods != nil {
 		_ = a.goods.Close()
+	}
+	if a.live != nil {
+		_ = a.live.Close()
 	}
 	if a.events != nil {
 		_ = a.events.Close()

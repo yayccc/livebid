@@ -71,11 +71,11 @@ API Gateway              WebSocket Gateway
 - 维护最高价和排名
 - 控制倒计时延长
 - 执行落锤成交
-- 发布 `auction.success` 或 `auction.failed` 事件
+- 发布 `auction_finished` 或 `auction_failed` 事件
 
 `order-service`：
 
-- 消费 `auction.success`
+- 消费 `auction_finished`
 - 创建成交订单
 - 管理订单状态
 - 处理支付成功事件
@@ -100,10 +100,10 @@ API Gateway              WebSocket Gateway
 异步事件适合：
 
 ```text
-auction.started
-bid.accepted
-auction.success
-auction.failed
+auction_started
+bid_accepted
+auction_finished
+auction_failed
 order.created
 order.closed
 payment.succeeded
@@ -114,7 +114,7 @@ payment.failed
 
 ```text
 auction-service 落锤成交
- -> 发布 auction.success
+ -> 发布 auction_finished
  -> order-service 消费事件并创建订单
  -> order-service 发布 order.created
  -> ws-gateway 消费事件并广播成交结果

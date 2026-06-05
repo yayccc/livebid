@@ -18,6 +18,7 @@ USER_TOKEN=""
 SHOP_ID=""
 USER_ID=""
 GOODS_ID=""
+GOODS_SHOP_ID=""
 DELETE_GOODS_ID=""
 AUCTION_ID=""
 CANCEL_AUCTION_ID=""
@@ -283,6 +284,11 @@ main() {
   body="$(make_json title="E2E商品${RUN_ID}" cover_url="http://example.com/e2e.png" description="api gateway e2e goods")"
   resp="$(request "goods create" POST "/api/goods" 200 "$body" "$SHOP_TOKEN")"
   GOODS_ID="$(printf '%s' "$resp" | json_get "data.goods.id")"
+  GOODS_SHOP_ID="$(printf '%s' "$resp" | json_get "data.goods.shop_id")"
+  if [[ "$GOODS_SHOP_ID" != "$SHOP_ID" ]]; then
+    echo "FAIL goods create shop mismatch expected=${SHOP_ID} actual=${GOODS_SHOP_ID}" >&2
+    exit 1
+  fi
 
   body="$(make_json title="E2E商品${RUN_ID}-updated" cover_url="http://example.com/e2e-updated.png" description="api gateway e2e goods updated")"
   request "goods update" PUT "/api/goods/${GOODS_ID}" 200 "$body" "$SHOP_TOKEN" >/dev/null
@@ -298,7 +304,6 @@ PY
 )"
   request "goods batch get" POST "/api/goods/batch" 200 "$body" >/dev/null
   request "goods list shop" GET "/api/goods/shop/list?page=1&page_size=10" 200 "" "$SHOP_TOKEN" >/dev/null
-  request "goods put off sale" PUT "/api/goods/${GOODS_ID}/off-sale" 200 "" "$SHOP_TOKEN" >/dev/null
 
   body="$(make_json title="E2E待删除商品${RUN_ID}" description="api gateway e2e delete goods")"
   resp="$(request "goods create for delete" POST "/api/goods" 200 "$body" "$SHOP_TOKEN")"
@@ -321,7 +326,6 @@ PY
 
   body="$(make_json action="on_unpublish" client_id="e2e-${RUN_ID}" ip="127.0.0.1" app="live" stream="$STREAM_NAME" param="")"
   request "srs unpublish callback" POST "/api/srs/callbacks/unpublish" 200 "$body" >/dev/null
-  request "live end" POST "/api/live/rooms/${LIVE_ROOM_ID}/end" 200 "" "$SHOP_TOKEN" >/dev/null
 
   local start_time end_time
   start_time="$(python3 - <<'PY'
@@ -335,39 +339,41 @@ print((datetime.now(timezone.utc) + timedelta(hours=1)).isoformat().replace("+00
 PY
 )"
 
-  body="$(make_json goods_id="@int:${GOODS_ID}" shop_id="@int:${SHOP_ID}" start_price="@int:100" bid_increment="@int:10" seal_price="@int:1000" start_time="$start_time" end_time="$end_time")"
-  resp="$(request "auction create" POST "/api/auction/auctions" 200 "$body")"
+  body="$(make_json goods_id="@int:${GOODS_ID}" shop_id="@int:${SHOP_ID}" room_id="@int:${LIVE_ROOM_ID}" start_price="@int:100" bid_increment="@int:10" seal_price="@int:1000" start_time="$start_time" end_time="$end_time")"
+  resp="$(request "auction create" POST "/api/auctions" 200 "$body" "$SHOP_TOKEN")"
   AUCTION_ID="$(printf '%s' "$resp" | json_get "data.auction.id")"
 
-  request "auction get" GET "/api/auction/auctions/${AUCTION_ID}" 200 >/dev/null
-  request "auction get by goods" GET "/api/auction/auctions/by-goods/${GOODS_ID}" 200 >/dev/null
-  request "auction list shop" GET "/api/auction/auctions?shop_id=${SHOP_ID}&page=1&page_size=10" 200 >/dev/null
+  request "auction get" GET "/api/auctions/${AUCTION_ID}" 200 >/dev/null
+  request "auction get by goods" GET "/api/auctions/by-goods/${GOODS_ID}" 200 >/dev/null
+  request "auction list shop" GET "/api/auctions?shop_id=${SHOP_ID}&page=1&page_size=10" 200 >/dev/null
 
   body="$(make_json shop_id="@int:${SHOP_ID}" start_price="@int:120" bid_increment="@int:20" seal_price="@int:1200" start_time="$start_time" end_time="$end_time")"
-  request "auction update" PUT "/api/auction/auctions/${AUCTION_ID}" 200 "$body" >/dev/null
+  request "auction update" PUT "/api/auctions/${AUCTION_ID}" 200 "$body" "$SHOP_TOKEN" >/dev/null
 
   body="$(make_json shop_id="@int:${SHOP_ID}")"
-  request "auction start" POST "/api/auction/auctions/${AUCTION_ID}/start" 200 "$body" >/dev/null
+  request "auction start" POST "/api/auctions/${AUCTION_ID}/start" 200 "$body" "$SHOP_TOKEN" >/dev/null
 
-  body="$(make_json user_id="@int:${USER_ID}" bid_price="@int:160" request_id="e2e-${RUN_ID}-bid-1")"
-  request "auction place bid" POST "/api/auction/auctions/${AUCTION_ID}/bids" 200 "$body" >/dev/null
-  request "auction list bids" GET "/api/auction/auctions/${AUCTION_ID}/bids?page=1&page_size=10" 200 >/dev/null
+  body="$(make_json user_id="@int:${USER_ID}" room_id="@int:${LIVE_ROOM_ID}" bid_price="@int:160" request_id="e2e-${RUN_ID}-bid-1")"
+  request "auction place bid" POST "/api/auctions/${AUCTION_ID}/bids" 200 "$body" "$USER_TOKEN" >/dev/null
+  request "auction list bids" GET "/api/auctions/${AUCTION_ID}/bids?page=1&page_size=10" 200 >/dev/null
 
   body="$(make_json shop_id="@int:${SHOP_ID}")"
-  request "auction finish" POST "/api/auction/auctions/${AUCTION_ID}/finish" 200 "$body" >/dev/null
+  request "auction finish" POST "/api/auctions/${AUCTION_ID}/finish" 200 "$body" "$SHOP_TOKEN" >/dev/null
+  request "live end" POST "/api/live/rooms/${LIVE_ROOM_ID}/end" 200 "" "$SHOP_TOKEN" >/dev/null
+  request "goods put off sale" PUT "/api/goods/${GOODS_ID}/off-sale" 200 "" "$SHOP_TOKEN" >/dev/null
 
   body="$(make_json title="E2E取消拍卖商品${RUN_ID}" description="api gateway e2e cancel auction goods")"
   resp="$(request "goods create for cancel auction" POST "/api/goods" 200 "$body" "$SHOP_TOKEN")"
   local cancel_goods_id
   cancel_goods_id="$(printf '%s' "$resp" | json_get "data.goods.id")"
 
-  body="$(make_json goods_id="@int:${cancel_goods_id}" shop_id="@int:${SHOP_ID}" start_price="@int:100" bid_increment="@int:10")"
-  resp="$(request "auction create for cancel" POST "/api/auction/auctions" 200 "$body")"
+  body="$(make_json goods_id="@int:${cancel_goods_id}" shop_id="@int:${SHOP_ID}" room_id="@int:${LIVE_ROOM_ID}" start_price="@int:100" bid_increment="@int:10")"
+  resp="$(request "auction create for cancel" POST "/api/auctions" 200 "$body" "$SHOP_TOKEN")"
   CANCEL_AUCTION_ID="$(printf '%s' "$resp" | json_get "data.auction.id")"
 
   body="$(make_json shop_id="@int:${SHOP_ID}")"
-  request "auction cancel" POST "/api/auction/auctions/${CANCEL_AUCTION_ID}/cancel" 200 "$body" >/dev/null
-  request "auction delete canceled" DELETE "/api/auction/auctions/${CANCEL_AUCTION_ID}?shop_id=${SHOP_ID}" 200 >/dev/null
+  request "auction cancel" POST "/api/auctions/${CANCEL_AUCTION_ID}/cancel" 200 "$body" "$SHOP_TOKEN" >/dev/null
+  request "auction delete canceled" DELETE "/api/auctions/${CANCEL_AUCTION_ID}?shop_id=${SHOP_ID}" 200 "" "$SHOP_TOKEN" >/dev/null
 
   request "user address delete" DELETE "/api/users/address/${ADDRESS_ID}" 200 "" "$USER_TOKEN" >/dev/null
 

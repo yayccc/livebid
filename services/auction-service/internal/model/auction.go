@@ -18,13 +18,14 @@ type Auction struct {
 	ID           int64         `gorm:"primaryKey;column:id"`
 	GoodsID      int64         `gorm:"column:goods_id;not null;uniqueIndex:uk_goods_id;index:idx_goods_id"`
 	ShopID       int64         `gorm:"column:shop_id;not null;index:idx_shop_id;index:idx_shop_status,priority:1"`
+	RoomID       int64         `gorm:"column:room_id;not null;index:idx_room_id;index:idx_room_status,priority:1"`
 	StartPrice   int64         `gorm:"column:start_price;not null"`
 	BidIncrement int64         `gorm:"column:bid_increment;not null"`
 	SealPrice    *int64        `gorm:"column:seal_price"`
 	CurrentPrice int64         `gorm:"column:current_price;not null"`
 	DealPrice    *int64        `gorm:"column:deal_price"`
 	BidCount     int64         `gorm:"column:bid_count;not null;default:0"`
-	Status       AuctionStatus `gorm:"column:status;type:tinyint;not null;default:0;index:idx_status;index:idx_shop_status,priority:2"`
+	Status       AuctionStatus `gorm:"column:status;type:tinyint;not null;default:0;index:idx_status;index:idx_shop_status,priority:2;index:idx_room_status,priority:2"`
 	StartTime    *time.Time    `gorm:"column:start_time;index:idx_start_time"`
 	EndTime      *time.Time    `gorm:"column:end_time;index:idx_end_time"`
 	WinnerUserID *int64        `gorm:"column:winner_user_id"`
@@ -39,6 +40,7 @@ type BidRecord struct {
 	AuctionID int64     `gorm:"column:auction_id;not null;index:idx_auction_id;index:idx_auction_price,priority:1;index:idx_auction_time,priority:1"`
 	GoodsID   int64     `gorm:"column:goods_id;not null;index:idx_goods_id"`
 	ShopID    int64     `gorm:"column:shop_id;not null;index:idx_shop_id"`
+	RoomID    int64     `gorm:"column:room_id;not null;index:idx_room_id"`
 	UserID    int64     `gorm:"column:user_id;not null;index:idx_user_id"`
 	BidPrice  int64     `gorm:"column:bid_price;not null;index:idx_auction_price,priority:2"`
 	BidTime   time.Time `gorm:"column:bid_time;not null;index:idx_auction_time,priority:2"`

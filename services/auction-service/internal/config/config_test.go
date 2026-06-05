@@ -8,6 +8,8 @@ func TestLoadAppliesEnvOverrides(t *testing.T) {
 	t.Setenv("AUCTION_SERVICE_REDIS_ADDR", "127.0.0.1:16379")
 	t.Setenv("AUCTION_SERVICE_GOODS_ADDR", "127.0.0.1:19002")
 	t.Setenv("AUCTION_SERVICE_GOODS_TARGET", "nacosx:///goods-service")
+	t.Setenv("AUCTION_SERVICE_LIVE_ADDR", "127.0.0.1:19007")
+	t.Setenv("AUCTION_SERVICE_LIVE_TARGET", "nacosx:///live-service")
 	t.Setenv("AUCTION_SERVICE_WORKER_ID", "31")
 	t.Setenv("AUCTION_SERVICE_REGISTRY_ENABLED", "true")
 
@@ -23,6 +25,12 @@ func TestLoadAppliesEnvOverrides(t *testing.T) {
 	}
 	if cfg.Goods.Target != "nacosx:///goods-service" {
 		t.Fatalf("goods target = %q", cfg.Goods.Target)
+	}
+	if cfg.Live.Addr != "127.0.0.1:19007" {
+		t.Fatalf("live addr = %q", cfg.Live.Addr)
+	}
+	if cfg.Live.Target != "nacosx:///live-service" {
+		t.Fatalf("live target = %q", cfg.Live.Target)
 	}
 	if !cfg.Registry.Enabled {
 		t.Fatalf("expected registry enabled")

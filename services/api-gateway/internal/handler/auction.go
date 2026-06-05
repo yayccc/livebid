@@ -39,7 +39,7 @@ func NewAuctionHandler(auctionClient auctionServiceClient, rpcTimeout time.Durat
 
 type createAuctionRequest struct {
 	GoodsID      int64  `json:"goods_id" binding:"required"`
-	ShopID       int64  `json:"shop_id"`
+	RoomID       int64  `json:"room_id" binding:"required"`
 	StartPrice   int64  `json:"start_price" binding:"required"`
 	BidIncrement int64  `json:"bid_increment" binding:"required"`
 	SealPrice    *int64 `json:"seal_price"`
@@ -48,7 +48,6 @@ type createAuctionRequest struct {
 }
 
 type updateAuctionRequest struct {
-	ShopID       int64  `json:"shop_id"`
 	StartPrice   *int64 `json:"start_price"`
 	BidIncrement *int64 `json:"bid_increment"`
 	SealPrice    *int64 `json:"seal_price"`
@@ -56,12 +55,8 @@ type updateAuctionRequest struct {
 	EndTime      string `json:"end_time"`
 }
 
-type shopActionRequest struct {
-	ShopID int64 `json:"shop_id"`
-}
-
 type placeBidRequest struct {
-	UserID    int64  `json:"user_id" binding:"required"`
+	RoomID    int64  `json:"room_id" binding:"required"`
 	BidPrice  int64  `json:"bid_price" binding:"required"`
 	RequestID string `json:"request_id" binding:"required"`
 }
@@ -70,6 +65,7 @@ type auctionResponse struct {
 	ID           int64  `json:"id"`
 	GoodsID      int64  `json:"goods_id"`
 	ShopID       int64  `json:"shop_id"`
+	RoomID       int64  `json:"room_id"`
 	StartPrice   int64  `json:"start_price"`
 	BidIncrement int64  `json:"bid_increment"`
 	SealPrice    *int64 `json:"seal_price,omitempty"`
@@ -106,6 +102,7 @@ type bidRecordResponse struct {
 	AuctionID int64  `json:"auction_id"`
 	GoodsID   int64  `json:"goods_id"`
 	ShopID    int64  `json:"shop_id"`
+	RoomID    int64  `json:"room_id"`
 	UserID    int64  `json:"user_id"`
 	BidPrice  int64  `json:"bid_price"`
 	BidTime   string `json:"bid_time,omitempty"`
@@ -121,6 +118,10 @@ type bidRecordListResponse struct {
 }
 
 func (h *AuctionHandler) Create(c *gin.Context) {
+	shopID, ok := currentShopID(c)
+	if !ok {
+		return
+	}
 	var req createAuctionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		recordRequestError(c, err)
@@ -141,7 +142,8 @@ func (h *AuctionHandler) Create(c *gin.Context) {
 
 	resp, err := h.auctionClient.CreateAuction(ctx, &auctionv1.CreateAuctionRequest{
 		GoodsId:      req.GoodsID,
-		ShopId:       req.ShopID,
+		ShopId:       shopID,
+		RoomId:       req.RoomID,
 		StartPrice:   req.StartPrice,
 		BidIncrement: req.BidIncrement,
 		SealPrice:    req.SealPrice,
@@ -227,6 +229,10 @@ func (h *AuctionHandler) ListShop(c *gin.Context) {
 }
 
 func (h *AuctionHandler) Update(c *gin.Context) {
+	shopID, ok := currentShopID(c)
+	if !ok {
+		return
+	}
 	id, ok := parseIDParam(c, "id")
 	if !ok {
 		return
@@ -251,7 +257,7 @@ func (h *AuctionHandler) Update(c *gin.Context) {
 
 	resp, err := h.auctionClient.UpdateAuction(ctx, &auctionv1.UpdateAuctionRequest{
 		Id:           id,
-		ShopId:       req.ShopID,
+		ShopId:       shopID,
 		StartPrice:   req.StartPrice,
 		BidIncrement: req.BidIncrement,
 		SealPrice:    req.SealPrice,
@@ -296,11 +302,11 @@ func (h *AuctionHandler) Cancel(c *gin.Context) {
 }
 
 func (h *AuctionHandler) Delete(c *gin.Context) {
-	id, ok := parseIDParam(c, "id")
+	shopID, ok := currentShopID(c)
 	if !ok {
 		return
 	}
-	shopID, ok := parseOptionalInt64Query(c, "shop_id")
+	id, ok := parseIDParam(c, "id")
 	if !ok {
 		return
 	}
@@ -309,7 +315,7 @@ func (h *AuctionHandler) Delete(c *gin.Context) {
 
 	if _, err := h.auctionClient.DeleteAuction(ctx, &auctionv1.DeleteAuctionRequest{
 		Id:     id,
-		ShopId: int64ValueOrZero(shopID),
+		ShopId: shopID,
 	}); err != nil {
 		respondGRPCError(c, err)
 		return
@@ -318,6 +324,10 @@ func (h *AuctionHandler) Delete(c *gin.Context) {
 }
 
 func (h *AuctionHandler) PlaceBid(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
 	auctionID, ok := parseIDParam(c, "id")
 	if !ok {
 		return
@@ -333,7 +343,8 @@ func (h *AuctionHandler) PlaceBid(c *gin.Context) {
 
 	resp, err := h.auctionClient.PlaceBid(ctx, &auctionv1.PlaceBidRequest{
 		AuctionId: auctionID,
-		UserId:    req.UserID,
+		RoomId:    req.RoomID,
+		UserId:    userID,
 		BidPrice:  req.BidPrice,
 		RequestId: req.RequestID,
 	})
@@ -378,20 +389,18 @@ func (h *AuctionHandler) ListBidRecords(c *gin.Context) {
 }
 
 func (h *AuctionHandler) withShopAction(c *gin.Context, call func(context.Context, int64, int64) (*auctionv1.Auction, error)) {
-	id, ok := parseIDParam(c, "id")
+	shopID, ok := currentShopID(c)
 	if !ok {
 		return
 	}
-	var req shopActionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		recordRequestError(c, err)
-		respondError(c, http.StatusBadRequest, "invalid request")
+	id, ok := parseIDParam(c, "id")
+	if !ok {
 		return
 	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), h.rpcTimeout)
 	defer cancel()
 
-	auction, err := call(ctx, id, req.ShopID)
+	auction, err := call(ctx, id, shopID)
 	if err != nil {
 		respondGRPCError(c, err)
 		return
@@ -427,6 +436,7 @@ func toAuctionResponse(auction *auctionv1.Auction) auctionResponse {
 		ID:           auction.GetId(),
 		GoodsID:      auction.GetGoodsId(),
 		ShopID:       auction.GetShopId(),
+		RoomID:       auction.GetRoomId(),
 		StartPrice:   auction.GetStartPrice(),
 		BidIncrement: auction.GetBidIncrement(),
 		SealPrice:    auction.SealPrice,
@@ -474,6 +484,7 @@ func toBidRecordResponse(record *auctionv1.BidRecord) bidRecordResponse {
 		AuctionID: record.GetAuctionId(),
 		GoodsID:   record.GetGoodsId(),
 		ShopID:    record.GetShopId(),
+		RoomID:    record.GetRoomId(),
 		UserID:    record.GetUserId(),
 		BidPrice:  record.GetBidPrice(),
 		BidTime:   timestampString(record.GetBidTime()),

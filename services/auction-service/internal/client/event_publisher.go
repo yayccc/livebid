@@ -28,6 +28,7 @@ type AuctionEvent struct {
 	BizID     string         `json:"biz_id"`
 	AuctionID int64          `json:"auction_id"`
 	ShopID    int64          `json:"shop_id"`
+	RoomID    int64          `json:"room_id"`
 	Version   int64          `json:"version"`
 	Timestamp int64          `json:"timestamp"`
 	Data      map[string]any `json:"data,omitempty"`
@@ -115,13 +116,14 @@ func (p *RocketMQEventPublisher) send(ctx context.Context, event AuctionEvent, d
 	return err
 }
 
-func NewAuctionEvent(eventID string, eventType string, auctionID int64, shopID int64, version int64, data map[string]any) AuctionEvent {
+func NewAuctionEvent(eventID string, eventType string, auctionID int64, shopID int64, roomID int64, version int64, data map[string]any) AuctionEvent {
 	return AuctionEvent{
 		EventID:   eventID,
 		EventType: eventType,
 		BizID:     fmt.Sprintf("%d", auctionID),
 		AuctionID: auctionID,
 		ShopID:    shopID,
+		RoomID:    roomID,
 		Version:   version,
 		Timestamp: time.Now().Unix(),
 		Data:      data,

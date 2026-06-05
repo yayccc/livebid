@@ -300,6 +300,7 @@ services:
       AUCTION_SERVICE_ROCKETMQ_PRODUCER_GROUP: auction-service-producer
       AUCTION_SERVICE_ROCKETMQ_CONSUMER_GROUP: auction-service-consumer
       AUCTION_SERVICE_GOODS_TARGET: nacosx:///goods-service
+      AUCTION_SERVICE_LIVE_TARGET: nacosx:///live-service
       AUCTION_SERVICE_NACOS_ENABLED: "true"
       AUCTION_SERVICE_NACOS_SERVERS: nacos:8848
       AUCTION_SERVICE_NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
@@ -324,6 +325,8 @@ services:
       rocketmq-init:
         condition: service_completed_successfully
       goods-service:
+        condition: service_started
+      live-service:
         condition: service_started
 
   api-gateway:
