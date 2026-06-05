@@ -14,10 +14,10 @@ import (
 )
 
 var (
-	ErrDuplicateBidRequest = errors.New("duplicate bid request")
-	ErrBidTooLow           = errors.New("bid price too low")
-	ErrBidOverSealPrice    = errors.New("bid price over seal price")
-	ErrAuctionExpired      = errors.New("auction expired")
+	ErrDuplicateBidRequest = errors.New("重复出价请求，请勿重复提交")
+	ErrBidTooLow           = errors.New("出价金额过低，必须不低于当前价加固定加价幅度")
+	ErrBidOverSealPrice    = errors.New("出价金额超过封顶价")
+	ErrAuctionExpired      = errors.New("竞拍已结束或不在可出价时间范围内")
 )
 
 type AuctionState struct {
@@ -115,7 +115,7 @@ func (s *RedisAuctionStateStore) PlaceBid(ctx context.Context, auctionID int64, 
 	}
 	values, ok := result.([]any)
 	if !ok || len(values) < 15 {
-		return BidResult{}, errors.New("invalid redis bid result")
+		return BidResult{}, errors.New("Redis 出价结果格式异常")
 	}
 	state, err := stateFromScript(values[:14])
 	if err != nil {
@@ -135,7 +135,7 @@ func (s *RedisAuctionStateStore) FinishAuction(ctx context.Context, auctionID in
 	}
 	values, ok := result.([]any)
 	if !ok || len(values) < 14 {
-		return AuctionState{}, errors.New("invalid redis finish result")
+		return AuctionState{}, errors.New("Redis 结束竞拍结果格式异常")
 	}
 	return stateFromScript(values[:14])
 }
@@ -148,13 +148,13 @@ func (s *RedisAuctionStateStore) FinishExpiredAuction(ctx context.Context, aucti
 	}
 	values, ok := result.([]any)
 	if !ok || len(values) == 0 {
-		return AuctionState{}, false, errors.New("invalid redis expire result")
+		return AuctionState{}, false, errors.New("Redis 延迟结束检查结果格式异常")
 	}
 	if asInt64(values[0]) == 0 {
 		return AuctionState{}, false, nil
 	}
 	if len(values) < 15 {
-		return AuctionState{}, false, errors.New("invalid redis expire state")
+		return AuctionState{}, false, errors.New("Redis 延迟结束状态格式异常")
 	}
 	state, err := stateFromScript(values[1:15])
 	return state, true, err
@@ -167,7 +167,7 @@ func (s *RedisAuctionStateStore) CancelAuction(ctx context.Context, auctionID in
 	}
 	values, ok := result.([]any)
 	if !ok || len(values) < 14 {
-		return AuctionState{}, errors.New("invalid redis cancel result")
+		return AuctionState{}, errors.New("Redis 取消竞拍结果格式异常")
 	}
 	return stateFromScript(values[:14])
 }

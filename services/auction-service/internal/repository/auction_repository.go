@@ -10,11 +10,11 @@ import (
 )
 
 var (
-	ErrAuctionNotFound        = errors.New("auction not found")
-	ErrAuctionDuplicated      = errors.New("auction already exists for goods")
-	ErrInvalidAuctionState    = errors.New("invalid auction state")
-	ErrBidRecordNotFound      = errors.New("bid record not found")
-	ErrOutdatedAuctionVersion = errors.New("outdated auction version")
+	ErrAuctionNotFound        = errors.New("竞拍活动不存在或已被删除")
+	ErrAuctionDuplicated      = errors.New("该商品已创建竞拍活动，不能重复创建")
+	ErrInvalidAuctionState    = errors.New("当前竞拍状态不允许执行该操作")
+	ErrBidRecordNotFound      = errors.New("出价记录不存在或已被删除")
+	ErrOutdatedAuctionVersion = errors.New("竞拍状态版本已过期，跳过旧状态更新")
 )
 
 type ListAuctionFilter struct {

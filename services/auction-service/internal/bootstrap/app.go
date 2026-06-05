@@ -6,6 +6,7 @@ import (
 
 	"github.com/nacos-group/nacos-sdk-go/v2/clients/naming_client"
 	"github.com/yayccc/livebid/pkg/grpcx"
+	"github.com/yayccc/livebid/pkg/identity"
 	"github.com/yayccc/livebid/pkg/idgen"
 	"github.com/yayccc/livebid/pkg/logger"
 	"github.com/yayccc/livebid/pkg/nacosx"
@@ -84,7 +85,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		cfg.RocketMQ.DelayLevel,
 	)
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(identity.UnaryServerInterceptor()))
 	healthServer := router.RegisterGRPC(grpcServer, auctionHandler)
 
 	_ = ctx

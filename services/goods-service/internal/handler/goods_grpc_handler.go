@@ -21,8 +21,8 @@ const (
 )
 
 var (
-	errInvalidArgument   = errors.New("invalid argument")
-	errInvalidCredential = errors.New("invalid credential")
+	errInvalidArgument   = errors.New("商品请求参数无效，请检查ID、标题、封面URL、分页或筛选条件")
+	errInvalidCredential = errors.New("未获取到商铺身份，请先登录")
 )
 
 type GoodsGRPCHandler struct {
@@ -360,6 +360,6 @@ func toGRPCError(err error) error {
 	case errors.Is(err, repository.ErrGoodsNotFound):
 		return status.Error(codes.NotFound, err.Error())
 	default:
-		return status.Error(codes.Internal, "internal error")
+		return status.Error(codes.Internal, "商品服务内部错误，请稍后重试")
 	}
 }

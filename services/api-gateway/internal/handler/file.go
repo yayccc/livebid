@@ -37,6 +37,10 @@ type uploadFileResponse struct {
 	ObjectKey string `json:"object_key"`
 }
 
+type uploadGoodsCoverResponse struct {
+	CoverURL string `json:"cover_url"`
+}
+
 type s3ObjectStorage struct {
 	client        *s3.Client
 	bucket        string
@@ -87,31 +91,54 @@ func NewS3ObjectStorage(ctx context.Context, cfg apiconfig.StorageConfig) (*s3Ob
 }
 
 func (h *FileHandler) Upload(c *gin.Context) {
+	fileURL, objectKey, ok := h.upload(c)
+	if !ok {
+		return
+	}
+
+	respondOK(c, uploadFileResponse{
+		URL:       fileURL,
+		ObjectKey: objectKey,
+	})
+}
+
+func (h *FileHandler) UploadGoodsCover(c *gin.Context) {
+	fileURL, _, ok := h.upload(c)
+	if !ok {
+		return
+	}
+
+	respondOK(c, uploadGoodsCoverResponse{
+		CoverURL: fileURL,
+	})
+}
+
+func (h *FileHandler) upload(c *gin.Context) (string, string, bool) {
 	if h.storage == nil {
 		respondError(c, http.StatusInternalServerError, "file storage is not configured")
-		return
+		return "", "", false
 	}
 
 	file, err := c.FormFile("file")
 	if err != nil {
 		recordRequestError(c, err)
 		respondError(c, http.StatusBadRequest, "file is required")
-		return
+		return "", "", false
 	}
 	if file.Size > maxUploadFileSize {
 		respondError(c, http.StatusBadRequest, "file too large")
-		return
+		return "", "", false
 	}
 
 	content, err := readMultipartFile(file)
 	if err != nil {
 		recordRequestError(c, err)
 		respondError(c, http.StatusBadRequest, "invalid file")
-		return
+		return "", "", false
 	}
 	if int64(len(content)) > maxUploadFileSize {
 		respondError(c, http.StatusBadRequest, "file too large")
-		return
+		return "", "", false
 	}
 
 	contentType := file.Header.Get("Content-Type")
@@ -124,13 +151,9 @@ func (h *FileHandler) Upload(c *gin.Context) {
 	if err != nil {
 		recordRequestError(c, err)
 		respondError(c, http.StatusBadGateway, "file storage unavailable")
-		return
+		return "", "", false
 	}
-
-	respondOK(c, uploadFileResponse{
-		URL:       fileURL,
-		ObjectKey: objectKey,
-	})
+	return fileURL, objectKey, true
 }
 
 func (s *s3ObjectStorage) PutObject(ctx context.Context, key string, contentType string, body []byte) (string, error) {

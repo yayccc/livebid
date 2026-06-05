@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
-var ErrBidRecordDuplicated = errors.New("bid record duplicated")
+var ErrBidRecordDuplicated = errors.New("出价记录已存在，跳过重复写入")
 
 type ListBidRecordFilter struct {
 	AuctionID int64

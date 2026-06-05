@@ -8,6 +8,7 @@ import (
 	"time"
 
 	auctionv1 "github.com/yayccc/livebid/gen/proto/auction/v1"
+	"github.com/yayccc/livebid/pkg/identity"
 	"github.com/yayccc/livebid/pkg/idgen"
 	"github.com/yayccc/livebid/services/auction-service/internal/client"
 	"github.com/yayccc/livebid/services/auction-service/internal/model"
@@ -17,10 +18,10 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// defaultInjectedShopID 是鉴权未接入前的占位值；接入网关后应由可信身份注入替换。
-const defaultInjectedShopID int64 = 10001
-
-var errInvalidArgument = errors.New("invalid argument")
+var (
+	errInvalidArgument   = errors.New("竞拍请求参数无效，请检查ID、金额、状态、时间范围或请求标识")
+	errInvalidCredential = errors.New("未获取到有效登录身份，请先登录")
+)
 
 type AuctionGRPCHandler struct {
 	auctionv1.UnimplementedAuctionServiceServer
@@ -57,7 +58,10 @@ func NewAuctionGRPCHandler(
 }
 
 func (h *AuctionGRPCHandler) CreateAuction(ctx context.Context, req *auctionv1.CreateAuctionRequest) (*auctionv1.CreateAuctionResponse, error) {
-	shopID := normalizeShopID(req.GetShopId())
+	shopID, err := currentShopID(ctx)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
 	if req.GetGoodsId() <= 0 || !validMoney(req.GetStartPrice()) || !validMoney(req.GetBidIncrement()) {
 		return nil, toGRPCError(errInvalidArgument)
 	}
@@ -116,7 +120,10 @@ func (h *AuctionGRPCHandler) GetAuctionByGoods(ctx context.Context, req *auction
 }
 
 func (h *AuctionGRPCHandler) ListShopAuctions(ctx context.Context, req *auctionv1.ListShopAuctionsRequest) (*auctionv1.ListShopAuctionsResponse, error) {
-	shopID := normalizeShopID(req.GetShopId())
+	shopID, err := currentShopID(ctx)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
 	filter := repository.ListAuctionFilter{
 		ShopID:   shopID,
 		Page:     int(req.GetPage()),
@@ -143,7 +150,10 @@ func (h *AuctionGRPCHandler) ListShopAuctions(ctx context.Context, req *auctionv
 }
 
 func (h *AuctionGRPCHandler) UpdateAuction(ctx context.Context, req *auctionv1.UpdateAuctionRequest) (*auctionv1.UpdateAuctionResponse, error) {
-	shopID := normalizeShopID(req.GetShopId())
+	shopID, err := currentShopID(ctx)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
 	if req.GetId() <= 0 {
 		return nil, toGRPCError(errInvalidArgument)
 	}
@@ -195,7 +205,10 @@ func (h *AuctionGRPCHandler) UpdateAuction(ctx context.Context, req *auctionv1.U
 }
 
 func (h *AuctionGRPCHandler) StartAuction(ctx context.Context, req *auctionv1.StartAuctionRequest) (*auctionv1.StartAuctionResponse, error) {
-	shopID := normalizeShopID(req.GetShopId())
+	shopID, err := currentShopID(ctx)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
 	auction, err := h.auctions.FindByIDForShop(ctx, req.GetId(), shopID)
 	if err != nil {
 		return nil, toGRPCError(err)
@@ -224,7 +237,10 @@ func (h *AuctionGRPCHandler) StartAuction(ctx context.Context, req *auctionv1.St
 }
 
 func (h *AuctionGRPCHandler) FinishAuction(ctx context.Context, req *auctionv1.FinishAuctionRequest) (*auctionv1.FinishAuctionResponse, error) {
-	shopID := normalizeShopID(req.GetShopId())
+	shopID, err := currentShopID(ctx)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
 	if _, err := h.auctions.FindByIDForShop(ctx, req.GetId(), shopID); err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -246,7 +262,10 @@ func (h *AuctionGRPCHandler) FinishAuction(ctx context.Context, req *auctionv1.F
 }
 
 func (h *AuctionGRPCHandler) CancelAuction(ctx context.Context, req *auctionv1.CancelAuctionRequest) (*auctionv1.CancelAuctionResponse, error) {
-	shopID := normalizeShopID(req.GetShopId())
+	shopID, err := currentShopID(ctx)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
 	auction, err := h.auctions.FindByIDForShop(ctx, req.GetId(), shopID)
 	if err != nil {
 		return nil, toGRPCError(err)
@@ -275,7 +294,10 @@ func (h *AuctionGRPCHandler) CancelAuction(ctx context.Context, req *auctionv1.C
 }
 
 func (h *AuctionGRPCHandler) DeleteAuction(ctx context.Context, req *auctionv1.DeleteAuctionRequest) (*auctionv1.DeleteAuctionResponse, error) {
-	shopID := normalizeShopID(req.GetShopId())
+	shopID, err := currentShopID(ctx)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
 	if req.GetId() <= 0 {
 		return nil, toGRPCError(errInvalidArgument)
 	}
@@ -286,14 +308,18 @@ func (h *AuctionGRPCHandler) DeleteAuction(ctx context.Context, req *auctionv1.D
 }
 
 func (h *AuctionGRPCHandler) PlaceBid(ctx context.Context, req *auctionv1.PlaceBidRequest) (*auctionv1.PlaceBidResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
 	requestID := strings.TrimSpace(req.GetRequestId())
-	if req.GetAuctionId() <= 0 || req.GetUserId() <= 0 || !validMoney(req.GetBidPrice()) || requestID == "" {
+	if req.GetAuctionId() <= 0 || !validMoney(req.GetBidPrice()) || requestID == "" {
 		return nil, toGRPCError(errInvalidArgument)
 	}
 	bidRecordID := h.ids.Next()
 	now := time.Now()
 	// 出价校验、幂等、最高价更新和倒计时刷新必须在 Redis Lua 中原子完成。
-	result, err := h.states.PlaceBid(ctx, req.GetAuctionId(), req.GetUserId(), req.GetBidPrice(), requestID, bidRecordID, now)
+	result, err := h.states.PlaceBid(ctx, req.GetAuctionId(), userID, req.GetBidPrice(), requestID, bidRecordID, now)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -302,7 +328,7 @@ func (h *AuctionGRPCHandler) PlaceBid(ctx context.Context, req *auctionv1.PlaceB
 		AuctionID: result.State.AuctionID,
 		GoodsID:   result.State.GoodsID,
 		ShopID:    result.State.ShopID,
-		UserID:    req.GetUserId(),
+		UserID:    userID,
 		BidPrice:  req.GetBidPrice(),
 		BidTime:   now,
 	}
@@ -311,7 +337,7 @@ func (h *AuctionGRPCHandler) PlaceBid(ctx context.Context, req *auctionv1.PlaceB
 	auction := auctionFromState(result.State)
 	h.publish(ctx, client.EventBidAccepted, auction, map[string]any{
 		"bid_record_id": result.BidRecordID,
-		"user_id":       req.GetUserId(),
+		"user_id":       userID,
 		"bid_price":     req.GetBidPrice(),
 		"bid_time":      now.Unix(),
 		"current_price": result.State.CurrentPrice,
@@ -326,7 +352,7 @@ func (h *AuctionGRPCHandler) PlaceBid(ctx context.Context, req *auctionv1.PlaceB
 		Accepted:     true,
 		CurrentPrice: result.State.CurrentPrice,
 		BidCount:     result.State.BidCount,
-		WinnerUserId: req.GetUserId(),
+		WinnerUserId: userID,
 		ServerTime:   timestamppb.New(now),
 		ExpireAt:     timestamppb.New(result.State.ExpireAt),
 	}, nil
@@ -425,15 +451,24 @@ func parseTimeRange(start *timestamppb.Timestamp, end *timestamppb.Timestamp) (*
 	return startTime, endTime, nil
 }
 
-func normalizeShopID(shopID int64) int64 {
-	if shopID <= 0 {
-		return defaultInjectedShopID
-	}
-	return shopID
-}
-
 func validMoney(value int64) bool {
 	return value > 0
+}
+
+func currentShopID(ctx context.Context) (int64, error) {
+	shopID, ok := identity.ShopID(ctx)
+	if !ok {
+		return 0, errInvalidCredential
+	}
+	return shopID, nil
+}
+
+func currentUserID(ctx context.Context) (int64, error) {
+	userID, ok := identity.UserID(ctx)
+	if !ok {
+		return 0, errInvalidCredential
+	}
+	return userID, nil
 }
 
 func parseAuctionStatus(value int32) (model.AuctionStatus, error) {
@@ -565,6 +600,8 @@ func toGRPCError(err error) error {
 	switch {
 	case errors.Is(err, errInvalidArgument):
 		return status.Error(codes.InvalidArgument, err.Error())
+	case errors.Is(err, errInvalidCredential):
+		return status.Error(codes.Unauthenticated, err.Error())
 	case errors.Is(err, repository.ErrAuctionNotFound), errors.Is(err, repository.ErrBidRecordNotFound):
 		return status.Error(codes.NotFound, err.Error())
 	case errors.Is(err, repository.ErrAuctionDuplicated):
@@ -574,6 +611,6 @@ func toGRPCError(err error) error {
 	case errors.Is(err, client.ErrGoodsShopMismatch):
 		return status.Error(codes.PermissionDenied, err.Error())
 	default:
-		return status.Error(codes.Internal, "internal error")
+		return status.Error(codes.Internal, "竞拍服务内部错误，请稍后重试")
 	}
 }

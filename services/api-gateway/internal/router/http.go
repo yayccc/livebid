@@ -9,7 +9,6 @@ import (
 	"github.com/yayccc/livebid/services/api-gateway/internal/middleware"
 )
 
-// 路由注册函数，预留了JWTManager参数以支持未来用户认证的扩展
 func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, goodsHandler *handler.GoodsHandler, fileHandler *handler.FileHandler, liveHandler *handler.LiveHandler, auctionHandler *handler.AuctionHandler, shopJWTManager *auth.JWTManager, _ *auth.JWTManager) {
 	engine.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -34,6 +33,10 @@ func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, goodsHandler
 	files := api.Group("/files")
 	files.POST("/upload", fileHandler.Upload)
 
+	auctions := api.Group("/auctions")
+	auctions.GET("/goods/:goods_id", auctionHandler.GetByGoods)
+	auctions.GET("/:id/bids", auctionHandler.ListBidRecords)
+
 	// 需要商户认证的接口，使用RequireShopAuth中间件进行保护
 	merchant := api.Group("")
 	merchant.Use(middleware.RequireShopAuth(shopJWTManager))
@@ -43,6 +46,7 @@ func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, goodsHandler
 	merchantShop.PUT("/:id", shopHandler.Update)
 
 	merchantGoods := merchant.Group("/goods")
+	merchantGoods.POST("/cover/upload", fileHandler.UploadGoodsCover)
 	merchantGoods.GET("/shop/list", goodsHandler.ListShopGoods)
 	merchantGoods.POST("", goodsHandler.Create)
 	merchantGoods.PUT("/:id", goodsHandler.Update)
@@ -50,22 +54,20 @@ func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, goodsHandler
 	merchantGoods.PUT("/:id/on-sale", goodsHandler.PutOnSale)
 	merchantGoods.PUT("/:id/off-sale", goodsHandler.PutOffSale)
 
+	merchantAuctions := merchant.Group("/auctions")
+	merchantAuctions.GET("/shop", auctionHandler.ListShop)
+	merchantAuctions.POST("", auctionHandler.Create)
+	merchantAuctions.PUT("/:id", auctionHandler.Update)
+	merchantAuctions.POST("/:id/start", auctionHandler.Start)
+	merchantAuctions.POST("/:id/finish", auctionHandler.Finish)
+	merchantAuctions.POST("/:id/cancel", auctionHandler.Cancel)
+	merchantAuctions.DELETE("/:id", auctionHandler.Delete)
+
+	auctions.GET("/:id", auctionHandler.Get)
+
 	live := api.Group("/live")
 	live.GET("/rooms", liveHandler.ListLiveRooms)
 	live.GET("/rooms/:id", liveHandler.GetLiveRoom)
-
-	auction := api.Group("/auction")
-	auction.POST("/auctions", auctionHandler.Create)
-	auction.GET("/auctions", auctionHandler.ListShop)
-	auction.GET("/auctions/by-goods/:goods_id", auctionHandler.GetByGoods)
-	auction.GET("/auctions/:id", auctionHandler.Get)
-	auction.PUT("/auctions/:id", auctionHandler.Update)
-	auction.POST("/auctions/:id/start", auctionHandler.Start)
-	auction.POST("/auctions/:id/finish", auctionHandler.Finish)
-	auction.POST("/auctions/:id/cancel", auctionHandler.Cancel)
-	auction.DELETE("/auctions/:id", auctionHandler.Delete)
-	auction.POST("/auctions/:id/bids", auctionHandler.PlaceBid)
-	auction.GET("/auctions/:id/bids", auctionHandler.ListBidRecords)
 
 	merchantLive := merchant.Group("/live")
 	merchantLive.POST("/rooms", liveHandler.CreateLiveRoom)
