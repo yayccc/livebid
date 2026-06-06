@@ -1,5 +1,11 @@
+import type React from 'react'
 import { useEffect, useState } from 'react'
 import './App.css'
+import { AdminShell, type AdminPageKey } from './components/common/AdminShell'
+import { AuctionPage } from './features/auction/AuctionPage'
+import { DashboardPage } from './features/dashboard/DashboardPage'
+import { GoodsPage } from './features/goods/GoodsPage'
+import { LivePage } from './features/live/LivePage'
 import {
   getCurrentShop,
   loginShop,
@@ -7,10 +13,12 @@ import {
   uploadShopLogo,
   type Shop,
 } from './services/shopApi'
+import { getErrorText } from './lib/format'
 
 const tokenStorageKey = 'livebid_merchant_access_token'
 
 type AuthMode = 'login' | 'register'
+type FormStatus = 'idle' | 'submitting'
 
 type LoginFormValues = {
   username: string
@@ -27,25 +35,12 @@ type RegisterFormValues = {
   email: string
 }
 
-type AuthPageProps = {
-  initialNotice: string
-  onLogin: (token: string, shop: Shop | null) => void
-}
-
-type DashboardProps = {
-  shop: Shop | null
-  isLoadingShop: boolean
-  onLogout: () => void
-  onRefreshShop: () => void
-}
-
-type FormStatus = 'idle' | 'submitting'
-
 function App() {
   const [token, setToken] = useState(() => localStorage.getItem(tokenStorageKey))
   const [shop, setShop] = useState<Shop | null>(null)
   const [isLoadingShop, setIsLoadingShop] = useState(Boolean(token))
   const [authNotice, setAuthNotice] = useState('')
+  const [activePage, setActivePage] = useState<AdminPageKey>('dashboard')
 
   useEffect(() => {
     if (!token) {
@@ -83,6 +78,7 @@ function App() {
     setShop(nextShop)
     setIsLoadingShop(!nextShop)
     setToken(nextToken)
+    setActivePage('dashboard')
   }
 
   function clearSession() {
@@ -106,27 +102,47 @@ function App() {
       .finally(() => setIsLoadingShop(false))
   }
 
-  if (token) {
-    return (
-      <Dashboard
-        shop={shop}
-        isLoadingShop={isLoadingShop}
-        onLogout={clearSession}
-        onRefreshShop={handleRefreshShop}
-      />
-    )
+  if (!token) {
+    return <AuthPage initialNotice={authNotice} onLogin={handleLogin} />
   }
 
-  return <AuthPage initialNotice={authNotice} onLogin={handleLogin} />
+  return (
+    <AdminShell
+      shop={shop}
+      activePage={activePage}
+      onNavigate={setActivePage}
+      onRefreshShop={handleRefreshShop}
+      onLogout={clearSession}
+    >
+      {isLoadingShop && <div className="notice success">正在读取商铺信息...</div>}
+      {activePage === 'dashboard' && (
+        <DashboardPage
+          token={token}
+          shopName={shop?.shopName || ''}
+          onOpenGoods={() => setActivePage('goods')}
+          onOpenAuctions={() => setActivePage('auctions')}
+        />
+      )}
+      {activePage === 'goods' && <GoodsPage token={token} />}
+      {activePage === 'auctions' && <AuctionPage token={token} />}
+      {activePage === 'live' && <LivePage />}
+      {activePage === 'shop' && (
+        <ShopPage shop={shop} isLoadingShop={isLoadingShop} onRefreshShop={handleRefreshShop} />
+      )}
+    </AdminShell>
+  )
 }
 
-function AuthPage({ initialNotice, onLogin }: AuthPageProps) {
+function AuthPage({
+  initialNotice,
+  onLogin,
+}: {
+  initialNotice: string
+  onLogin: (token: string, shop: Shop | null) => void
+}) {
   const [mode, setMode] = useState<AuthMode>('login')
   const [notice, setNotice] = useState(initialNotice)
-  const [loginValues, setLoginValues] = useState<LoginFormValues>({
-    username: '',
-    password: '',
-  })
+  const [loginValues, setLoginValues] = useState<LoginFormValues>({ username: '', password: '' })
   const [registerValues, setRegisterValues] = useState<RegisterFormValues>({
     username: '',
     password: '',
@@ -169,7 +185,7 @@ function AuthPage({ initialNotice, onLogin }: AuthPageProps) {
       }
       onLogin(nextToken, nextShop)
     } catch (err) {
-      setError(errorMessage(err, '登录失败，请检查账号或密码'))
+      setError(getErrorText(err, '登录失败，请检查账号或密码'))
     } finally {
       setStatus('idle')
     }
@@ -201,10 +217,7 @@ function AuthPage({ initialNotice, onLogin }: AuthPageProps) {
         email: registerValues.email.trim(),
       })
 
-      setLoginValues({
-        username,
-        password: '',
-      })
+      setLoginValues({ username, password: '' })
       setRegisterValues({
         username: '',
         password: '',
@@ -218,7 +231,7 @@ function AuthPage({ initialNotice, onLogin }: AuthPageProps) {
       setMode('login')
       setNotice('商铺已创建，请使用账号登录')
     } catch (err) {
-      setError(errorMessage(err, '注册失败，请稍后重试'))
+      setError(getErrorText(err, '注册失败，请稍后重试'))
     } finally {
       setStatus('idle')
     }
@@ -233,13 +246,11 @@ function AuthPage({ initialNotice, onLogin }: AuthPageProps) {
             商家后台
           </p>
           <h1>直播竞拍经营工作台</h1>
-          <p>
-            面向商家、主播和运营人员的深色管理后台，聚合商铺资料、商品、直播和竞拍流程。
-          </p>
+          <p>围绕商品、竞拍和直播流程构建的商家管理后台。</p>
           <div className="intro-grid" aria-label="当前接入能力">
             <span>商品上架</span>
-            <span>直播带货</span>
-            <span>竞拍管理</span>
+            <span>竞拍活动</span>
+            <span>出价记录</span>
           </div>
         </div>
 
@@ -266,8 +277,7 @@ function AuthPage({ initialNotice, onLogin }: AuthPageProps) {
 
           {mode === 'login' ? (
             <form className="auth-form" onSubmit={handleLoginSubmit}>
-              <FormHeader title="商铺登录" description="商铺账号认证" />
-
+              <FormHeader title="商铺登录" description="使用商家账号进入后台" />
               <TextField
                 label="账号"
                 required
@@ -289,15 +299,13 @@ function AuthPage({ initialNotice, onLogin }: AuthPageProps) {
                   setLoginValues((current) => ({ ...current, password: value }))
                 }
               />
-
               <button className="primary-action" type="submit" disabled={status === 'submitting'}>
                 {status === 'submitting' ? '正在登录...' : '登录'}
               </button>
             </form>
           ) : (
             <form className="auth-form" onSubmit={handleRegisterSubmit}>
-              <FormHeader title="商铺注册" description="创建商铺账号" />
-
+              <FormHeader title="商铺注册" description="创建新的商铺账号" />
               <TextField
                 label="账号"
                 required
@@ -329,15 +337,14 @@ function AuthPage({ initialNotice, onLogin }: AuthPageProps) {
                   setRegisterValues((current) => ({ ...current, shopName: value }))
                 }
               />
-
-              <div className="field">
+              <label className="field">
                 <span className="field-label">Logo</span>
                 <div className="upload-row">
                   <label className="file-picker">
                     <input
                       type="file"
                       accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                      onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
+                      onChange={(event) => setLogoFile(event.target.files?.[0] || null)}
                     />
                     <span>{logoFile ? logoFile.name : '选择图片'}</span>
                   </label>
@@ -346,15 +353,11 @@ function AuthPage({ initialNotice, onLogin }: AuthPageProps) {
                     value={registerValues.logo}
                     placeholder="或粘贴 Logo URL"
                     onChange={(event) =>
-                      setRegisterValues((current) => ({
-                        ...current,
-                        logo: event.target.value,
-                      }))
+                      setRegisterValues((current) => ({ ...current, logo: event.target.value }))
                     }
                   />
                 </div>
-              </div>
-
+              </label>
               <label className="field">
                 <span className="field-label">商铺简介</span>
                 <textarea
@@ -369,7 +372,6 @@ function AuthPage({ initialNotice, onLogin }: AuthPageProps) {
                   }
                 />
               </label>
-
               <div className="inline-fields">
                 <TextField
                   label="手机号"
@@ -390,7 +392,6 @@ function AuthPage({ initialNotice, onLogin }: AuthPageProps) {
                   }
                 />
               </div>
-
               <button className="primary-action" type="submit" disabled={status === 'submitting'}>
                 {status === 'submitting' ? '正在创建...' : '创建商铺'}
               </button>
@@ -399,6 +400,55 @@ function AuthPage({ initialNotice, onLogin }: AuthPageProps) {
         </section>
       </section>
     </main>
+  )
+}
+
+function ShopPage({
+  shop,
+  isLoadingShop,
+  onRefreshShop,
+}: {
+  shop: Shop | null
+  isLoadingShop: boolean
+  onRefreshShop: () => void
+}) {
+  return (
+    <>
+      <div className="page-header">
+        <div>
+          <h1>商铺设置</h1>
+          <p>当前只展示商铺资料，编辑能力可后续接入 /api/shop/:id。</p>
+        </div>
+        <button type="button" className="ghost-button" onClick={onRefreshShop}>
+          刷新资料
+        </button>
+      </div>
+      <section className="panel">
+        {isLoadingShop ? (
+          <p className="muted">正在读取 /api/shop/me...</p>
+        ) : shop ? (
+          <dl className="shop-profile">
+            <Field label="商铺 ID" value={String(shop.id)} />
+            <Field label="登录账号" value={shop.username} />
+            <Field label="商铺名称" value={shop.shopName} />
+            <Field label="联系电话" value={shop.phone || '未填写'} />
+            <Field label="邮箱" value={shop.email || '未填写'} />
+            <Field label="简介" value={shop.description || '未填写'} />
+          </dl>
+        ) : (
+          <p className="muted">暂未读取到商铺资料。</p>
+        )}
+      </section>
+    </>
+  )
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
   )
 }
 
@@ -445,95 +495,6 @@ function TextField({
       />
     </label>
   )
-}
-
-function Dashboard({ shop, isLoadingShop, onLogout, onRefreshShop }: DashboardProps) {
-  return (
-    <main className="admin-layout">
-      <header className="admin-header">
-        <p className="brand">
-          <span>LiveBid</span>
-          商家后台
-        </p>
-        <div className="header-actions">
-          <span className="status-tag">已登录</span>
-          <button type="button" className="ghost-button" onClick={onRefreshShop}>
-            刷新商铺信息
-          </button>
-          <button type="button" className="ghost-button danger" onClick={onLogout}>
-            退出登录
-          </button>
-        </div>
-      </header>
-
-      <div className="admin-body">
-        <aside className="sidebar">
-          <button type="button" className="menu-item active">工作台</button>
-          <button type="button" className="menu-item">商品管理</button>
-          <button type="button" className="menu-item">直播管理</button>
-          <button type="button" className="menu-item">竞拍管理</button>
-          <button type="button" className="menu-item">商铺设置</button>
-        </aside>
-
-        <section className="admin-content">
-          <div className="page-header">
-            <div>
-              <h1>{shop?.shopName || '商铺管理台'}</h1>
-              <p>工作台、商品、直播、竞拍和商铺设置模块。</p>
-            </div>
-            <span className="status-tag accent">占位页</span>
-          </div>
-
-          <div className="dashboard-grid">
-            <section className="panel">
-              <h2>当前商铺</h2>
-              {isLoadingShop ? (
-                <p className="muted">正在读取 /api/shop/me...</p>
-              ) : shop ? (
-                <dl className="shop-profile">
-                  <div>
-                    <dt>商铺 ID</dt>
-                    <dd>{shop.id}</dd>
-                  </div>
-                  <div>
-                    <dt>登录账号</dt>
-                    <dd>{shop.username}</dd>
-                  </div>
-                  <div>
-                    <dt>联系电话</dt>
-                    <dd>{shop.phone || '未填写'}</dd>
-                  </div>
-                  <div>
-                    <dt>邮箱</dt>
-                    <dd>{shop.email || '未填写'}</dd>
-                  </div>
-                </dl>
-              ) : (
-                <p className="muted">已进入后台，暂未读取到商铺资料。</p>
-              )}
-            </section>
-
-            <section className="panel">
-              <h2>模块占位</h2>
-              <div className="placeholder-list">
-                <span>商品列表</span>
-                <span>直播间管理</span>
-                <span>竞拍活动</span>
-                <span>订单记录</span>
-              </div>
-            </section>
-          </div>
-        </section>
-      </div>
-    </main>
-  )
-}
-
-function errorMessage(err: unknown, fallback: string) {
-  if (err instanceof Error && err.message) {
-    return err.message
-  }
-  return fallback
 }
 
 export default App

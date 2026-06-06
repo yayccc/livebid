@@ -35,6 +35,7 @@ func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, goodsHandler
 
 	auctions := api.Group("/auctions")
 	auctions.GET("/goods/:goods_id", auctionHandler.GetByGoods)
+	auctions.GET("/:id/runtime", auctionHandler.GetRuntime)
 	auctions.GET("/:id/bids", auctionHandler.ListBidRecords)
 
 	// 需要商户认证的接口，使用RequireShopAuth中间件进行保护
@@ -62,6 +63,10 @@ func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, goodsHandler
 	merchantAuctions.POST("/:id/finish", auctionHandler.Finish)
 	merchantAuctions.POST("/:id/cancel", auctionHandler.Cancel)
 	merchantAuctions.DELETE("/:id", auctionHandler.Delete)
+
+	merchantAPI := merchant.Group("/merchant")
+	merchantAPI.GET("/auctions", auctionHandler.ListMerchant)
+	merchantAPI.GET("/dashboard/summary", auctionHandler.DashboardSummary)
 
 	auctions.GET("/:id", auctionHandler.Get)
 

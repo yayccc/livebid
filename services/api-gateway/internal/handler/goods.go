@@ -56,6 +56,7 @@ type goodsResponse struct {
 	Title       string `json:"title"`
 	CoverURL    string `json:"cover_url,omitempty"`
 	Description string `json:"description,omitempty"`
+	Status      int32  `json:"status"`
 	CreatedAt   string `json:"created_at,omitempty"`
 	UpdatedAt   string `json:"updated_at,omitempty"`
 }
@@ -335,6 +336,7 @@ func toGoodsResponse(goods *goodsv1.Goods) goodsResponse {
 		Title:       goods.GetTitle(),
 		CoverURL:    goods.GetCoverUrl(),
 		Description: goods.GetDescription(),
+		Status:      goods.GetStatus(),
 		CreatedAt:   documentTimeString(goods.GetCreatedAt()),
 		UpdatedAt:   documentTimeString(goods.GetUpdatedAt()),
 	}

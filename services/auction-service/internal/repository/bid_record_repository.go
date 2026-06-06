@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/yayccc/livebid/services/auction-service/internal/model"
 	"gorm.io/gorm"
@@ -21,6 +22,7 @@ type BidRecordRepository interface {
 	Create(ctx context.Context, record *model.BidRecord) error
 	CreateIfNotExists(ctx context.Context, record *model.BidRecord) error
 	ListByAuction(ctx context.Context, filter ListBidRecordFilter) ([]*model.BidRecord, int64, error)
+	CountByShopBetween(ctx context.Context, shopID int64, start time.Time, end time.Time) (int64, error)
 }
 
 type GormBidRecordRepository struct {
@@ -60,4 +62,13 @@ func (r *GormBidRecordRepository) ListByAuction(ctx context.Context, filter List
 		Offset((page - 1) * pageSize).
 		Find(&list).Error
 	return list, total, err
+}
+
+func (r *GormBidRecordRepository) CountByShopBetween(ctx context.Context, shopID int64, start time.Time, end time.Time) (int64, error) {
+	var total int64
+	err := r.db.WithContext(ctx).
+		Model(&model.BidRecord{}).
+		Where("shop_id = ? AND is_delete = 0 AND bid_time >= ? AND bid_time < ?", shopID, start, end).
+		Count(&total).Error
+	return total, err
 }

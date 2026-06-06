@@ -22,6 +22,19 @@
 | 批量查询商品 | POST | `/api/goods/batch` | 转发到 `goods-service.BatchGetGoods` |
 | 商品上架 | PUT | `/api/goods/:id/on-sale` | 转发到 `goods-service.PutGoodsOnSale` |
 | 商品下架 | PUT | `/api/goods/:id/off-sale` | 转发到 `goods-service.PutGoodsOffSale` |
+| 竞拍详情 | GET | `/api/auctions/:id` | 转发到 `auction-service.GetAuction` |
+| 竞拍运行态 | GET | `/api/auctions/:id/runtime` | 转发到 `auction-service.GetAuctionRuntime` |
+| 商品竞拍信息 | GET | `/api/auctions/goods/:goods_id` | 转发到 `auction-service.GetAuctionByGoods` |
+| 竞拍出价记录 | GET | `/api/auctions/:id/bids` | 转发到 `auction-service.ListBidRecords` |
+| 商家竞拍列表 | GET | `/api/merchant/auctions` | 需要商家 JWT，返回商品标题和封面等聚合字段 |
+| 商家工作台统计 | GET | `/api/merchant/dashboard/summary` | 需要商家 JWT，聚合商品统计和竞拍统计 |
+| 创建竞拍 | POST | `/api/auctions` | 需要商家 JWT，转发到 `auction-service.CreateAuction` |
+| 商铺竞拍列表 | GET | `/api/auctions/shop` | 需要商家 JWT，兼容旧路径并补充商品展示字段 |
+| 修改竞拍 | PUT | `/api/auctions/:id` | 需要商家 JWT，转发到 `auction-service.UpdateAuction` |
+| 开始竞拍 | POST | `/api/auctions/:id/start` | 需要商家 JWT，转发到 `auction-service.StartAuction` |
+| 结束竞拍 | POST | `/api/auctions/:id/finish` | 需要商家 JWT，转发到 `auction-service.FinishAuction` |
+| 取消竞拍 | POST | `/api/auctions/:id/cancel` | 需要商家 JWT，转发到 `auction-service.CancelAuction` |
+| 删除竞拍 | DELETE | `/api/auctions/:id` | 需要商家 JWT，转发到 `auction-service.DeleteAuction` |
 | 直播间列表 | GET | `/api/live/rooms` | 转发到 `live-service.ListLiveRooms` |
 | 直播间详情 | GET | `/api/live/rooms/:id` | 转发到 `live-service.GetLiveRoom` |
 | 创建直播间 | POST | `/api/live/rooms` | 转发到 `live-service.CreateLiveRoom` |
@@ -43,7 +56,7 @@
 
 ## 本地启动
 
-本地端到端测试至少需要 MySQL 和三个内部 gRPC 服务。默认 MySQL DSN 为：
+本地端到端测试至少需要 MySQL 和内部 gRPC 服务。默认 MySQL DSN 为：
 
 ```text
 root:123456@tcp(127.0.0.1:3306)/mydb?charset=utf8mb4&parseTime=True&loc=Local
@@ -73,6 +86,11 @@ LIVE_SERVICE_CONFIG=services/live-service/configs/config.local.yaml \
 ```
 
 ```bash
+AUCTION_SERVICE_CONFIG=services/auction-service/configs/config.local.yaml \
+  go run ./services/auction-service/cmd/server
+```
+
+```bash
 API_GATEWAY_CONFIG=services/api-gateway/configs/config.local.yaml \
   go run ./services/api-gateway/cmd/server
 ```
@@ -82,6 +100,7 @@ API_GATEWAY_CONFIG=services/api-gateway/configs/config.local.yaml \
 - api-gateway HTTP：`:58080`
 - shop-service gRPC：`127.0.0.1:9001`
 - goods-service gRPC：`127.0.0.1:9002`
+- auction-service gRPC：`127.0.0.1:9003`
 - live-service gRPC：`127.0.0.1:9007`
 
 ## 端到端测试

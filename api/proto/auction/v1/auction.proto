@@ -11,6 +11,9 @@ service AuctionService {
   rpc GetAuction(GetAuctionRequest) returns (GetAuctionResponse);
   rpc GetAuctionByGoods(GetAuctionByGoodsRequest) returns (GetAuctionByGoodsResponse);
   rpc ListShopAuctions(ListShopAuctionsRequest) returns (ListShopAuctionsResponse);
+  rpc ListMerchantAuctions(ListMerchantAuctionsRequest) returns (ListMerchantAuctionsResponse);
+  rpc GetAuctionRuntime(GetAuctionRuntimeRequest) returns (GetAuctionRuntimeResponse);
+  rpc GetMerchantDashboardSummary(GetMerchantDashboardSummaryRequest) returns (GetMerchantDashboardSummaryResponse);
   rpc UpdateAuction(UpdateAuctionRequest) returns (UpdateAuctionResponse);
   rpc StartAuction(StartAuctionRequest) returns (StartAuctionResponse);
   rpc FinishAuction(FinishAuctionRequest) returns (FinishAuctionResponse);
@@ -62,6 +65,37 @@ message ListShopAuctionsResponse {
   int32 page = 2;
   int32 page_size = 3;
   repeated Auction list = 4;
+}
+
+message ListMerchantAuctionsRequest {
+  int64 shop_id = 1;
+  optional int32 status = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+  string keyword = 5;
+}
+
+message ListMerchantAuctionsResponse {
+  int64 total = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  repeated MerchantAuction list = 4;
+}
+
+message GetAuctionRuntimeRequest {
+  int64 auction_id = 1;
+}
+
+message GetAuctionRuntimeResponse {
+  AuctionRuntime runtime = 1;
+}
+
+message GetMerchantDashboardSummaryRequest {
+  int64 shop_id = 1;
+}
+
+message GetMerchantDashboardSummaryResponse {
+  MerchantDashboardSummary summary = 1;
 }
 
 message UpdateAuctionRequest {
@@ -158,6 +192,44 @@ message Auction {
   int64 version = 14;
   google.protobuf.Timestamp created_at = 15;
   google.protobuf.Timestamp updated_at = 16;
+}
+
+message MerchantAuction {
+  int64 id = 1;
+  int64 goods_id = 2;
+  int64 shop_id = 3;
+  string goods_title = 4;
+  string goods_cover_url = 5;
+  int64 start_price = 6;
+  int64 bid_increment = 7;
+  optional int64 seal_price = 8;
+  int64 current_price = 9;
+  int64 bid_count = 10;
+  int32 status = 11;
+  google.protobuf.Timestamp start_time = 12;
+  google.protobuf.Timestamp end_time = 13;
+}
+
+message AuctionRuntime {
+  int64 auction_id = 1;
+  int32 status = 2;
+  int64 current_price = 3;
+  int64 bid_count = 4;
+  optional int64 winner_user_id = 5;
+  google.protobuf.Timestamp server_time = 6;
+  google.protobuf.Timestamp expire_at = 7;
+  int64 version = 8;
+}
+
+message MerchantDashboardSummary {
+  int64 auction_total = 1;
+  int64 auction_running = 2;
+  int64 auction_pending = 3;
+  int64 auction_deal = 4;
+  int64 auction_failed = 5;
+  int64 auction_cancelled = 6;
+  int64 today_deal_amount = 7;
+  int64 today_bid_count = 8;
 }
 
 message BidRecord {
