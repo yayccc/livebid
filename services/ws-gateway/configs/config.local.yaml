@@ -1,0 +1,63 @@
+env: local
+
+http:
+  addr: ":58081"
+
+redis:
+  addr: "127.0.0.1:6379"
+  password: ""
+  db: 0
+
+rocketmq:
+  enabled: false
+  nameServers: []
+  topic: "auction_event"
+  consumerGroup: "ws-gateway-auction-broadcast"
+  maxReconsumeTimes: 3
+
+auctionService:
+  addr: "127.0.0.1:9003"
+  target: "127.0.0.1:9003"
+
+liveService:
+  addr: "127.0.0.1:9007"
+  target: "127.0.0.1:9007"
+
+jwt:
+  secret: "local-dev-jwt-secret-change-me"
+  userIssuer: "livebid-user"
+
+websocket:
+  heartbeatIntervalSeconds: 30
+  heartbeatTimeoutSeconds: 90
+  maxMessageBytes: 16384
+  writeQueueSize: 128
+  instanceId: "local-ws-gateway"
+  allowOrigins: "*"
+  requireLivingRoom: true
+  cleanupIntervalSeconds: 15
+  onlineBroadcastIntervalSeconds: 3
+
+rpc:
+  timeoutSeconds: 3
+
+log:
+  level: debug
+  encoding: console
+  outputs:
+    - stdout
+  errorOutputs:
+    - stderr
+  development: true
+
+nacos:
+  enabled: true
+  servers:
+    - host: "127.0.0.1"
+      port: 8848
+  namespaceId: "livebid-local"
+
+configCenter:
+  enabled: false
+  dataId: "livebid.local.ws-gateway.yaml"
+  group: "LIVEBID"

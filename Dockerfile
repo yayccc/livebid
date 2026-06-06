@@ -30,6 +30,6 @@ RUN apt-get update \
 
 COPY --from=builder /out/app /app/app
 
-EXPOSE 9000 58080
+EXPOSE 9000 58080 58081
 
 ENTRYPOINT ["/app/app"]

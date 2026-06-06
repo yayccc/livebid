@@ -9,6 +9,7 @@
 - `access_token` 有效期为 7 天。
 - JWT 只表示登录身份，不表示业务权限。
 - 商家端和用户端使用不同 `issuer` 隔离 token，不在 JWT 中额外放用户类型字段。
+- HTTP 受保护接口由 `api-gateway` 鉴权，WebSocket 连接由 `ws-gateway` 鉴权。
 - 网关鉴权通过后，通过 gRPC metadata 向底层服务透传当前身份。
 
 ## 代码落点
@@ -119,6 +120,23 @@ Authorization: Bearer <access_token>
 
 当前不做权限控制。后续如果出现“已登录但无权限”的场景，再返回 `403 Forbidden`。
 
+## WebSocket 鉴权约定
+
+WebSocket 入口由 `ws-gateway` 校验用户端 JWT。当前按 `docs/services/ws-gateway/服务设计.md` 执行：
+
+```text
+GET /ws/live?room_id={room_id}&token={access_token}
+```
+
+`token` 为空时，连接按游客处理，只允许观看和接收广播，不允许出价。
+
+`token` 存在时，ws-gateway 必须使用用户端 JWT 配置校验：
+
+- 只接受 `iss = livebid-user` 的 token。
+- 将 `claims.Subject` 解析为 `user_id` 并绑定到当前 WebSocket 连接。
+- 出价等需要登录的 WebSocket 消息必须使用连接绑定的 `user_id`，不得信任客户端消息体中的 `user_id`。
+- 鉴权失败时拒绝连接或返回 `401` 错误消息，并不得调用底层 gRPC 服务。
+
 ## gRPC Metadata 约定
 
 网关鉴权通过后，将当前身份写入 gRPC metadata：
@@ -145,7 +163,8 @@ if !ok {
 
 信任边界：
 
-- JWT 只在 `api-gateway` 验证。
+- HTTP 请求 JWT 只在 `api-gateway` 验证。
+- WebSocket 连接 JWT 只在 `ws-gateway` 验证。
 - 底层服务信任网关透传的 metadata。
 - 底层服务的 gRPC 端口只应暴露在内网或服务发现网络中。
 - 当前 metadata 不是服务间调用鉴权。
@@ -172,7 +191,6 @@ if !ok {
 - 改密码后批量失效 token
 - `roles` / `scopes` 权限控制
 - 服务间调用鉴权
-- WebSocket 鉴权
 
 ## 实现检查清单
 
@@ -183,6 +201,7 @@ if !ok {
 - 商家端 token 使用商家 issuer，用户端 token 使用用户 issuer。
 - `access_token` 有效期为 7 天。
 - 受保护接口必须校验 `Authorization: Bearer <access_token>`。
+- WebSocket 连接按 `GET /ws/live?room_id={room_id}&token={access_token}` 由 `ws-gateway` 校验用户端 token。
 - 鉴权失败返回 `401`，且不得调用底层服务。
 - gRPC metadata 只透传 `livebid-auth-subject-type` 和 `livebid-auth-subject-id`。
 - 不实现 `roles`、`scopes`、`refresh_token`、token 黑名单。

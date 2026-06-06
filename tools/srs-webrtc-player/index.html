@@ -215,6 +215,59 @@
         });
       }
 
+      function remoteCandidateHosts(sdp) {
+        return sdp
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => line.startsWith("a=candidate:"))
+          .map((line) => line.split(/\s+/)[4])
+          .filter(Boolean);
+      }
+
+      function diagnoseRemoteCandidates(sdp) {
+        const hosts = new Set(remoteCandidateHosts(sdp));
+        if (hosts.has("127.0.0.1") || hosts.has("::1")) {
+          log(
+            "提示: SRS 返回了 loopback candidate。若 SRS 跑在 Docker/WSL 或浏览器不在同一台机器，ICE 可能失败；请把 SRS_RTC_CANDIDATE/SRS_PUBLIC_HOST 设为浏览器可访问的宿主机或局域网 IP。",
+          );
+        }
+      }
+
+      function candidateEndpoint(candidate) {
+        if (!candidate) {
+          return "-";
+        }
+
+        return `${candidate.address || candidate.ip || "?"}:${candidate.port || "?"}/${candidate.protocol || "?"}`;
+      }
+
+      async function logSelectedCandidatePair(reason) {
+        if (!pc) {
+          return;
+        }
+
+        const report = await pc.getStats();
+        let pair = null;
+        report.forEach((stat) => {
+          if (stat.type === "transport" && stat.selectedCandidatePairId) {
+            pair = report.get(stat.selectedCandidatePairId);
+          } else if (stat.type === "candidate-pair" && stat.selected) {
+            pair = stat;
+          }
+        });
+
+        if (!pair) {
+          log(`${reason}: 未选出 ICE candidate pair。`);
+          return;
+        }
+
+        const local = report.get(pair.localCandidateId);
+        const remote = report.get(pair.remoteCandidateId);
+        log(
+          `${reason}: ICE pair state=${pair.state || "-"} local=${candidateEndpoint(local)} remote=${candidateEndpoint(remote)} bytesSent=${pair.bytesSent || 0} bytesReceived=${pair.bytesReceived || 0}`,
+        );
+      }
+
       function startStats() {
         let lastStatsAt = 0;
         let lastFramesDecoded = 0;
@@ -273,6 +326,23 @@
 
         pc.onconnectionstatechange = () => {
           log(`连接状态: ${pc.connectionState}`);
+          if (pc.connectionState === "connected" || pc.connectionState === "failed") {
+            logSelectedCandidatePair(`连接状态 ${pc.connectionState}`).catch((error) => {
+              log(`读取 ICE 诊断失败: ${error.message}`);
+            });
+          }
+        };
+
+        pc.oniceconnectionstatechange = () => {
+          log(`ICE 状态: ${pc.iceConnectionState}`);
+        };
+
+        pc.onicegatheringstatechange = () => {
+          log(`ICE gathering: ${pc.iceGatheringState}`);
+        };
+
+        pc.onicecandidateerror = (event) => {
+          log(`ICE candidate error: ${event.errorCode || "-"} ${event.errorText || ""}`.trim());
         };
 
         const offer = await pc.createOffer();
@@ -305,6 +375,7 @@
         }
 
         logRemoteCandidates(data.sdp);
+        diagnoseRemoteCandidates(data.sdp);
         await pc.setRemoteDescription({ type: "answer", sdp: data.sdp });
         playButton.disabled = true;
         stopButton.disabled = false;

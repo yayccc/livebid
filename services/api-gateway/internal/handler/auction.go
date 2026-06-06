@@ -38,27 +38,27 @@ func NewAuctionHandler(auctionClient auctionServiceClient, rpcTimeout time.Durat
 }
 
 type createAuctionRequest struct {
-	GoodsID      int64  `json:"goods_id" binding:"required"`
-	RoomID       int64  `json:"room_id" binding:"required"`
-	StartPrice   int64  `json:"start_price" binding:"required"`
-	BidIncrement int64  `json:"bid_increment" binding:"required"`
-	SealPrice    *int64 `json:"seal_price"`
-	StartTime    string `json:"start_time"`
-	EndTime      string `json:"end_time"`
+	GoodsID      int64  `json:"goods_id" form:"goods_id" binding:"required"`
+	RoomID       int64  `json:"room_id" form:"room_id" binding:"required"`
+	StartPrice   int64  `json:"start_price" form:"start_price" binding:"required"`
+	BidIncrement int64  `json:"bid_increment" form:"bid_increment" binding:"required"`
+	SealPrice    *int64 `json:"seal_price" form:"seal_price"`
+	StartTime    string `json:"start_time" form:"start_time"`
+	EndTime      string `json:"end_time" form:"end_time"`
 }
 
 type updateAuctionRequest struct {
-	StartPrice   *int64 `json:"start_price"`
-	BidIncrement *int64 `json:"bid_increment"`
-	SealPrice    *int64 `json:"seal_price"`
-	StartTime    string `json:"start_time"`
-	EndTime      string `json:"end_time"`
+	StartPrice   *int64 `json:"start_price" form:"start_price"`
+	BidIncrement *int64 `json:"bid_increment" form:"bid_increment"`
+	SealPrice    *int64 `json:"seal_price" form:"seal_price"`
+	StartTime    string `json:"start_time" form:"start_time"`
+	EndTime      string `json:"end_time" form:"end_time"`
 }
 
 type placeBidRequest struct {
-	RoomID    int64  `json:"room_id" binding:"required"`
-	BidPrice  int64  `json:"bid_price" binding:"required"`
-	RequestID string `json:"request_id" binding:"required"`
+	RoomID    int64  `json:"room_id" form:"room_id" binding:"required"`
+	BidPrice  int64  `json:"bid_price" form:"bid_price" binding:"required"`
+	RequestID string `json:"request_id" form:"request_id" binding:"required"`
 }
 
 type auctionResponse struct {
@@ -123,7 +123,7 @@ func (h *AuctionHandler) Create(c *gin.Context) {
 		return
 	}
 	var req createAuctionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		recordRequestError(c, err)
 		respondError(c, http.StatusBadRequest, "invalid request")
 		return
@@ -238,7 +238,7 @@ func (h *AuctionHandler) Update(c *gin.Context) {
 		return
 	}
 	var req updateAuctionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		recordRequestError(c, err)
 		respondError(c, http.StatusBadRequest, "invalid request")
 		return
@@ -333,7 +333,7 @@ func (h *AuctionHandler) PlaceBid(c *gin.Context) {
 		return
 	}
 	var req placeBidRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		recordRequestError(c, err)
 		respondError(c, http.StatusBadRequest, "invalid request")
 		return

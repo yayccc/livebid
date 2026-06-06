@@ -2,11 +2,26 @@
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib import request
+from urllib.error import HTTPError
+import json
 import os
 
 
 ROOT = Path(__file__).resolve().parent
 SRS_API_URL = os.environ.get("SRS_WEBRTC_API_URL", "http://127.0.0.1:1985/rtc/v1/play/")
+
+
+def rewrite_srs_request_body(body):
+    try:
+        payload = json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return body
+
+    if isinstance(payload, dict):
+        payload["api"] = SRS_API_URL
+        return json.dumps(payload, separators=(",", ":")).encode("utf-8")
+
+    return body
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -19,6 +34,7 @@ class Handler(SimpleHTTPRequestHandler):
             return
 
         body = self.rfile.read(int(self.headers.get("content-length", "0")))
+        body = rewrite_srs_request_body(body)
         proxied = request.Request(
             SRS_API_URL,
             data=body,
@@ -34,6 +50,13 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_header("Content-Length", str(len(payload)))
                 self.end_headers()
                 self.wfile.write(payload)
+        except HTTPError as exc:
+            payload = exc.read()
+            self.send_response(exc.status)
+            self.send_header("Content-Type", exc.headers.get("Content-Type", "application/json"))
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
         except Exception as exc:
             payload = ("SRS proxy failed: " + str(exc)).encode("utf-8")
             self.send_response(502)

@@ -157,6 +157,6 @@ func (r *nacosResolver) updateFromInstances(instances []model.Instance, err erro
 			ServerName: strings.TrimPrefix(instance.ServiceName, "DEFAULT_GROUP@@"),
 		})
 	}
-	// UpdateState 会把最新地址列表推给 gRPC，后续由 round_robin 在这些 SubConn 之间轮询。
+	// 会把最新地址列表推给 gRPC，后续由 round_robin 在这些 SubConn 之间轮询。
 	_ = r.cc.UpdateState(resolver.State{Addresses: addresses})
 }

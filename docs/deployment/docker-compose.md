@@ -23,12 +23,18 @@ deployments/docker-compose.yml
 docker compose -f deployments/docker-compose.yml up --build
 ```
 
-首次启动会构建 `shop-service`、`user-service`、`goods-service`、`live-service`、`auction-service` 和 `api-gateway` 六个镜像，并启动 MySQL、Redis、Nacos、RocketMQ 与 RustFS。
+首次启动会构建 `shop-service`、`user-service`、`goods-service`、`live-service`、`auction-service`、`api-gateway` 和 `ws-gateway` 七个镜像，并启动 MySQL、Redis、Nacos、RocketMQ、RustFS 与 SRS。
 
-健康检查：
+HTTP 网关健康检查：
 
 ```bash
 curl http://127.0.0.1:58080/health
+```
+
+WebSocket 网关健康检查：
+
+```bash
+curl http://127.0.0.1:58081/health
 ```
 
 端到端接口测试：
@@ -104,7 +110,7 @@ services:
 
 - `expose` 只声明容器网络内可访问端口，不占用宿主机端口。
 - 多个业务服务都可以监听容器内 `:9000`，因为每个容器都有独立 IP。
-- `api-gateway` 的 HTTP 端口需要映射到宿主机，例如 `58080:58080`。
+- `api-gateway` 的 HTTP 端口和 `ws-gateway` 的 WebSocket 端口需要映射到宿主机，例如 `58080:58080`、`58081:58081`。
 - Compose 阶段统一通过 Nacos 做服务发现，调用方 target 使用 `nacosx:///<service-name>`。
 
 ## 配置策略
@@ -117,13 +123,17 @@ services:
 - Nacos 客户端账号默认使用 `nacos` / `nacos`，服务侧通过各自的 `<SERVICE_PREFIX>_NACOS_USERNAME` 和 `<SERVICE_PREFIX>_NACOS_PASSWORD` 注入。
 - RocketMQ nameserver 使用 `rocketmq-namesrv:9876`。
 - api-gateway 下游 target 使用 `nacosx:///shop-service`、`nacosx:///user-service` 等。
+- ws-gateway 下游 target 使用 `nacosx:///live-service` 和 `nacosx:///auction-service`，并通过广播消费组 `ws-gateway-auction-broadcast` 消费 `auction_event`。
 - RustFS S3 endpoint 使用容器内地址 `http://rustfs:9000`，对外返回 URL 使用宿主机地址 `http://127.0.0.1:9000/livebid`。
+- SRS 使用 `deployments/srs/livebid.conf`，RTMP 推流端口默认 `1935`，HTTP API 默认 `1985`，HTTP 文件服务默认映射到宿主机 `8088`，WebRTC UDP 默认 `8000`。SRS 回调在 Compose 网络内请求 `http://api-gateway:58080/api/srs/callbacks/{publish,unpublish}`。
 
 ## 对外端口
 
 | 组件 | 宿主机端口 | 说明 |
 | --- | --- | --- |
 | api-gateway | `58080` | 对外 HTTP 入口 |
+| ws-gateway | `58081` | 对外 WebSocket 入口 |
+| SRS | `1935` / `1985` / `8088` / `8000/udp` | RTMP、HTTP API、HTTP 文件服务、WebRTC UDP |
 | MySQL | `3306` | 本地调试数据库 |
 | Redis | `6379` | 本地调试缓存 |
 | Nacos | `8080` / `8848` / `9848` / `9849` | 控制台、OpenAPI、SDK gRPC 与内部通信 |

@@ -72,6 +72,29 @@ SRS_RTC_CANDIDATE=127.0.0.1 \
 scripts/start-srs.sh
 ```
 
+【新增说明：2026-06-06，本地 WebRTC 播放排查】
+
+WebRTC 播放不只依赖 `rtc/v1/play` 信令成功，还要求浏览器能访问 SRS 在 SDP 中返回的 UDP ICE candidate。若播放页日志已经出现 `收到媒体轨道` 和 `SRS session`，但连接状态随后变成 `failed`，同时 SRS 日志出现 `DTLS_HANG` 或 `session destroy by timeout`，通常表示 SRS 返回的 candidate 对浏览器不可达。
+
+本地 Docker/WSL 联调时，OBS 推流成功、SRS 回调成功、直播间状态 online，并不代表 WebRTC 播放链路已通。需要确认：
+
+- SRS HTTP API 端口默认是 `1985`，播放测试页端口如 `18080/18081` 只是本地代理页端口。
+- SRS RTC UDP 端口默认是 `8000/udp`，浏览器必须能访问 `candidate:8000/udp`。
+- `SRS_RTC_CANDIDATE` 或 Compose 的 `SRS_PUBLIC_HOST` 应设置为浏览器可访问的宿主机/局域网/WSL IP，而不是只对容器或某个网络命名空间有效的地址。
+
+如果 OBS 推流地址使用的是类似 `rtmp://172.21.x.x:1935/live`，则本地 WebRTC 测试通常也应让 SRS 返回同一个可访问 IP：
+
+```bash
+SRS_PUBLIC_HOST=172.21.x.x docker compose -f deployments/docker-compose.yml up -d --force-recreate srs live-service
+scripts/test-srs-webrtc.sh 'webrtc://172.21.x.x/live/{stream_name}'
+```
+
+如果使用独立脚本启动 SRS，则设置：
+
+```bash
+SRS_RTC_CANDIDATE=172.21.x.x scripts/start-srs.sh
+```
+
 ## SRS 回调
 
 第一版建议接入：

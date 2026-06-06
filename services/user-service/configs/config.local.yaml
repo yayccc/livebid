@@ -13,7 +13,7 @@ mysql:
 
 jwt:
   secret: "livebid-local-dev-secret"
-  issuer: "livebid"
+  issuer: "livebid-user"
   accessTokenTTLSeconds: 604800
 
 log:

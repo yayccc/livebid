@@ -105,6 +105,7 @@ services:
       - |
         sh mqadmin updateTopic -n rocketmq-namesrv:9876 -c livebid-cluster -t auction_event
         sh mqadmin updateSubGroup -n rocketmq-namesrv:9876 -c livebid-cluster -g auction-service-consumer
+        sh mqadmin updateSubGroup -n rocketmq-namesrv:9876 -c livebid-cluster -g ws-gateway-auction-broadcast -d true
     depends_on:
       rocketmq-broker:
         condition: service_healthy
@@ -154,6 +155,35 @@ services:
         mc anonymous set download rustfs/livebid
     depends_on:
       rustfs:
+        condition: service_started
+
+  srs:
+    image: ${SRS_IMAGE:-ossrs/srs:5}
+    restart: unless-stopped
+    command:
+      - /bin/sh
+      - -c
+      - |
+        candidate="$${SRS_RTC_CANDIDATE:-$${SRS_PUBLIC_HOST:-127.0.0.1}}"
+        callback_base_url="$${SRS_CALLBACK_BASE_URL:-http://api-gateway:58080}"
+        sed \
+          -e "s|candidate       127.0.0.1;|candidate       $${candidate};|" \
+          -e "s|http://api-gateway:58080|$${callback_base_url}|g" \
+          conf/livebid.conf > /tmp/livebid.conf
+        exec ./objs/srs -c /tmp/livebid.conf
+    environment:
+      SRS_PUBLIC_HOST: ${SRS_PUBLIC_HOST:-127.0.0.1}
+      SRS_RTC_CANDIDATE: ${SRS_RTC_CANDIDATE:-}
+      SRS_CALLBACK_BASE_URL: ${SRS_CALLBACK_BASE_URL:-http://api-gateway:58080}
+    ports:
+      - "${SRS_RTMP_PORT:-1935}:1935"
+      - "${SRS_HTTP_API_PORT:-1985}:1985"
+      - "${SRS_HTTP_SERVER_PORT:-8088}:8080"
+      - "${SRS_RTC_PORT:-8000}:8000/udp"
+    volumes:
+      - ./srs/livebid.conf:/usr/local/srs/conf/livebid.conf:ro
+    depends_on:
+      api-gateway:
         condition: service_started
 
   shop-service:
@@ -260,8 +290,8 @@ services:
       LIVE_SERVICE_GRPC_ADDR: ${GRPC_ADDR:-:9000}
       LIVE_SERVICE_MYSQL_DSN: ${MYSQL_DSN:-root:123456@tcp(mysql:3306)/mydb?charset=utf8mb4&parseTime=True&loc=Local}
       LIVE_SERVICE_MYSQL_AUTO_MIGRATE: "true"
-      LIVE_SERVICE_SRS_RTMP_PUSH_BASE_URL: rtmp://127.0.0.1/live
-      LIVE_SERVICE_SRS_WEBRTC_PLAY_BASE_URL: webrtc://127.0.0.1/live
+      LIVE_SERVICE_SRS_RTMP_PUSH_BASE_URL: rtmp://${SRS_PUBLIC_HOST:-127.0.0.1}:${SRS_RTMP_PORT:-1935}/live
+      LIVE_SERVICE_SRS_WEBRTC_PLAY_BASE_URL: webrtc://${SRS_PUBLIC_HOST:-127.0.0.1}/live
       LIVE_SERVICE_NACOS_ENABLED: "true"
       LIVE_SERVICE_NACOS_SERVERS: nacos:8848
       LIVE_SERVICE_NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
@@ -377,6 +407,50 @@ services:
         condition: service_started
       goods-service:
         condition: service_started
+      live-service:
+        condition: service_started
+      auction-service:
+        condition: service_started
+
+  ws-gateway:
+    image: livebid-ws-gateway:latest
+    restart: unless-stopped
+    build:
+      <<: *go-service-build
+      args:
+        SERVICE: ws-gateway
+    environment:
+      WS_GATEWAY_ENV: local
+      WS_GATEWAY_HTTP_ADDR: ":58081"
+      WS_GATEWAY_REDIS_ADDR: redis:6379
+      WS_GATEWAY_REDIS_PASSWORD: ""
+      WS_GATEWAY_REDIS_DB: "0"
+      WS_GATEWAY_ROCKETMQ_ENABLED: "true"
+      WS_GATEWAY_ROCKETMQ_NAME_SERVER: rocketmq-namesrv:9876
+      WS_GATEWAY_AUCTION_EVENT_TOPIC: auction_event
+      WS_GATEWAY_AUCTION_CONSUMER_GROUP: ws-gateway-auction-broadcast
+      WS_GATEWAY_AUCTION_SERVICE_TARGET: nacosx:///auction-service
+      WS_GATEWAY_LIVE_SERVICE_TARGET: nacosx:///live-service
+      WS_GATEWAY_JWT_SECRET: ${LIVEBID_JWT_SECRET:-local-dev-jwt-secret-change-me}
+      WS_GATEWAY_JWT_USER_ISSUER: ${LIVEBID_USER_JWT_ISSUER:-livebid-user}
+      WS_GATEWAY_NACOS_ENABLED: "true"
+      WS_GATEWAY_NACOS_SERVERS: nacos:8848
+      WS_GATEWAY_NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      WS_GATEWAY_NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      WS_GATEWAY_CONFIG_CENTER_ENABLED: "false"
+      WS_GATEWAY_LOG_LEVEL: debug
+      WS_GATEWAY_LOG_ENCODING: console
+    ports:
+      - "58081:58081"
+    depends_on:
+      redis:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+      rocketmq-broker:
+        condition: service_healthy
+      rocketmq-init:
+        condition: service_completed_successfully
       live-service:
         condition: service_started
       auction-service:

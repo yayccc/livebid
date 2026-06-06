@@ -73,7 +73,7 @@ func defaultConfig() Config {
 		},
 		JWT: JWTConfig{
 			Secret:                "livebid-local-dev-secret",
-			Issuer:                "livebid",
+			Issuer:                "livebid-user",
 			AccessTokenTTLSeconds: 604800,
 		},
 		Log:          logger.DevelopmentConfig(ServiceName),
@@ -180,7 +180,7 @@ func normalize(cfg *Config) {
 		cfg.WorkerID = 2
 	}
 	if cfg.JWT.Issuer == "" {
-		cfg.JWT.Issuer = "livebid"
+		cfg.JWT.Issuer = "livebid-user"
 	}
 	if cfg.JWT.AccessTokenTTLSeconds <= 0 {
 		cfg.JWT.AccessTokenTTLSeconds = 604800
