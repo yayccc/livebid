@@ -104,7 +104,7 @@ func (p *AuctionEventProcessor) consumeOne(ctx context.Context, msg *primitive.M
 		return err
 	}
 	if event.EventID == "" || event.AuctionID <= 0 {
-		return errors.New("invalid auction event")
+		return errors.New("竞拍事件格式无效")
 	}
 	return p.applyEvent(ctx, event)
 }
@@ -144,7 +144,7 @@ func (p *AuctionEventProcessor) applySnapshotEvent(ctx context.Context, event Au
 func (p *AuctionEventProcessor) applyExpireCheck(ctx context.Context, event AuctionEvent) error {
 	expireAt := int64FromData(event.Data, "expire_at")
 	if expireAt <= 0 {
-		return errors.New("missing expire_at")
+		return errors.New("竞拍延迟检查事件缺少 expire_at")
 	}
 	// 延迟消息只负责“检查”，真正结束仍由 Redis Lua 根据当前 version/expire_at 原子决定。
 	state, changed, err := p.states.FinishExpiredAuction(ctx, event.AuctionID, event.Version, expireAt, time.Now())

@@ -14,12 +14,12 @@ import (
 )
 
 var (
-	ErrDuplicateBidRequest = errors.New("duplicate bid request")
-	ErrBidTooLow           = errors.New("bid price too low")
-	ErrBidOverSealPrice    = errors.New("bid price over seal price")
-	ErrAuctionExpired      = errors.New("auction expired")
-	ErrAuctionRoomMismatch = errors.New("auction room mismatch")
-	ErrConsecutiveBid      = errors.New("consecutive bid forbidden")
+	ErrDuplicateBidRequest = errors.New("重复出价请求，请勿重复提交")
+	ErrBidTooLow           = errors.New("出价金额过低，必须不低于当前价加固定加价幅度")
+	ErrBidOverSealPrice    = errors.New("出价金额超过封顶价")
+	ErrAuctionExpired      = errors.New("竞拍已结束或不在可出价时间范围内")
+	ErrAuctionRoomMismatch = errors.New("竞拍房间不匹配")
+	ErrConsecutiveBid      = errors.New("暂不允许连续出价，请等待其他人出价后再尝试")
 )
 
 type AuctionState struct {
@@ -152,7 +152,7 @@ func (s *RedisAuctionStateStore) FinishExpiredAuction(ctx context.Context, aucti
 	}
 	values, ok := result.([]any)
 	if !ok || len(values) == 0 {
-		return AuctionState{}, false, errors.New("invalid redis expire result")
+		return AuctionState{}, false, errors.New("Redis 延迟结束检查结果格式异常")
 	}
 	if asInt64(values[0]) == 0 {
 		return AuctionState{}, false, nil

@@ -19,17 +19,20 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuctionService_CreateAuction_FullMethodName     = "/livebid.auction.v1.AuctionService/CreateAuction"
-	AuctionService_GetAuction_FullMethodName        = "/livebid.auction.v1.AuctionService/GetAuction"
-	AuctionService_GetAuctionByGoods_FullMethodName = "/livebid.auction.v1.AuctionService/GetAuctionByGoods"
-	AuctionService_ListShopAuctions_FullMethodName  = "/livebid.auction.v1.AuctionService/ListShopAuctions"
-	AuctionService_UpdateAuction_FullMethodName     = "/livebid.auction.v1.AuctionService/UpdateAuction"
-	AuctionService_StartAuction_FullMethodName      = "/livebid.auction.v1.AuctionService/StartAuction"
-	AuctionService_FinishAuction_FullMethodName     = "/livebid.auction.v1.AuctionService/FinishAuction"
-	AuctionService_CancelAuction_FullMethodName     = "/livebid.auction.v1.AuctionService/CancelAuction"
-	AuctionService_DeleteAuction_FullMethodName     = "/livebid.auction.v1.AuctionService/DeleteAuction"
-	AuctionService_PlaceBid_FullMethodName          = "/livebid.auction.v1.AuctionService/PlaceBid"
-	AuctionService_ListBidRecords_FullMethodName    = "/livebid.auction.v1.AuctionService/ListBidRecords"
+	AuctionService_CreateAuction_FullMethodName               = "/livebid.auction.v1.AuctionService/CreateAuction"
+	AuctionService_GetAuction_FullMethodName                  = "/livebid.auction.v1.AuctionService/GetAuction"
+	AuctionService_GetAuctionByGoods_FullMethodName           = "/livebid.auction.v1.AuctionService/GetAuctionByGoods"
+	AuctionService_ListShopAuctions_FullMethodName            = "/livebid.auction.v1.AuctionService/ListShopAuctions"
+	AuctionService_ListMerchantAuctions_FullMethodName        = "/livebid.auction.v1.AuctionService/ListMerchantAuctions"
+	AuctionService_GetAuctionRuntime_FullMethodName           = "/livebid.auction.v1.AuctionService/GetAuctionRuntime"
+	AuctionService_GetMerchantDashboardSummary_FullMethodName = "/livebid.auction.v1.AuctionService/GetMerchantDashboardSummary"
+	AuctionService_UpdateAuction_FullMethodName               = "/livebid.auction.v1.AuctionService/UpdateAuction"
+	AuctionService_StartAuction_FullMethodName                = "/livebid.auction.v1.AuctionService/StartAuction"
+	AuctionService_FinishAuction_FullMethodName               = "/livebid.auction.v1.AuctionService/FinishAuction"
+	AuctionService_CancelAuction_FullMethodName               = "/livebid.auction.v1.AuctionService/CancelAuction"
+	AuctionService_DeleteAuction_FullMethodName               = "/livebid.auction.v1.AuctionService/DeleteAuction"
+	AuctionService_PlaceBid_FullMethodName                    = "/livebid.auction.v1.AuctionService/PlaceBid"
+	AuctionService_ListBidRecords_FullMethodName              = "/livebid.auction.v1.AuctionService/ListBidRecords"
 )
 
 // AuctionServiceClient is the client API for AuctionService service.
@@ -40,6 +43,9 @@ type AuctionServiceClient interface {
 	GetAuction(ctx context.Context, in *GetAuctionRequest, opts ...grpc.CallOption) (*GetAuctionResponse, error)
 	GetAuctionByGoods(ctx context.Context, in *GetAuctionByGoodsRequest, opts ...grpc.CallOption) (*GetAuctionByGoodsResponse, error)
 	ListShopAuctions(ctx context.Context, in *ListShopAuctionsRequest, opts ...grpc.CallOption) (*ListShopAuctionsResponse, error)
+	ListMerchantAuctions(ctx context.Context, in *ListMerchantAuctionsRequest, opts ...grpc.CallOption) (*ListMerchantAuctionsResponse, error)
+	GetAuctionRuntime(ctx context.Context, in *GetAuctionRuntimeRequest, opts ...grpc.CallOption) (*GetAuctionRuntimeResponse, error)
+	GetMerchantDashboardSummary(ctx context.Context, in *GetMerchantDashboardSummaryRequest, opts ...grpc.CallOption) (*GetMerchantDashboardSummaryResponse, error)
 	UpdateAuction(ctx context.Context, in *UpdateAuctionRequest, opts ...grpc.CallOption) (*UpdateAuctionResponse, error)
 	StartAuction(ctx context.Context, in *StartAuctionRequest, opts ...grpc.CallOption) (*StartAuctionResponse, error)
 	FinishAuction(ctx context.Context, in *FinishAuctionRequest, opts ...grpc.CallOption) (*FinishAuctionResponse, error)
@@ -91,6 +97,36 @@ func (c *auctionServiceClient) ListShopAuctions(ctx context.Context, in *ListSho
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListShopAuctionsResponse)
 	err := c.cc.Invoke(ctx, AuctionService_ListShopAuctions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *auctionServiceClient) ListMerchantAuctions(ctx context.Context, in *ListMerchantAuctionsRequest, opts ...grpc.CallOption) (*ListMerchantAuctionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListMerchantAuctionsResponse)
+	err := c.cc.Invoke(ctx, AuctionService_ListMerchantAuctions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *auctionServiceClient) GetAuctionRuntime(ctx context.Context, in *GetAuctionRuntimeRequest, opts ...grpc.CallOption) (*GetAuctionRuntimeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAuctionRuntimeResponse)
+	err := c.cc.Invoke(ctx, AuctionService_GetAuctionRuntime_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *auctionServiceClient) GetMerchantDashboardSummary(ctx context.Context, in *GetMerchantDashboardSummaryRequest, opts ...grpc.CallOption) (*GetMerchantDashboardSummaryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMerchantDashboardSummaryResponse)
+	err := c.cc.Invoke(ctx, AuctionService_GetMerchantDashboardSummary_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -175,6 +211,9 @@ type AuctionServiceServer interface {
 	GetAuction(context.Context, *GetAuctionRequest) (*GetAuctionResponse, error)
 	GetAuctionByGoods(context.Context, *GetAuctionByGoodsRequest) (*GetAuctionByGoodsResponse, error)
 	ListShopAuctions(context.Context, *ListShopAuctionsRequest) (*ListShopAuctionsResponse, error)
+	ListMerchantAuctions(context.Context, *ListMerchantAuctionsRequest) (*ListMerchantAuctionsResponse, error)
+	GetAuctionRuntime(context.Context, *GetAuctionRuntimeRequest) (*GetAuctionRuntimeResponse, error)
+	GetMerchantDashboardSummary(context.Context, *GetMerchantDashboardSummaryRequest) (*GetMerchantDashboardSummaryResponse, error)
 	UpdateAuction(context.Context, *UpdateAuctionRequest) (*UpdateAuctionResponse, error)
 	StartAuction(context.Context, *StartAuctionRequest) (*StartAuctionResponse, error)
 	FinishAuction(context.Context, *FinishAuctionRequest) (*FinishAuctionResponse, error)
@@ -203,6 +242,15 @@ func (UnimplementedAuctionServiceServer) GetAuctionByGoods(context.Context, *Get
 }
 func (UnimplementedAuctionServiceServer) ListShopAuctions(context.Context, *ListShopAuctionsRequest) (*ListShopAuctionsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListShopAuctions not implemented")
+}
+func (UnimplementedAuctionServiceServer) ListMerchantAuctions(context.Context, *ListMerchantAuctionsRequest) (*ListMerchantAuctionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListMerchantAuctions not implemented")
+}
+func (UnimplementedAuctionServiceServer) GetAuctionRuntime(context.Context, *GetAuctionRuntimeRequest) (*GetAuctionRuntimeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAuctionRuntime not implemented")
+}
+func (UnimplementedAuctionServiceServer) GetMerchantDashboardSummary(context.Context, *GetMerchantDashboardSummaryRequest) (*GetMerchantDashboardSummaryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMerchantDashboardSummary not implemented")
 }
 func (UnimplementedAuctionServiceServer) UpdateAuction(context.Context, *UpdateAuctionRequest) (*UpdateAuctionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateAuction not implemented")
@@ -314,6 +362,60 @@ func _AuctionService_ListShopAuctions_Handler(srv interface{}, ctx context.Conte
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AuctionServiceServer).ListShopAuctions(ctx, req.(*ListShopAuctionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuctionService_ListMerchantAuctions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMerchantAuctionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServiceServer).ListMerchantAuctions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuctionService_ListMerchantAuctions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServiceServer).ListMerchantAuctions(ctx, req.(*ListMerchantAuctionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuctionService_GetAuctionRuntime_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAuctionRuntimeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServiceServer).GetAuctionRuntime(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuctionService_GetAuctionRuntime_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServiceServer).GetAuctionRuntime(ctx, req.(*GetAuctionRuntimeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuctionService_GetMerchantDashboardSummary_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMerchantDashboardSummaryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServiceServer).GetMerchantDashboardSummary(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuctionService_GetMerchantDashboardSummary_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServiceServer).GetMerchantDashboardSummary(ctx, req.(*GetMerchantDashboardSummaryRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -466,6 +568,18 @@ var AuctionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListShopAuctions",
 			Handler:    _AuctionService_ListShopAuctions_Handler,
+		},
+		{
+			MethodName: "ListMerchantAuctions",
+			Handler:    _AuctionService_ListMerchantAuctions_Handler,
+		},
+		{
+			MethodName: "GetAuctionRuntime",
+			Handler:    _AuctionService_GetAuctionRuntime_Handler,
+		},
+		{
+			MethodName: "GetMerchantDashboardSummary",
+			Handler:    _AuctionService_GetMerchantDashboardSummary_Handler,
 		},
 		{
 			MethodName: "UpdateAuction",

@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -81,6 +82,15 @@ func TestGoodsHandlerCreateForwardsToGoodsService(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
 	}
+	var resp struct {
+		Data goodsResponse `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp.Data.Status != 1 {
+		t.Fatalf("expected goods status in response, got %d", resp.Data.Status)
+	}
 }
 
 func TestGoodsHandlerListShopGoodsUsesContextShopID(t *testing.T) {
@@ -135,7 +145,7 @@ func testGoods() *goodsv1.Goods {
 		Title:       "翡翠手镯",
 		CoverUrl:    "https://example.com/cover.jpg",
 		Description: "天然翡翠",
-		Status:      0,
+		Status:      1,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}

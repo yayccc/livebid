@@ -10,6 +10,8 @@ import (
 
 type GoodsClient interface {
 	ValidateGoodsForShop(ctx context.Context, goodsID int64, shopID int64) error
+	ListGoodsForShop(ctx context.Context, shopID int64, keyword string) ([]*goodsv1.Goods, error)
+	BatchGetGoods(ctx context.Context, ids []int64) ([]*goodsv1.Goods, error)
 	Close() error
 }
 
@@ -39,6 +41,37 @@ func (c *GRPCGoodsClient) ValidateGoodsForShop(ctx context.Context, goodsID int6
 		return ErrGoodsShopMismatch
 	}
 	return nil
+}
+
+func (c *GRPCGoodsClient) ListGoodsForShop(ctx context.Context, shopID int64, keyword string) ([]*goodsv1.Goods, error) {
+	const pageSize = 100
+	var all []*goodsv1.Goods
+	for page := int32(1); ; page++ {
+		resp, err := c.client.ListShopGoods(ctx, &goodsv1.ListShopGoodsRequest{
+			ShopId:   shopID,
+			Page:     page,
+			PageSize: pageSize,
+			Keyword:  keyword,
+		})
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, resp.GetList()...)
+		if int64(len(all)) >= resp.GetTotal() || len(resp.GetList()) == 0 {
+			return all, nil
+		}
+	}
+}
+
+func (c *GRPCGoodsClient) BatchGetGoods(ctx context.Context, ids []int64) ([]*goodsv1.Goods, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	resp, err := c.client.BatchGetGoods(ctx, &goodsv1.BatchGetGoodsRequest{Ids: ids})
+	if err != nil {
+		return nil, err
+	}
+	return resp.GetList(), nil
 }
 
 func (c *GRPCGoodsClient) Close() error {

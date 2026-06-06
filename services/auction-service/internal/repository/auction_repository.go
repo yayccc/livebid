@@ -4,24 +4,37 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/yayccc/livebid/services/auction-service/internal/model"
 	"gorm.io/gorm"
 )
 
 var (
-	ErrAuctionNotFound        = errors.New("auction not found")
-	ErrAuctionDuplicated      = errors.New("auction already exists for goods")
-	ErrInvalidAuctionState    = errors.New("invalid auction state")
-	ErrBidRecordNotFound      = errors.New("bid record not found")
-	ErrOutdatedAuctionVersion = errors.New("outdated auction version")
+	ErrAuctionNotFound        = errors.New("竞拍活动不存在或已被删除")
+	ErrAuctionDuplicated      = errors.New("该商品已创建竞拍活动，不能重复创建")
+	ErrInvalidAuctionState    = errors.New("当前竞拍状态不允许执行该操作")
+	ErrBidRecordNotFound      = errors.New("出价记录不存在或已被删除")
+	ErrOutdatedAuctionVersion = errors.New("竞拍状态版本已过期，跳过旧状态更新")
 )
 
 type ListAuctionFilter struct {
-	ShopID   int64
-	Status   *model.AuctionStatus
-	Page     int
-	PageSize int
+	ShopID           int64
+	Status           *model.AuctionStatus
+	GoodsIDs         []int64
+	FilterByGoodsIDs bool
+	Page             int
+	PageSize         int
+}
+
+type MerchantAuctionSummary struct {
+	AuctionTotal     int64
+	AuctionRunning   int64
+	AuctionPending   int64
+	AuctionDeal      int64
+	AuctionFailed    int64
+	AuctionCancelled int64
+	TodayDealAmount  int64
 }
 
 type AuctionRepository interface {
@@ -30,6 +43,7 @@ type AuctionRepository interface {
 	FindByIDForShop(ctx context.Context, id int64, shopID int64) (*model.Auction, error)
 	FindByGoodsID(ctx context.Context, goodsID int64) (*model.Auction, error)
 	ListByShop(ctx context.Context, filter ListAuctionFilter) ([]*model.Auction, int64, error)
+	SummarizeByShop(ctx context.Context, shopID int64, todayStart time.Time, todayEnd time.Time) (MerchantAuctionSummary, error)
 	UpdatePendingConfig(ctx context.Context, auction *model.Auction) error
 	UpdateStatusSnapshot(ctx context.Context, auction *model.Auction) error
 	Delete(ctx context.Context, id int64, shopID int64) error
@@ -79,6 +93,12 @@ func (r *GormAuctionRepository) ListByShop(ctx context.Context, filter ListAucti
 	if filter.Status != nil {
 		query = query.Where("status = ?", *filter.Status)
 	}
+	if filter.FilterByGoodsIDs {
+		if len(filter.GoodsIDs) == 0 {
+			return []*model.Auction{}, 0, nil
+		}
+		query = query.Where("goods_id IN ?", filter.GoodsIDs)
+	}
 
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
@@ -90,6 +110,49 @@ func (r *GormAuctionRepository) ListByShop(ctx context.Context, filter ListAucti
 		Offset((page - 1) * pageSize).
 		Find(&list).Error
 	return list, total, err
+}
+
+func (r *GormAuctionRepository) SummarizeByShop(ctx context.Context, shopID int64, todayStart time.Time, todayEnd time.Time) (MerchantAuctionSummary, error) {
+	var rows []struct {
+		Status model.AuctionStatus
+		Count  int64
+	}
+	if err := r.db.WithContext(ctx).
+		Model(&model.Auction{}).
+		Select("status, COUNT(*) AS count").
+		Where("shop_id = ? AND is_delete = 0", shopID).
+		Group("status").
+		Scan(&rows).Error; err != nil {
+		return MerchantAuctionSummary{}, err
+	}
+
+	summary := MerchantAuctionSummary{}
+	for _, row := range rows {
+		summary.AuctionTotal += row.Count
+		switch row.Status {
+		case model.AuctionStatusPending:
+			summary.AuctionPending = row.Count
+		case model.AuctionStatusRunning:
+			summary.AuctionRunning = row.Count
+		case model.AuctionStatusDeal:
+			summary.AuctionDeal = row.Count
+		case model.AuctionStatusFailed:
+			summary.AuctionFailed = row.Count
+		case model.AuctionStatusCanceled:
+			summary.AuctionCancelled = row.Count
+		}
+	}
+
+	var amount int64
+	if err := r.db.WithContext(ctx).
+		Model(&model.Auction{}).
+		Select("COALESCE(SUM(deal_price), 0)").
+		Where("shop_id = ? AND is_delete = 0 AND status = ? AND end_time >= ? AND end_time < ?", shopID, model.AuctionStatusDeal, todayStart, todayEnd).
+		Scan(&amount).Error; err != nil {
+		return MerchantAuctionSummary{}, err
+	}
+	summary.TodayDealAmount = amount
+	return summary, nil
 }
 
 func (r *GormAuctionRepository) UpdatePendingConfig(ctx context.Context, auction *model.Auction) error {

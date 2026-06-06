@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
-var ErrGoodsNotFound = errors.New("goods not found")
+var ErrGoodsNotFound = errors.New("商品不存在或不属于当前商铺")
 
 type ListGoodsFilter struct {
 	Page      int

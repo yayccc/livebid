@@ -77,7 +77,7 @@ func (h *GoodsHandler) Create(c *gin.Context) {
 	var req createGoodsRequest
 	if err := c.ShouldBind(&req); err != nil {
 		recordRequestError(c, err)
-		respondError(c, http.StatusBadRequest, "invalid request")
+		respondError(c, http.StatusBadRequest, "创建商品参数无效，请检查 title、cover_url 和 description")
 		return
 	}
 
@@ -94,7 +94,7 @@ func (h *GoodsHandler) Create(c *gin.Context) {
 		respondGRPCError(c, err)
 		return
 	}
-	respondOK(c, gin.H{"goods": toGoodsResponse(resp.GetGoods())})
+	respondOK(c, toGoodsResponse(resp.GetGoods()))
 }
 
 func (h *GoodsHandler) Update(c *gin.Context) {
@@ -109,7 +109,7 @@ func (h *GoodsHandler) Update(c *gin.Context) {
 	var req updateGoodsRequest
 	if err := c.ShouldBind(&req); err != nil {
 		recordRequestError(c, err)
-		respondError(c, http.StatusBadRequest, "invalid request")
+		respondError(c, http.StatusBadRequest, "编辑商品参数无效，请提交合法的商品信息")
 		return
 	}
 
@@ -127,7 +127,7 @@ func (h *GoodsHandler) Update(c *gin.Context) {
 		respondGRPCError(c, err)
 		return
 	}
-	respondOK(c, gin.H{"goods": toGoodsResponse(resp.GetGoods())})
+	respondOK(c, toGoodsResponse(resp.GetGoods()))
 }
 
 func (h *GoodsHandler) Delete(c *gin.Context) {
@@ -151,7 +151,7 @@ func (h *GoodsHandler) Delete(c *gin.Context) {
 		respondGRPCError(c, err)
 		return
 	}
-	respondOK(c, gin.H{})
+	respondOK(c, "")
 }
 
 func (h *GoodsHandler) Get(c *gin.Context) {
@@ -168,7 +168,7 @@ func (h *GoodsHandler) Get(c *gin.Context) {
 		respondGRPCError(c, err)
 		return
 	}
-	respondOK(c, gin.H{"goods": toGoodsResponse(resp.GetGoods())})
+	respondOK(c, toGoodsResponse(resp.GetGoods()))
 }
 
 func (h *GoodsHandler) List(c *gin.Context) {
@@ -232,7 +232,7 @@ func (h *GoodsHandler) BatchGetGoods(c *gin.Context) {
 	var req batchGetGoodsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		recordRequestError(c, err)
-		respondError(c, http.StatusBadRequest, "invalid request")
+		respondError(c, http.StatusBadRequest, "批量查询商品参数无效，请提交非空的 ids 数组")
 		return
 	}
 
@@ -244,7 +244,7 @@ func (h *GoodsHandler) BatchGetGoods(c *gin.Context) {
 		respondGRPCError(c, err)
 		return
 	}
-	respondOK(c, gin.H{"list": toGoodsResponseList(resp.GetList())})
+	respondOK(c, toGoodsResponseList(resp.GetList()))
 }
 
 func (h *GoodsHandler) PutOnSale(c *gin.Context) {
@@ -268,7 +268,7 @@ func (h *GoodsHandler) PutOnSale(c *gin.Context) {
 		respondGRPCError(c, err)
 		return
 	}
-	respondOK(c, gin.H{})
+	respondOK(c, "")
 }
 
 func (h *GoodsHandler) PutOffSale(c *gin.Context) {
@@ -292,7 +292,7 @@ func (h *GoodsHandler) PutOffSale(c *gin.Context) {
 		respondGRPCError(c, err)
 		return
 	}
-	respondOK(c, gin.H{})
+	respondOK(c, "")
 }
 
 func listGoodsRequest(c *gin.Context) (*goodsv1.ListGoodsRequest, bool) {
@@ -337,8 +337,8 @@ func toGoodsResponse(goods *goodsv1.Goods) goodsResponse {
 		CoverURL:    goods.GetCoverUrl(),
 		Description: goods.GetDescription(),
 		Status:      goods.GetStatus(),
-		CreatedAt:   timestampString(goods.GetCreatedAt()),
-		UpdatedAt:   timestampString(goods.GetUpdatedAt()),
+		CreatedAt:   documentTimeString(goods.GetCreatedAt()),
+		UpdatedAt:   documentTimeString(goods.GetUpdatedAt()),
 	}
 }
 

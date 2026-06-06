@@ -31,10 +31,11 @@ log:
   encoding: console
 
 nacos:
-  enabled: false
+  enabled: true
   servers:
     - host: "127.0.0.1"
       port: 8848
+      grpcPort: 9848
   namespaceId: "livebid-local"
 
 configCenter:
@@ -43,7 +44,7 @@ configCenter:
   group: "LIVEBID"
 
 registry:
-  enabled: false
+  enabled: true
   provider: "nacos"
   serviceName: "auction-service"
   group: "LIVEBID"

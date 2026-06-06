@@ -104,6 +104,13 @@ func timestampString(ts *timestamppb.Timestamp) string {
 	return ts.AsTime().UTC().Format(time.RFC3339)
 }
 
+func documentTimeString(ts *timestamppb.Timestamp) string {
+	if ts == nil {
+		return ""
+	}
+	return ts.AsTime().UTC().Format("2006-01-02 15:04:05")
+}
+
 func respondOK(c *gin.Context, data any) {
 	respondOKWithMessage(c, "ok", data)
 }
@@ -137,6 +144,8 @@ func respondGRPCError(c *gin.Context, err error) {
 		respondError(c, http.StatusNotFound, grpcMessageOrDefault(err, "资源不存在或已被删除"))
 	case codes.PermissionDenied:
 		respondError(c, http.StatusForbidden, grpcMessageOrDefault(err, "无权执行该操作"))
+	case codes.FailedPrecondition:
+		respondError(c, http.StatusBadRequest, grpcMessageOrDefault(err, "当前状态不允许执行该操作"))
 	case codes.DeadlineExceeded:
 		respondError(c, http.StatusGatewayTimeout, "下游服务响应超时，请稍后重试")
 	case codes.Unavailable:

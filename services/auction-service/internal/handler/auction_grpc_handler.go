@@ -8,6 +8,7 @@ import (
 	"time"
 
 	auctionv1 "github.com/yayccc/livebid/gen/proto/auction/v1"
+	goodsv1 "github.com/yayccc/livebid/gen/proto/goods/v1"
 	"github.com/yayccc/livebid/pkg/identity"
 	"github.com/yayccc/livebid/pkg/idgen"
 	"github.com/yayccc/livebid/services/auction-service/internal/client"
@@ -130,7 +131,10 @@ func (h *AuctionGRPCHandler) GetAuctionByGoods(ctx context.Context, req *auction
 }
 
 func (h *AuctionGRPCHandler) ListShopAuctions(ctx context.Context, req *auctionv1.ListShopAuctionsRequest) (*auctionv1.ListShopAuctionsResponse, error) {
-	shopID := optionalShopID(ctx, req.GetShopId())
+	shopID, err := currentShopID(ctx)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
 	filter := repository.ListAuctionFilter{
 		ShopID:   shopID,
 		Page:     int(req.GetPage()),
@@ -153,6 +157,109 @@ func (h *AuctionGRPCHandler) ListShopAuctions(ctx context.Context, req *auctionv
 		Page:     int32(page),
 		PageSize: int32(pageSize),
 		List:     toProtoAuctionList(list),
+	}, nil
+}
+
+func (h *AuctionGRPCHandler) ListMerchantAuctions(ctx context.Context, req *auctionv1.ListMerchantAuctionsRequest) (*auctionv1.ListMerchantAuctionsResponse, error) {
+	shopID, err := currentShopID(ctx)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	filter := repository.ListAuctionFilter{
+		ShopID:   shopID,
+		Page:     int(req.GetPage()),
+		PageSize: int(req.GetPageSize()),
+	}
+	if req.Status != nil {
+		statusValue, err := parseAuctionStatus(req.GetStatus())
+		if err != nil {
+			return nil, toGRPCError(err)
+		}
+		filter.Status = &statusValue
+	}
+
+	keyword := strings.TrimSpace(req.GetKeyword())
+	var goodsByID map[int64]*goodsv1.Goods
+	if h.goods != nil && keyword != "" {
+		goodsList, err := h.goods.ListGoodsForShop(ctx, shopID, keyword)
+		if err != nil {
+			return nil, toGRPCError(err)
+		}
+		filter.FilterByGoodsIDs = true
+		filter.GoodsIDs = goodsIDs(goodsList)
+		goodsByID = goodsSnapshotMap(goodsList)
+	}
+
+	list, total, err := h.auctions.ListByShop(ctx, filter)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	if h.goods != nil && keyword == "" {
+		goodsList, err := h.goods.BatchGetGoods(ctx, auctionGoodsIDs(list))
+		if err != nil {
+			return nil, toGRPCError(err)
+		}
+		goodsByID = goodsSnapshotMap(goodsList)
+	}
+	page, pageSize := normalizePagination(int(req.GetPage()), int(req.GetPageSize()), 10)
+	return &auctionv1.ListMerchantAuctionsResponse{
+		Total:    total,
+		Page:     int32(page),
+		PageSize: int32(pageSize),
+		List:     toProtoMerchantAuctionList(list, goodsByID),
+	}, nil
+}
+
+func (h *AuctionGRPCHandler) GetAuctionRuntime(ctx context.Context, req *auctionv1.GetAuctionRuntimeRequest) (*auctionv1.GetAuctionRuntimeResponse, error) {
+	if req.GetAuctionId() <= 0 {
+		return nil, toGRPCError(errInvalidArgument)
+	}
+	now := time.Now()
+	if h.states != nil {
+		state, err := h.states.GetState(ctx, req.GetAuctionId())
+		if err == nil {
+			return &auctionv1.GetAuctionRuntimeResponse{
+				Runtime: toProtoAuctionRuntimeFromState(state, now),
+			}, nil
+		}
+		if !errors.Is(err, repository.ErrAuctionNotFound) {
+			return nil, toGRPCError(err)
+		}
+	}
+	auction, err := h.auctions.FindByID(ctx, req.GetAuctionId())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	return &auctionv1.GetAuctionRuntimeResponse{
+		Runtime: toProtoAuctionRuntimeFromAuction(auction, now),
+	}, nil
+}
+
+func (h *AuctionGRPCHandler) GetMerchantDashboardSummary(ctx context.Context, req *auctionv1.GetMerchantDashboardSummaryRequest) (*auctionv1.GetMerchantDashboardSummaryResponse, error) {
+	shopID, err := currentShopID(ctx)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	start, end := todayRange(time.Now())
+	summary, err := h.auctions.SummarizeByShop(ctx, shopID, start, end)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	todayBidCount, err := h.bids.CountByShopBetween(ctx, shopID, start, end)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	return &auctionv1.GetMerchantDashboardSummaryResponse{
+		Summary: &auctionv1.MerchantDashboardSummary{
+			AuctionTotal:     summary.AuctionTotal,
+			AuctionRunning:   summary.AuctionRunning,
+			AuctionPending:   summary.AuctionPending,
+			AuctionDeal:      summary.AuctionDeal,
+			AuctionFailed:    summary.AuctionFailed,
+			AuctionCancelled: summary.AuctionCancelled,
+			TodayDealAmount:  summary.TodayDealAmount,
+			TodayBidCount:    todayBidCount,
+		},
 	}, nil
 }
 
@@ -357,13 +464,13 @@ func (h *AuctionGRPCHandler) PlaceBid(ctx context.Context, req *auctionv1.PlaceB
 	})
 	_ = h.auctions.UpdateStatusSnapshot(ctx, auction)
 	return &auctionv1.PlaceBidResponse{
-			Accepted:     true,
-			CurrentPrice: result.State.CurrentPrice,
-			BidCount:     result.State.BidCount,
-			WinnerUserId: userID,
-			ServerTime:   timestamppb.New(now),
-			ExpireAt:     timestamppb.New(result.State.ExpireAt),
-		}, nil
+		Accepted:     true,
+		CurrentPrice: result.State.CurrentPrice,
+		BidCount:     result.State.BidCount,
+		WinnerUserId: userID,
+		ServerTime:   timestamppb.New(now),
+		ExpireAt:     timestamppb.New(result.State.ExpireAt),
+	}, nil
 }
 
 func (h *AuctionGRPCHandler) ListBidRecords(ctx context.Context, req *auctionv1.ListBidRecordsRequest) (*auctionv1.ListBidRecordsResponse, error) {
@@ -541,6 +648,67 @@ func toProtoAuctionList(list []*model.Auction) []*auctionv1.Auction {
 	return result
 }
 
+func toProtoMerchantAuction(auction *model.Auction, goodsByID map[int64]*goodsv1.Goods) *auctionv1.MerchantAuction {
+	if auction == nil {
+		return nil
+	}
+	item := &auctionv1.MerchantAuction{
+		Id:           auction.ID,
+		GoodsId:      auction.GoodsID,
+		ShopId:       auction.ShopID,
+		StartPrice:   auction.StartPrice,
+		BidIncrement: auction.BidIncrement,
+		SealPrice:    auction.SealPrice,
+		CurrentPrice: auction.CurrentPrice,
+		BidCount:     auction.BidCount,
+		Status:       int32(auction.Status),
+		StartTime:    timeToProto(auction.StartTime),
+		EndTime:      timeToProto(auction.EndTime),
+	}
+	if goods := goodsByID[auction.GoodsID]; goods != nil {
+		item.GoodsTitle = goods.GetTitle()
+		item.GoodsCoverUrl = goods.GetCoverUrl()
+	}
+	return item
+}
+
+func toProtoMerchantAuctionList(list []*model.Auction, goodsByID map[int64]*goodsv1.Goods) []*auctionv1.MerchantAuction {
+	result := make([]*auctionv1.MerchantAuction, 0, len(list))
+	for _, auction := range list {
+		result = append(result, toProtoMerchantAuction(auction, goodsByID))
+	}
+	return result
+}
+
+func toProtoAuctionRuntimeFromState(state repository.AuctionState, now time.Time) *auctionv1.AuctionRuntime {
+	return &auctionv1.AuctionRuntime{
+		AuctionId:    state.AuctionID,
+		Status:       int32(state.Status),
+		CurrentPrice: state.CurrentPrice,
+		BidCount:     state.BidCount,
+		WinnerUserId: state.WinnerUserID,
+		ServerTime:   timestamppb.New(now),
+		ExpireAt:     timestamppb.New(state.ExpireAt),
+		Version:      state.Version,
+	}
+}
+
+func toProtoAuctionRuntimeFromAuction(auction *model.Auction, now time.Time) *auctionv1.AuctionRuntime {
+	if auction == nil {
+		return nil
+	}
+	return &auctionv1.AuctionRuntime{
+		AuctionId:    auction.ID,
+		Status:       int32(auction.Status),
+		CurrentPrice: auction.CurrentPrice,
+		BidCount:     auction.BidCount,
+		WinnerUserId: auction.WinnerUserID,
+		ServerTime:   timestamppb.New(now),
+		ExpireAt:     timeToProto(auction.EndTime),
+		Version:      auction.Version,
+	}
+}
+
 func toProtoBidRecord(record *model.BidRecord) *auctionv1.BidRecord {
 	if record == nil {
 		return nil
@@ -579,6 +747,55 @@ func timePtrUnixMilli(value *time.Time) int64 {
 		return 0
 	}
 	return value.UnixMilli()
+}
+
+func goodsIDs(goodsList []*goodsv1.Goods) []int64 {
+	ids := make([]int64, 0, len(goodsList))
+	seen := make(map[int64]struct{}, len(goodsList))
+	for _, goods := range goodsList {
+		id := goods.GetId()
+		if id <= 0 {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+func auctionGoodsIDs(list []*model.Auction) []int64 {
+	ids := make([]int64, 0, len(list))
+	seen := make(map[int64]struct{}, len(list))
+	for _, auction := range list {
+		if auction == nil || auction.GoodsID <= 0 {
+			continue
+		}
+		if _, ok := seen[auction.GoodsID]; ok {
+			continue
+		}
+		seen[auction.GoodsID] = struct{}{}
+		ids = append(ids, auction.GoodsID)
+	}
+	return ids
+}
+
+func goodsSnapshotMap(goodsList []*goodsv1.Goods) map[int64]*goodsv1.Goods {
+	result := make(map[int64]*goodsv1.Goods, len(goodsList))
+	for _, goods := range goodsList {
+		if goods.GetId() > 0 {
+			result[goods.GetId()] = goods
+		}
+	}
+	return result
+}
+
+func todayRange(now time.Time) (time.Time, time.Time) {
+	location := now.Location()
+	start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, location)
+	return start, start.AddDate(0, 0, 1)
 }
 
 func auctionFromState(state repository.AuctionState) *model.Auction {
@@ -633,6 +850,6 @@ func toGRPCError(err error) error {
 	case errors.Is(err, client.ErrGoodsShopMismatch), errors.Is(err, client.ErrLiveRoomShopMismatch):
 		return status.Error(codes.PermissionDenied, err.Error())
 	default:
-		return status.Error(codes.Internal, "internal error")
+		return status.Error(codes.Internal, "竞拍服务内部错误，请稍后重试")
 	}
 }

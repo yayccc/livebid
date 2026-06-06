@@ -47,6 +47,7 @@ func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, userHandler 
 	merchantShop.PUT("/:id", shopHandler.Update)
 
 	merchantGoods := merchant.Group("/goods")
+	merchantGoods.POST("/cover/upload", fileHandler.UploadGoodsCover)
 	merchantGoods.GET("/shop/list", goodsHandler.ListShopGoods)
 	merchantGoods.POST("", goodsHandler.Create)
 	merchantGoods.PUT("/:id", goodsHandler.Update)
@@ -70,21 +71,26 @@ func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, userHandler 
 	live := api.Group("/live")
 	live.GET("/rooms", liveHandler.ListLiveRooms)
 	live.GET("/rooms/:id", liveHandler.GetLiveRoom)
+	//TODO: 接口设计有问题
 
 	auction := api.Group("/auctions")
-	//TODO: 接口设计有问题
-	auction.GET("", auctionHandler.ListShop)
-	auction.GET("/by-goods/:goods_id", auctionHandler.GetByGoods)
 	auction.GET("/:id", auctionHandler.Get)
 	auction.GET("/:id/bids", auctionHandler.ListBidRecords)
+	auction.GET("/goods/:goods_id", auctionHandler.GetByGoods)
+	auction.GET("/:id/runtime", auctionHandler.GetRuntime)
 
 	merchantAuction := merchant.Group("/auctions")
+	merchantAuction.GET("/shop", auctionHandler.ListShop)
 	merchantAuction.POST("", auctionHandler.Create)
 	merchantAuction.PUT("/:id", auctionHandler.Update)
 	merchantAuction.POST("/:id/start", auctionHandler.Start)
 	merchantAuction.POST("/:id/finish", auctionHandler.Finish)
 	merchantAuction.POST("/:id/cancel", auctionHandler.Cancel)
 	merchantAuction.DELETE("/:id", auctionHandler.Delete)
+
+	merchantAPI := merchant.Group("/merchant")
+	merchantAPI.GET("/auctions", auctionHandler.ListMerchant)
+	merchantAPI.GET("/dashboard/summary", auctionHandler.DashboardSummary)
 
 	userAuction := user.Group("/auctions")
 	userAuction.POST("/:id/bids", auctionHandler.PlaceBid)

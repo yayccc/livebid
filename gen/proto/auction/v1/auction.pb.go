@@ -478,6 +478,326 @@ func (x *ListShopAuctionsResponse) GetList() []*Auction {
 	return nil
 }
 
+type ListMerchantAuctionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ShopId        int64                  `protobuf:"varint,1,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	Status        *int32                 `protobuf:"varint,2,opt,name=status,proto3,oneof" json:"status,omitempty"`
+	Page          int32                  `protobuf:"varint,3,opt,name=page,proto3" json:"page,omitempty"`
+	PageSize      int32                  `protobuf:"varint,4,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	Keyword       string                 `protobuf:"bytes,5,opt,name=keyword,proto3" json:"keyword,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMerchantAuctionsRequest) Reset() {
+	*x = ListMerchantAuctionsRequest{}
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMerchantAuctionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMerchantAuctionsRequest) ProtoMessage() {}
+
+func (x *ListMerchantAuctionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMerchantAuctionsRequest.ProtoReflect.Descriptor instead.
+func (*ListMerchantAuctionsRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ListMerchantAuctionsRequest) GetShopId() int64 {
+	if x != nil {
+		return x.ShopId
+	}
+	return 0
+}
+
+func (x *ListMerchantAuctionsRequest) GetStatus() int32 {
+	if x != nil && x.Status != nil {
+		return *x.Status
+	}
+	return 0
+}
+
+func (x *ListMerchantAuctionsRequest) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *ListMerchantAuctionsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListMerchantAuctionsRequest) GetKeyword() string {
+	if x != nil {
+		return x.Keyword
+	}
+	return ""
+}
+
+type ListMerchantAuctionsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Total         int64                  `protobuf:"varint,1,opt,name=total,proto3" json:"total,omitempty"`
+	Page          int32                  `protobuf:"varint,2,opt,name=page,proto3" json:"page,omitempty"`
+	PageSize      int32                  `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	List          []*MerchantAuction     `protobuf:"bytes,4,rep,name=list,proto3" json:"list,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMerchantAuctionsResponse) Reset() {
+	*x = ListMerchantAuctionsResponse{}
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMerchantAuctionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMerchantAuctionsResponse) ProtoMessage() {}
+
+func (x *ListMerchantAuctionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMerchantAuctionsResponse.ProtoReflect.Descriptor instead.
+func (*ListMerchantAuctionsResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ListMerchantAuctionsResponse) GetTotal() int64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *ListMerchantAuctionsResponse) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *ListMerchantAuctionsResponse) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListMerchantAuctionsResponse) GetList() []*MerchantAuction {
+	if x != nil {
+		return x.List
+	}
+	return nil
+}
+
+type GetAuctionRuntimeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AuctionId     int64                  `protobuf:"varint,1,opt,name=auction_id,json=auctionId,proto3" json:"auction_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAuctionRuntimeRequest) Reset() {
+	*x = GetAuctionRuntimeRequest{}
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAuctionRuntimeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAuctionRuntimeRequest) ProtoMessage() {}
+
+func (x *GetAuctionRuntimeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAuctionRuntimeRequest.ProtoReflect.Descriptor instead.
+func (*GetAuctionRuntimeRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GetAuctionRuntimeRequest) GetAuctionId() int64 {
+	if x != nil {
+		return x.AuctionId
+	}
+	return 0
+}
+
+type GetAuctionRuntimeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Runtime       *AuctionRuntime        `protobuf:"bytes,1,opt,name=runtime,proto3" json:"runtime,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAuctionRuntimeResponse) Reset() {
+	*x = GetAuctionRuntimeResponse{}
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAuctionRuntimeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAuctionRuntimeResponse) ProtoMessage() {}
+
+func (x *GetAuctionRuntimeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAuctionRuntimeResponse.ProtoReflect.Descriptor instead.
+func (*GetAuctionRuntimeResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GetAuctionRuntimeResponse) GetRuntime() *AuctionRuntime {
+	if x != nil {
+		return x.Runtime
+	}
+	return nil
+}
+
+type GetMerchantDashboardSummaryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ShopId        int64                  `protobuf:"varint,1,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMerchantDashboardSummaryRequest) Reset() {
+	*x = GetMerchantDashboardSummaryRequest{}
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMerchantDashboardSummaryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMerchantDashboardSummaryRequest) ProtoMessage() {}
+
+func (x *GetMerchantDashboardSummaryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMerchantDashboardSummaryRequest.ProtoReflect.Descriptor instead.
+func (*GetMerchantDashboardSummaryRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GetMerchantDashboardSummaryRequest) GetShopId() int64 {
+	if x != nil {
+		return x.ShopId
+	}
+	return 0
+}
+
+type GetMerchantDashboardSummaryResponse struct {
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	Summary       *MerchantDashboardSummary `protobuf:"bytes,1,opt,name=summary,proto3" json:"summary,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMerchantDashboardSummaryResponse) Reset() {
+	*x = GetMerchantDashboardSummaryResponse{}
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMerchantDashboardSummaryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMerchantDashboardSummaryResponse) ProtoMessage() {}
+
+func (x *GetMerchantDashboardSummaryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMerchantDashboardSummaryResponse.ProtoReflect.Descriptor instead.
+func (*GetMerchantDashboardSummaryResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetMerchantDashboardSummaryResponse) GetSummary() *MerchantDashboardSummary {
+	if x != nil {
+		return x.Summary
+	}
+	return nil
+}
+
 type UpdateAuctionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -493,7 +813,7 @@ type UpdateAuctionRequest struct {
 
 func (x *UpdateAuctionRequest) Reset() {
 	*x = UpdateAuctionRequest{}
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[8]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -505,7 +825,7 @@ func (x *UpdateAuctionRequest) String() string {
 func (*UpdateAuctionRequest) ProtoMessage() {}
 
 func (x *UpdateAuctionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[8]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -518,7 +838,7 @@ func (x *UpdateAuctionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateAuctionRequest.ProtoReflect.Descriptor instead.
 func (*UpdateAuctionRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{8}
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *UpdateAuctionRequest) GetId() int64 {
@@ -579,7 +899,7 @@ type UpdateAuctionResponse struct {
 
 func (x *UpdateAuctionResponse) Reset() {
 	*x = UpdateAuctionResponse{}
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[9]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -591,7 +911,7 @@ func (x *UpdateAuctionResponse) String() string {
 func (*UpdateAuctionResponse) ProtoMessage() {}
 
 func (x *UpdateAuctionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[9]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -604,7 +924,7 @@ func (x *UpdateAuctionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateAuctionResponse.ProtoReflect.Descriptor instead.
 func (*UpdateAuctionResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{9}
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *UpdateAuctionResponse) GetAuction() *Auction {
@@ -624,7 +944,7 @@ type StartAuctionRequest struct {
 
 func (x *StartAuctionRequest) Reset() {
 	*x = StartAuctionRequest{}
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[10]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -636,7 +956,7 @@ func (x *StartAuctionRequest) String() string {
 func (*StartAuctionRequest) ProtoMessage() {}
 
 func (x *StartAuctionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[10]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -649,7 +969,7 @@ func (x *StartAuctionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartAuctionRequest.ProtoReflect.Descriptor instead.
 func (*StartAuctionRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{10}
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *StartAuctionRequest) GetId() int64 {
@@ -675,7 +995,7 @@ type StartAuctionResponse struct {
 
 func (x *StartAuctionResponse) Reset() {
 	*x = StartAuctionResponse{}
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[11]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -687,7 +1007,7 @@ func (x *StartAuctionResponse) String() string {
 func (*StartAuctionResponse) ProtoMessage() {}
 
 func (x *StartAuctionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[11]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -700,7 +1020,7 @@ func (x *StartAuctionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartAuctionResponse.ProtoReflect.Descriptor instead.
 func (*StartAuctionResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{11}
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *StartAuctionResponse) GetAuction() *Auction {
@@ -720,7 +1040,7 @@ type FinishAuctionRequest struct {
 
 func (x *FinishAuctionRequest) Reset() {
 	*x = FinishAuctionRequest{}
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[12]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -732,7 +1052,7 @@ func (x *FinishAuctionRequest) String() string {
 func (*FinishAuctionRequest) ProtoMessage() {}
 
 func (x *FinishAuctionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[12]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -745,7 +1065,7 @@ func (x *FinishAuctionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FinishAuctionRequest.ProtoReflect.Descriptor instead.
 func (*FinishAuctionRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{12}
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *FinishAuctionRequest) GetId() int64 {
@@ -771,7 +1091,7 @@ type FinishAuctionResponse struct {
 
 func (x *FinishAuctionResponse) Reset() {
 	*x = FinishAuctionResponse{}
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[13]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -783,7 +1103,7 @@ func (x *FinishAuctionResponse) String() string {
 func (*FinishAuctionResponse) ProtoMessage() {}
 
 func (x *FinishAuctionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[13]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -796,7 +1116,7 @@ func (x *FinishAuctionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FinishAuctionResponse.ProtoReflect.Descriptor instead.
 func (*FinishAuctionResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{13}
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *FinishAuctionResponse) GetAuction() *Auction {
@@ -816,7 +1136,7 @@ type CancelAuctionRequest struct {
 
 func (x *CancelAuctionRequest) Reset() {
 	*x = CancelAuctionRequest{}
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[14]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -828,7 +1148,7 @@ func (x *CancelAuctionRequest) String() string {
 func (*CancelAuctionRequest) ProtoMessage() {}
 
 func (x *CancelAuctionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[14]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -841,7 +1161,7 @@ func (x *CancelAuctionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelAuctionRequest.ProtoReflect.Descriptor instead.
 func (*CancelAuctionRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{14}
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *CancelAuctionRequest) GetId() int64 {
@@ -867,7 +1187,7 @@ type CancelAuctionResponse struct {
 
 func (x *CancelAuctionResponse) Reset() {
 	*x = CancelAuctionResponse{}
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[15]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -879,7 +1199,7 @@ func (x *CancelAuctionResponse) String() string {
 func (*CancelAuctionResponse) ProtoMessage() {}
 
 func (x *CancelAuctionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[15]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -892,7 +1212,7 @@ func (x *CancelAuctionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelAuctionResponse.ProtoReflect.Descriptor instead.
 func (*CancelAuctionResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{15}
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *CancelAuctionResponse) GetAuction() *Auction {
@@ -912,7 +1232,7 @@ type DeleteAuctionRequest struct {
 
 func (x *DeleteAuctionRequest) Reset() {
 	*x = DeleteAuctionRequest{}
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[16]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -924,7 +1244,7 @@ func (x *DeleteAuctionRequest) String() string {
 func (*DeleteAuctionRequest) ProtoMessage() {}
 
 func (x *DeleteAuctionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[16]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -937,7 +1257,7 @@ func (x *DeleteAuctionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAuctionRequest.ProtoReflect.Descriptor instead.
 func (*DeleteAuctionRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{16}
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *DeleteAuctionRequest) GetId() int64 {
@@ -962,7 +1282,7 @@ type DeleteAuctionResponse struct {
 
 func (x *DeleteAuctionResponse) Reset() {
 	*x = DeleteAuctionResponse{}
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[17]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -974,7 +1294,7 @@ func (x *DeleteAuctionResponse) String() string {
 func (*DeleteAuctionResponse) ProtoMessage() {}
 
 func (x *DeleteAuctionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[17]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -987,7 +1307,7 @@ func (x *DeleteAuctionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAuctionResponse.ProtoReflect.Descriptor instead.
 func (*DeleteAuctionResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{17}
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{23}
 }
 
 type PlaceBidRequest struct {
@@ -1003,7 +1323,7 @@ type PlaceBidRequest struct {
 
 func (x *PlaceBidRequest) Reset() {
 	*x = PlaceBidRequest{}
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[18]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1015,7 +1335,7 @@ func (x *PlaceBidRequest) String() string {
 func (*PlaceBidRequest) ProtoMessage() {}
 
 func (x *PlaceBidRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[18]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1028,7 +1348,7 @@ func (x *PlaceBidRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlaceBidRequest.ProtoReflect.Descriptor instead.
 func (*PlaceBidRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{18}
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *PlaceBidRequest) GetAuctionId() int64 {
@@ -1080,7 +1400,7 @@ type PlaceBidResponse struct {
 
 func (x *PlaceBidResponse) Reset() {
 	*x = PlaceBidResponse{}
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[19]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1092,7 +1412,7 @@ func (x *PlaceBidResponse) String() string {
 func (*PlaceBidResponse) ProtoMessage() {}
 
 func (x *PlaceBidResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[19]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1105,7 +1425,7 @@ func (x *PlaceBidResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlaceBidResponse.ProtoReflect.Descriptor instead.
 func (*PlaceBidResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{19}
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *PlaceBidResponse) GetAccepted() bool {
@@ -1161,7 +1481,7 @@ type ListBidRecordsRequest struct {
 
 func (x *ListBidRecordsRequest) Reset() {
 	*x = ListBidRecordsRequest{}
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[20]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1173,7 +1493,7 @@ func (x *ListBidRecordsRequest) String() string {
 func (*ListBidRecordsRequest) ProtoMessage() {}
 
 func (x *ListBidRecordsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[20]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1186,7 +1506,7 @@ func (x *ListBidRecordsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBidRecordsRequest.ProtoReflect.Descriptor instead.
 func (*ListBidRecordsRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{20}
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ListBidRecordsRequest) GetAuctionId() int64 {
@@ -1222,7 +1542,7 @@ type ListBidRecordsResponse struct {
 
 func (x *ListBidRecordsResponse) Reset() {
 	*x = ListBidRecordsResponse{}
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[21]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1234,7 +1554,7 @@ func (x *ListBidRecordsResponse) String() string {
 func (*ListBidRecordsResponse) ProtoMessage() {}
 
 func (x *ListBidRecordsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[21]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1247,7 +1567,7 @@ func (x *ListBidRecordsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBidRecordsResponse.ProtoReflect.Descriptor instead.
 func (*ListBidRecordsResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{21}
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ListBidRecordsResponse) GetTotal() int64 {
@@ -1303,7 +1623,7 @@ type Auction struct {
 
 func (x *Auction) Reset() {
 	*x = Auction{}
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[22]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1315,7 +1635,7 @@ func (x *Auction) String() string {
 func (*Auction) ProtoMessage() {}
 
 func (x *Auction) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[22]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1328,7 +1648,7 @@ func (x *Auction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Auction.ProtoReflect.Descriptor instead.
 func (*Auction) Descriptor() ([]byte, []int) {
-	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{22}
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *Auction) GetId() int64 {
@@ -1450,6 +1770,346 @@ func (x *Auction) GetRoomId() int64 {
 	return 0
 }
 
+type MerchantAuction struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	GoodsId       int64                  `protobuf:"varint,2,opt,name=goods_id,json=goodsId,proto3" json:"goods_id,omitempty"`
+	ShopId        int64                  `protobuf:"varint,3,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	GoodsTitle    string                 `protobuf:"bytes,4,opt,name=goods_title,json=goodsTitle,proto3" json:"goods_title,omitempty"`
+	GoodsCoverUrl string                 `protobuf:"bytes,5,opt,name=goods_cover_url,json=goodsCoverUrl,proto3" json:"goods_cover_url,omitempty"`
+	StartPrice    int64                  `protobuf:"varint,6,opt,name=start_price,json=startPrice,proto3" json:"start_price,omitempty"`
+	BidIncrement  int64                  `protobuf:"varint,7,opt,name=bid_increment,json=bidIncrement,proto3" json:"bid_increment,omitempty"`
+	SealPrice     *int64                 `protobuf:"varint,8,opt,name=seal_price,json=sealPrice,proto3,oneof" json:"seal_price,omitempty"`
+	CurrentPrice  int64                  `protobuf:"varint,9,opt,name=current_price,json=currentPrice,proto3" json:"current_price,omitempty"`
+	BidCount      int64                  `protobuf:"varint,10,opt,name=bid_count,json=bidCount,proto3" json:"bid_count,omitempty"`
+	Status        int32                  `protobuf:"varint,11,opt,name=status,proto3" json:"status,omitempty"`
+	StartTime     *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
+	EndTime       *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MerchantAuction) Reset() {
+	*x = MerchantAuction{}
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MerchantAuction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MerchantAuction) ProtoMessage() {}
+
+func (x *MerchantAuction) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MerchantAuction.ProtoReflect.Descriptor instead.
+func (*MerchantAuction) Descriptor() ([]byte, []int) {
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *MerchantAuction) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *MerchantAuction) GetGoodsId() int64 {
+	if x != nil {
+		return x.GoodsId
+	}
+	return 0
+}
+
+func (x *MerchantAuction) GetShopId() int64 {
+	if x != nil {
+		return x.ShopId
+	}
+	return 0
+}
+
+func (x *MerchantAuction) GetGoodsTitle() string {
+	if x != nil {
+		return x.GoodsTitle
+	}
+	return ""
+}
+
+func (x *MerchantAuction) GetGoodsCoverUrl() string {
+	if x != nil {
+		return x.GoodsCoverUrl
+	}
+	return ""
+}
+
+func (x *MerchantAuction) GetStartPrice() int64 {
+	if x != nil {
+		return x.StartPrice
+	}
+	return 0
+}
+
+func (x *MerchantAuction) GetBidIncrement() int64 {
+	if x != nil {
+		return x.BidIncrement
+	}
+	return 0
+}
+
+func (x *MerchantAuction) GetSealPrice() int64 {
+	if x != nil && x.SealPrice != nil {
+		return *x.SealPrice
+	}
+	return 0
+}
+
+func (x *MerchantAuction) GetCurrentPrice() int64 {
+	if x != nil {
+		return x.CurrentPrice
+	}
+	return 0
+}
+
+func (x *MerchantAuction) GetBidCount() int64 {
+	if x != nil {
+		return x.BidCount
+	}
+	return 0
+}
+
+func (x *MerchantAuction) GetStatus() int32 {
+	if x != nil {
+		return x.Status
+	}
+	return 0
+}
+
+func (x *MerchantAuction) GetStartTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartTime
+	}
+	return nil
+}
+
+func (x *MerchantAuction) GetEndTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.EndTime
+	}
+	return nil
+}
+
+type AuctionRuntime struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AuctionId     int64                  `protobuf:"varint,1,opt,name=auction_id,json=auctionId,proto3" json:"auction_id,omitempty"`
+	Status        int32                  `protobuf:"varint,2,opt,name=status,proto3" json:"status,omitempty"`
+	CurrentPrice  int64                  `protobuf:"varint,3,opt,name=current_price,json=currentPrice,proto3" json:"current_price,omitempty"`
+	BidCount      int64                  `protobuf:"varint,4,opt,name=bid_count,json=bidCount,proto3" json:"bid_count,omitempty"`
+	WinnerUserId  *int64                 `protobuf:"varint,5,opt,name=winner_user_id,json=winnerUserId,proto3,oneof" json:"winner_user_id,omitempty"`
+	ServerTime    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=server_time,json=serverTime,proto3" json:"server_time,omitempty"`
+	ExpireAt      *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=expire_at,json=expireAt,proto3" json:"expire_at,omitempty"`
+	Version       int64                  `protobuf:"varint,8,opt,name=version,proto3" json:"version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AuctionRuntime) Reset() {
+	*x = AuctionRuntime{}
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AuctionRuntime) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AuctionRuntime) ProtoMessage() {}
+
+func (x *AuctionRuntime) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AuctionRuntime.ProtoReflect.Descriptor instead.
+func (*AuctionRuntime) Descriptor() ([]byte, []int) {
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *AuctionRuntime) GetAuctionId() int64 {
+	if x != nil {
+		return x.AuctionId
+	}
+	return 0
+}
+
+func (x *AuctionRuntime) GetStatus() int32 {
+	if x != nil {
+		return x.Status
+	}
+	return 0
+}
+
+func (x *AuctionRuntime) GetCurrentPrice() int64 {
+	if x != nil {
+		return x.CurrentPrice
+	}
+	return 0
+}
+
+func (x *AuctionRuntime) GetBidCount() int64 {
+	if x != nil {
+		return x.BidCount
+	}
+	return 0
+}
+
+func (x *AuctionRuntime) GetWinnerUserId() int64 {
+	if x != nil && x.WinnerUserId != nil {
+		return *x.WinnerUserId
+	}
+	return 0
+}
+
+func (x *AuctionRuntime) GetServerTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ServerTime
+	}
+	return nil
+}
+
+func (x *AuctionRuntime) GetExpireAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpireAt
+	}
+	return nil
+}
+
+func (x *AuctionRuntime) GetVersion() int64 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+type MerchantDashboardSummary struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	AuctionTotal     int64                  `protobuf:"varint,1,opt,name=auction_total,json=auctionTotal,proto3" json:"auction_total,omitempty"`
+	AuctionRunning   int64                  `protobuf:"varint,2,opt,name=auction_running,json=auctionRunning,proto3" json:"auction_running,omitempty"`
+	AuctionPending   int64                  `protobuf:"varint,3,opt,name=auction_pending,json=auctionPending,proto3" json:"auction_pending,omitempty"`
+	AuctionDeal      int64                  `protobuf:"varint,4,opt,name=auction_deal,json=auctionDeal,proto3" json:"auction_deal,omitempty"`
+	AuctionFailed    int64                  `protobuf:"varint,5,opt,name=auction_failed,json=auctionFailed,proto3" json:"auction_failed,omitempty"`
+	AuctionCancelled int64                  `protobuf:"varint,6,opt,name=auction_cancelled,json=auctionCancelled,proto3" json:"auction_cancelled,omitempty"`
+	TodayDealAmount  int64                  `protobuf:"varint,7,opt,name=today_deal_amount,json=todayDealAmount,proto3" json:"today_deal_amount,omitempty"`
+	TodayBidCount    int64                  `protobuf:"varint,8,opt,name=today_bid_count,json=todayBidCount,proto3" json:"today_bid_count,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *MerchantDashboardSummary) Reset() {
+	*x = MerchantDashboardSummary{}
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MerchantDashboardSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MerchantDashboardSummary) ProtoMessage() {}
+
+func (x *MerchantDashboardSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MerchantDashboardSummary.ProtoReflect.Descriptor instead.
+func (*MerchantDashboardSummary) Descriptor() ([]byte, []int) {
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *MerchantDashboardSummary) GetAuctionTotal() int64 {
+	if x != nil {
+		return x.AuctionTotal
+	}
+	return 0
+}
+
+func (x *MerchantDashboardSummary) GetAuctionRunning() int64 {
+	if x != nil {
+		return x.AuctionRunning
+	}
+	return 0
+}
+
+func (x *MerchantDashboardSummary) GetAuctionPending() int64 {
+	if x != nil {
+		return x.AuctionPending
+	}
+	return 0
+}
+
+func (x *MerchantDashboardSummary) GetAuctionDeal() int64 {
+	if x != nil {
+		return x.AuctionDeal
+	}
+	return 0
+}
+
+func (x *MerchantDashboardSummary) GetAuctionFailed() int64 {
+	if x != nil {
+		return x.AuctionFailed
+	}
+	return 0
+}
+
+func (x *MerchantDashboardSummary) GetAuctionCancelled() int64 {
+	if x != nil {
+		return x.AuctionCancelled
+	}
+	return 0
+}
+
+func (x *MerchantDashboardSummary) GetTodayDealAmount() int64 {
+	if x != nil {
+		return x.TodayDealAmount
+	}
+	return 0
+}
+
+func (x *MerchantDashboardSummary) GetTodayBidCount() int64 {
+	if x != nil {
+		return x.TodayBidCount
+	}
+	return 0
+}
+
 type BidRecord struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -1468,7 +2128,7 @@ type BidRecord struct {
 
 func (x *BidRecord) Reset() {
 	*x = BidRecord{}
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[23]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1480,7 +2140,7 @@ func (x *BidRecord) String() string {
 func (*BidRecord) ProtoMessage() {}
 
 func (x *BidRecord) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[23]
+	mi := &file_api_proto_auction_v1_auction_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1493,7 +2153,7 @@ func (x *BidRecord) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BidRecord.ProtoReflect.Descriptor instead.
 func (*BidRecord) Descriptor() ([]byte, []int) {
-	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{23}
+	return file_api_proto_auction_v1_auction_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *BidRecord) GetId() int64 {
@@ -1604,7 +2264,28 @@ const file_api_proto_auction_v1_auction_proto_rawDesc = "" +
 	"\x05total\x18\x01 \x01(\x03R\x05total\x12\x12\n" +
 	"\x04page\x18\x02 \x01(\x05R\x04page\x12\x1b\n" +
 	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\x12/\n" +
-	"\x04list\x18\x04 \x03(\v2\x1b.livebid.auction.v1.AuctionR\x04list\"\xd6\x02\n" +
+	"\x04list\x18\x04 \x03(\v2\x1b.livebid.auction.v1.AuctionR\x04list\"\xa9\x01\n" +
+	"\x1bListMerchantAuctionsRequest\x12\x17\n" +
+	"\ashop_id\x18\x01 \x01(\x03R\x06shopId\x12\x1b\n" +
+	"\x06status\x18\x02 \x01(\x05H\x00R\x06status\x88\x01\x01\x12\x12\n" +
+	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x1b\n" +
+	"\tpage_size\x18\x04 \x01(\x05R\bpageSize\x12\x18\n" +
+	"\akeyword\x18\x05 \x01(\tR\akeywordB\t\n" +
+	"\a_status\"\x9e\x01\n" +
+	"\x1cListMerchantAuctionsResponse\x12\x14\n" +
+	"\x05total\x18\x01 \x01(\x03R\x05total\x12\x12\n" +
+	"\x04page\x18\x02 \x01(\x05R\x04page\x12\x1b\n" +
+	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\x127\n" +
+	"\x04list\x18\x04 \x03(\v2#.livebid.auction.v1.MerchantAuctionR\x04list\"9\n" +
+	"\x18GetAuctionRuntimeRequest\x12\x1d\n" +
+	"\n" +
+	"auction_id\x18\x01 \x01(\x03R\tauctionId\"Y\n" +
+	"\x19GetAuctionRuntimeResponse\x12<\n" +
+	"\aruntime\x18\x01 \x01(\v2\".livebid.auction.v1.AuctionRuntimeR\aruntime\"=\n" +
+	"\"GetMerchantDashboardSummaryRequest\x12\x17\n" +
+	"\ashop_id\x18\x01 \x01(\x03R\x06shopId\"m\n" +
+	"#GetMerchantDashboardSummaryResponse\x12F\n" +
+	"\asummary\x18\x01 \x01(\v2,.livebid.auction.v1.MerchantDashboardSummaryR\asummary\"\xd6\x02\n" +
 	"\x14UpdateAuctionRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x17\n" +
 	"\ashop_id\x18\x02 \x01(\x03R\x06shopId\x12$\n" +
@@ -1693,7 +2374,48 @@ const file_api_proto_auction_v1_auction_proto_rawDesc = "" +
 	"\aroom_id\x18\x11 \x01(\x03R\x06roomIdB\r\n" +
 	"\v_seal_priceB\r\n" +
 	"\v_deal_priceB\x11\n" +
-	"\x0f_winner_user_id\"\xea\x02\n" +
+	"\x0f_winner_user_id\"\xe3\x03\n" +
+	"\x0fMerchantAuction\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x19\n" +
+	"\bgoods_id\x18\x02 \x01(\x03R\agoodsId\x12\x17\n" +
+	"\ashop_id\x18\x03 \x01(\x03R\x06shopId\x12\x1f\n" +
+	"\vgoods_title\x18\x04 \x01(\tR\n" +
+	"goodsTitle\x12&\n" +
+	"\x0fgoods_cover_url\x18\x05 \x01(\tR\rgoodsCoverUrl\x12\x1f\n" +
+	"\vstart_price\x18\x06 \x01(\x03R\n" +
+	"startPrice\x12#\n" +
+	"\rbid_increment\x18\a \x01(\x03R\fbidIncrement\x12\"\n" +
+	"\n" +
+	"seal_price\x18\b \x01(\x03H\x00R\tsealPrice\x88\x01\x01\x12#\n" +
+	"\rcurrent_price\x18\t \x01(\x03R\fcurrentPrice\x12\x1b\n" +
+	"\tbid_count\x18\n" +
+	" \x01(\x03R\bbidCount\x12\x16\n" +
+	"\x06status\x18\v \x01(\x05R\x06status\x129\n" +
+	"\n" +
+	"start_time\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tstartTime\x125\n" +
+	"\bend_time\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\aendTimeB\r\n" +
+	"\v_seal_price\"\xd7\x02\n" +
+	"\x0eAuctionRuntime\x12\x1d\n" +
+	"\n" +
+	"auction_id\x18\x01 \x01(\x03R\tauctionId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\x05R\x06status\x12#\n" +
+	"\rcurrent_price\x18\x03 \x01(\x03R\fcurrentPrice\x12\x1b\n" +
+	"\tbid_count\x18\x04 \x01(\x03R\bbidCount\x12)\n" +
+	"\x0ewinner_user_id\x18\x05 \x01(\x03H\x00R\fwinnerUserId\x88\x01\x01\x12;\n" +
+	"\vserver_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"serverTime\x127\n" +
+	"\texpire_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\bexpireAt\x12\x18\n" +
+	"\aversion\x18\b \x01(\x03R\aversionB\x11\n" +
+	"\x0f_winner_user_id\"\xdc\x02\n" +
+	"\x18MerchantDashboardSummary\x12#\n" +
+	"\rauction_total\x18\x01 \x01(\x03R\fauctionTotal\x12'\n" +
+	"\x0fauction_running\x18\x02 \x01(\x03R\x0eauctionRunning\x12'\n" +
+	"\x0fauction_pending\x18\x03 \x01(\x03R\x0eauctionPending\x12!\n" +
+	"\fauction_deal\x18\x04 \x01(\x03R\vauctionDeal\x12%\n" +
+	"\x0eauction_failed\x18\x05 \x01(\x03R\rauctionFailed\x12+\n" +
+	"\x11auction_cancelled\x18\x06 \x01(\x03R\x10auctionCancelled\x12*\n" +
+	"\x11today_deal_amount\x18\a \x01(\x03R\x0ftodayDealAmount\x12&\n" +
+	"\x0ftoday_bid_count\x18\b \x01(\x03R\rtodayBidCount\"\xea\x02\n" +
 	"\tBidRecord\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1d\n" +
 	"\n" +
@@ -1708,13 +2430,16 @@ const file_api_proto_auction_v1_auction_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x17\n" +
 	"\aroom_id\x18\n" +
-	" \x01(\x03R\x06roomId2\xef\b\n" +
+	" \x01(\x03R\x06roomId2\xed\v\n" +
 	"\x0eAuctionService\x12d\n" +
 	"\rCreateAuction\x12(.livebid.auction.v1.CreateAuctionRequest\x1a).livebid.auction.v1.CreateAuctionResponse\x12[\n" +
 	"\n" +
 	"GetAuction\x12%.livebid.auction.v1.GetAuctionRequest\x1a&.livebid.auction.v1.GetAuctionResponse\x12p\n" +
 	"\x11GetAuctionByGoods\x12,.livebid.auction.v1.GetAuctionByGoodsRequest\x1a-.livebid.auction.v1.GetAuctionByGoodsResponse\x12m\n" +
-	"\x10ListShopAuctions\x12+.livebid.auction.v1.ListShopAuctionsRequest\x1a,.livebid.auction.v1.ListShopAuctionsResponse\x12d\n" +
+	"\x10ListShopAuctions\x12+.livebid.auction.v1.ListShopAuctionsRequest\x1a,.livebid.auction.v1.ListShopAuctionsResponse\x12y\n" +
+	"\x14ListMerchantAuctions\x12/.livebid.auction.v1.ListMerchantAuctionsRequest\x1a0.livebid.auction.v1.ListMerchantAuctionsResponse\x12p\n" +
+	"\x11GetAuctionRuntime\x12,.livebid.auction.v1.GetAuctionRuntimeRequest\x1a-.livebid.auction.v1.GetAuctionRuntimeResponse\x12\x8e\x01\n" +
+	"\x1bGetMerchantDashboardSummary\x126.livebid.auction.v1.GetMerchantDashboardSummaryRequest\x1a7.livebid.auction.v1.GetMerchantDashboardSummaryResponse\x12d\n" +
 	"\rUpdateAuction\x12(.livebid.auction.v1.UpdateAuctionRequest\x1a).livebid.auction.v1.UpdateAuctionResponse\x12a\n" +
 	"\fStartAuction\x12'.livebid.auction.v1.StartAuctionRequest\x1a(.livebid.auction.v1.StartAuctionResponse\x12d\n" +
 	"\rFinishAuction\x12(.livebid.auction.v1.FinishAuctionRequest\x1a).livebid.auction.v1.FinishAuctionResponse\x12d\n" +
@@ -1735,84 +2460,106 @@ func file_api_proto_auction_v1_auction_proto_rawDescGZIP() []byte {
 	return file_api_proto_auction_v1_auction_proto_rawDescData
 }
 
-var file_api_proto_auction_v1_auction_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_api_proto_auction_v1_auction_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
 var file_api_proto_auction_v1_auction_proto_goTypes = []any{
-	(*CreateAuctionRequest)(nil),      // 0: livebid.auction.v1.CreateAuctionRequest
-	(*CreateAuctionResponse)(nil),     // 1: livebid.auction.v1.CreateAuctionResponse
-	(*GetAuctionRequest)(nil),         // 2: livebid.auction.v1.GetAuctionRequest
-	(*GetAuctionResponse)(nil),        // 3: livebid.auction.v1.GetAuctionResponse
-	(*GetAuctionByGoodsRequest)(nil),  // 4: livebid.auction.v1.GetAuctionByGoodsRequest
-	(*GetAuctionByGoodsResponse)(nil), // 5: livebid.auction.v1.GetAuctionByGoodsResponse
-	(*ListShopAuctionsRequest)(nil),   // 6: livebid.auction.v1.ListShopAuctionsRequest
-	(*ListShopAuctionsResponse)(nil),  // 7: livebid.auction.v1.ListShopAuctionsResponse
-	(*UpdateAuctionRequest)(nil),      // 8: livebid.auction.v1.UpdateAuctionRequest
-	(*UpdateAuctionResponse)(nil),     // 9: livebid.auction.v1.UpdateAuctionResponse
-	(*StartAuctionRequest)(nil),       // 10: livebid.auction.v1.StartAuctionRequest
-	(*StartAuctionResponse)(nil),      // 11: livebid.auction.v1.StartAuctionResponse
-	(*FinishAuctionRequest)(nil),      // 12: livebid.auction.v1.FinishAuctionRequest
-	(*FinishAuctionResponse)(nil),     // 13: livebid.auction.v1.FinishAuctionResponse
-	(*CancelAuctionRequest)(nil),      // 14: livebid.auction.v1.CancelAuctionRequest
-	(*CancelAuctionResponse)(nil),     // 15: livebid.auction.v1.CancelAuctionResponse
-	(*DeleteAuctionRequest)(nil),      // 16: livebid.auction.v1.DeleteAuctionRequest
-	(*DeleteAuctionResponse)(nil),     // 17: livebid.auction.v1.DeleteAuctionResponse
-	(*PlaceBidRequest)(nil),           // 18: livebid.auction.v1.PlaceBidRequest
-	(*PlaceBidResponse)(nil),          // 19: livebid.auction.v1.PlaceBidResponse
-	(*ListBidRecordsRequest)(nil),     // 20: livebid.auction.v1.ListBidRecordsRequest
-	(*ListBidRecordsResponse)(nil),    // 21: livebid.auction.v1.ListBidRecordsResponse
-	(*Auction)(nil),                   // 22: livebid.auction.v1.Auction
-	(*BidRecord)(nil),                 // 23: livebid.auction.v1.BidRecord
-	(*timestamppb.Timestamp)(nil),     // 24: google.protobuf.Timestamp
+	(*CreateAuctionRequest)(nil),                // 0: livebid.auction.v1.CreateAuctionRequest
+	(*CreateAuctionResponse)(nil),               // 1: livebid.auction.v1.CreateAuctionResponse
+	(*GetAuctionRequest)(nil),                   // 2: livebid.auction.v1.GetAuctionRequest
+	(*GetAuctionResponse)(nil),                  // 3: livebid.auction.v1.GetAuctionResponse
+	(*GetAuctionByGoodsRequest)(nil),            // 4: livebid.auction.v1.GetAuctionByGoodsRequest
+	(*GetAuctionByGoodsResponse)(nil),           // 5: livebid.auction.v1.GetAuctionByGoodsResponse
+	(*ListShopAuctionsRequest)(nil),             // 6: livebid.auction.v1.ListShopAuctionsRequest
+	(*ListShopAuctionsResponse)(nil),            // 7: livebid.auction.v1.ListShopAuctionsResponse
+	(*ListMerchantAuctionsRequest)(nil),         // 8: livebid.auction.v1.ListMerchantAuctionsRequest
+	(*ListMerchantAuctionsResponse)(nil),        // 9: livebid.auction.v1.ListMerchantAuctionsResponse
+	(*GetAuctionRuntimeRequest)(nil),            // 10: livebid.auction.v1.GetAuctionRuntimeRequest
+	(*GetAuctionRuntimeResponse)(nil),           // 11: livebid.auction.v1.GetAuctionRuntimeResponse
+	(*GetMerchantDashboardSummaryRequest)(nil),  // 12: livebid.auction.v1.GetMerchantDashboardSummaryRequest
+	(*GetMerchantDashboardSummaryResponse)(nil), // 13: livebid.auction.v1.GetMerchantDashboardSummaryResponse
+	(*UpdateAuctionRequest)(nil),                // 14: livebid.auction.v1.UpdateAuctionRequest
+	(*UpdateAuctionResponse)(nil),               // 15: livebid.auction.v1.UpdateAuctionResponse
+	(*StartAuctionRequest)(nil),                 // 16: livebid.auction.v1.StartAuctionRequest
+	(*StartAuctionResponse)(nil),                // 17: livebid.auction.v1.StartAuctionResponse
+	(*FinishAuctionRequest)(nil),                // 18: livebid.auction.v1.FinishAuctionRequest
+	(*FinishAuctionResponse)(nil),               // 19: livebid.auction.v1.FinishAuctionResponse
+	(*CancelAuctionRequest)(nil),                // 20: livebid.auction.v1.CancelAuctionRequest
+	(*CancelAuctionResponse)(nil),               // 21: livebid.auction.v1.CancelAuctionResponse
+	(*DeleteAuctionRequest)(nil),                // 22: livebid.auction.v1.DeleteAuctionRequest
+	(*DeleteAuctionResponse)(nil),               // 23: livebid.auction.v1.DeleteAuctionResponse
+	(*PlaceBidRequest)(nil),                     // 24: livebid.auction.v1.PlaceBidRequest
+	(*PlaceBidResponse)(nil),                    // 25: livebid.auction.v1.PlaceBidResponse
+	(*ListBidRecordsRequest)(nil),               // 26: livebid.auction.v1.ListBidRecordsRequest
+	(*ListBidRecordsResponse)(nil),              // 27: livebid.auction.v1.ListBidRecordsResponse
+	(*Auction)(nil),                             // 28: livebid.auction.v1.Auction
+	(*MerchantAuction)(nil),                     // 29: livebid.auction.v1.MerchantAuction
+	(*AuctionRuntime)(nil),                      // 30: livebid.auction.v1.AuctionRuntime
+	(*MerchantDashboardSummary)(nil),            // 31: livebid.auction.v1.MerchantDashboardSummary
+	(*BidRecord)(nil),                           // 32: livebid.auction.v1.BidRecord
+	(*timestamppb.Timestamp)(nil),               // 33: google.protobuf.Timestamp
 }
 var file_api_proto_auction_v1_auction_proto_depIdxs = []int32{
-	24, // 0: livebid.auction.v1.CreateAuctionRequest.start_time:type_name -> google.protobuf.Timestamp
-	24, // 1: livebid.auction.v1.CreateAuctionRequest.end_time:type_name -> google.protobuf.Timestamp
-	22, // 2: livebid.auction.v1.CreateAuctionResponse.auction:type_name -> livebid.auction.v1.Auction
-	22, // 3: livebid.auction.v1.GetAuctionResponse.auction:type_name -> livebid.auction.v1.Auction
-	22, // 4: livebid.auction.v1.GetAuctionByGoodsResponse.auction:type_name -> livebid.auction.v1.Auction
-	22, // 5: livebid.auction.v1.ListShopAuctionsResponse.list:type_name -> livebid.auction.v1.Auction
-	24, // 6: livebid.auction.v1.UpdateAuctionRequest.start_time:type_name -> google.protobuf.Timestamp
-	24, // 7: livebid.auction.v1.UpdateAuctionRequest.end_time:type_name -> google.protobuf.Timestamp
-	22, // 8: livebid.auction.v1.UpdateAuctionResponse.auction:type_name -> livebid.auction.v1.Auction
-	22, // 9: livebid.auction.v1.StartAuctionResponse.auction:type_name -> livebid.auction.v1.Auction
-	22, // 10: livebid.auction.v1.FinishAuctionResponse.auction:type_name -> livebid.auction.v1.Auction
-	22, // 11: livebid.auction.v1.CancelAuctionResponse.auction:type_name -> livebid.auction.v1.Auction
-	24, // 12: livebid.auction.v1.PlaceBidResponse.server_time:type_name -> google.protobuf.Timestamp
-	24, // 13: livebid.auction.v1.PlaceBidResponse.expire_at:type_name -> google.protobuf.Timestamp
-	23, // 14: livebid.auction.v1.ListBidRecordsResponse.list:type_name -> livebid.auction.v1.BidRecord
-	24, // 15: livebid.auction.v1.Auction.start_time:type_name -> google.protobuf.Timestamp
-	24, // 16: livebid.auction.v1.Auction.end_time:type_name -> google.protobuf.Timestamp
-	24, // 17: livebid.auction.v1.Auction.created_at:type_name -> google.protobuf.Timestamp
-	24, // 18: livebid.auction.v1.Auction.updated_at:type_name -> google.protobuf.Timestamp
-	24, // 19: livebid.auction.v1.BidRecord.bid_time:type_name -> google.protobuf.Timestamp
-	24, // 20: livebid.auction.v1.BidRecord.created_at:type_name -> google.protobuf.Timestamp
-	24, // 21: livebid.auction.v1.BidRecord.updated_at:type_name -> google.protobuf.Timestamp
-	0,  // 22: livebid.auction.v1.AuctionService.CreateAuction:input_type -> livebid.auction.v1.CreateAuctionRequest
-	2,  // 23: livebid.auction.v1.AuctionService.GetAuction:input_type -> livebid.auction.v1.GetAuctionRequest
-	4,  // 24: livebid.auction.v1.AuctionService.GetAuctionByGoods:input_type -> livebid.auction.v1.GetAuctionByGoodsRequest
-	6,  // 25: livebid.auction.v1.AuctionService.ListShopAuctions:input_type -> livebid.auction.v1.ListShopAuctionsRequest
-	8,  // 26: livebid.auction.v1.AuctionService.UpdateAuction:input_type -> livebid.auction.v1.UpdateAuctionRequest
-	10, // 27: livebid.auction.v1.AuctionService.StartAuction:input_type -> livebid.auction.v1.StartAuctionRequest
-	12, // 28: livebid.auction.v1.AuctionService.FinishAuction:input_type -> livebid.auction.v1.FinishAuctionRequest
-	14, // 29: livebid.auction.v1.AuctionService.CancelAuction:input_type -> livebid.auction.v1.CancelAuctionRequest
-	16, // 30: livebid.auction.v1.AuctionService.DeleteAuction:input_type -> livebid.auction.v1.DeleteAuctionRequest
-	18, // 31: livebid.auction.v1.AuctionService.PlaceBid:input_type -> livebid.auction.v1.PlaceBidRequest
-	20, // 32: livebid.auction.v1.AuctionService.ListBidRecords:input_type -> livebid.auction.v1.ListBidRecordsRequest
-	1,  // 33: livebid.auction.v1.AuctionService.CreateAuction:output_type -> livebid.auction.v1.CreateAuctionResponse
-	3,  // 34: livebid.auction.v1.AuctionService.GetAuction:output_type -> livebid.auction.v1.GetAuctionResponse
-	5,  // 35: livebid.auction.v1.AuctionService.GetAuctionByGoods:output_type -> livebid.auction.v1.GetAuctionByGoodsResponse
-	7,  // 36: livebid.auction.v1.AuctionService.ListShopAuctions:output_type -> livebid.auction.v1.ListShopAuctionsResponse
-	9,  // 37: livebid.auction.v1.AuctionService.UpdateAuction:output_type -> livebid.auction.v1.UpdateAuctionResponse
-	11, // 38: livebid.auction.v1.AuctionService.StartAuction:output_type -> livebid.auction.v1.StartAuctionResponse
-	13, // 39: livebid.auction.v1.AuctionService.FinishAuction:output_type -> livebid.auction.v1.FinishAuctionResponse
-	15, // 40: livebid.auction.v1.AuctionService.CancelAuction:output_type -> livebid.auction.v1.CancelAuctionResponse
-	17, // 41: livebid.auction.v1.AuctionService.DeleteAuction:output_type -> livebid.auction.v1.DeleteAuctionResponse
-	19, // 42: livebid.auction.v1.AuctionService.PlaceBid:output_type -> livebid.auction.v1.PlaceBidResponse
-	21, // 43: livebid.auction.v1.AuctionService.ListBidRecords:output_type -> livebid.auction.v1.ListBidRecordsResponse
-	33, // [33:44] is the sub-list for method output_type
-	22, // [22:33] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	33, // 0: livebid.auction.v1.CreateAuctionRequest.start_time:type_name -> google.protobuf.Timestamp
+	33, // 1: livebid.auction.v1.CreateAuctionRequest.end_time:type_name -> google.protobuf.Timestamp
+	28, // 2: livebid.auction.v1.CreateAuctionResponse.auction:type_name -> livebid.auction.v1.Auction
+	28, // 3: livebid.auction.v1.GetAuctionResponse.auction:type_name -> livebid.auction.v1.Auction
+	28, // 4: livebid.auction.v1.GetAuctionByGoodsResponse.auction:type_name -> livebid.auction.v1.Auction
+	28, // 5: livebid.auction.v1.ListShopAuctionsResponse.list:type_name -> livebid.auction.v1.Auction
+	29, // 6: livebid.auction.v1.ListMerchantAuctionsResponse.list:type_name -> livebid.auction.v1.MerchantAuction
+	30, // 7: livebid.auction.v1.GetAuctionRuntimeResponse.runtime:type_name -> livebid.auction.v1.AuctionRuntime
+	31, // 8: livebid.auction.v1.GetMerchantDashboardSummaryResponse.summary:type_name -> livebid.auction.v1.MerchantDashboardSummary
+	33, // 9: livebid.auction.v1.UpdateAuctionRequest.start_time:type_name -> google.protobuf.Timestamp
+	33, // 10: livebid.auction.v1.UpdateAuctionRequest.end_time:type_name -> google.protobuf.Timestamp
+	28, // 11: livebid.auction.v1.UpdateAuctionResponse.auction:type_name -> livebid.auction.v1.Auction
+	28, // 12: livebid.auction.v1.StartAuctionResponse.auction:type_name -> livebid.auction.v1.Auction
+	28, // 13: livebid.auction.v1.FinishAuctionResponse.auction:type_name -> livebid.auction.v1.Auction
+	28, // 14: livebid.auction.v1.CancelAuctionResponse.auction:type_name -> livebid.auction.v1.Auction
+	33, // 15: livebid.auction.v1.PlaceBidResponse.server_time:type_name -> google.protobuf.Timestamp
+	33, // 16: livebid.auction.v1.PlaceBidResponse.expire_at:type_name -> google.protobuf.Timestamp
+	32, // 17: livebid.auction.v1.ListBidRecordsResponse.list:type_name -> livebid.auction.v1.BidRecord
+	33, // 18: livebid.auction.v1.Auction.start_time:type_name -> google.protobuf.Timestamp
+	33, // 19: livebid.auction.v1.Auction.end_time:type_name -> google.protobuf.Timestamp
+	33, // 20: livebid.auction.v1.Auction.created_at:type_name -> google.protobuf.Timestamp
+	33, // 21: livebid.auction.v1.Auction.updated_at:type_name -> google.protobuf.Timestamp
+	33, // 22: livebid.auction.v1.MerchantAuction.start_time:type_name -> google.protobuf.Timestamp
+	33, // 23: livebid.auction.v1.MerchantAuction.end_time:type_name -> google.protobuf.Timestamp
+	33, // 24: livebid.auction.v1.AuctionRuntime.server_time:type_name -> google.protobuf.Timestamp
+	33, // 25: livebid.auction.v1.AuctionRuntime.expire_at:type_name -> google.protobuf.Timestamp
+	33, // 26: livebid.auction.v1.BidRecord.bid_time:type_name -> google.protobuf.Timestamp
+	33, // 27: livebid.auction.v1.BidRecord.created_at:type_name -> google.protobuf.Timestamp
+	33, // 28: livebid.auction.v1.BidRecord.updated_at:type_name -> google.protobuf.Timestamp
+	0,  // 29: livebid.auction.v1.AuctionService.CreateAuction:input_type -> livebid.auction.v1.CreateAuctionRequest
+	2,  // 30: livebid.auction.v1.AuctionService.GetAuction:input_type -> livebid.auction.v1.GetAuctionRequest
+	4,  // 31: livebid.auction.v1.AuctionService.GetAuctionByGoods:input_type -> livebid.auction.v1.GetAuctionByGoodsRequest
+	6,  // 32: livebid.auction.v1.AuctionService.ListShopAuctions:input_type -> livebid.auction.v1.ListShopAuctionsRequest
+	8,  // 33: livebid.auction.v1.AuctionService.ListMerchantAuctions:input_type -> livebid.auction.v1.ListMerchantAuctionsRequest
+	10, // 34: livebid.auction.v1.AuctionService.GetAuctionRuntime:input_type -> livebid.auction.v1.GetAuctionRuntimeRequest
+	12, // 35: livebid.auction.v1.AuctionService.GetMerchantDashboardSummary:input_type -> livebid.auction.v1.GetMerchantDashboardSummaryRequest
+	14, // 36: livebid.auction.v1.AuctionService.UpdateAuction:input_type -> livebid.auction.v1.UpdateAuctionRequest
+	16, // 37: livebid.auction.v1.AuctionService.StartAuction:input_type -> livebid.auction.v1.StartAuctionRequest
+	18, // 38: livebid.auction.v1.AuctionService.FinishAuction:input_type -> livebid.auction.v1.FinishAuctionRequest
+	20, // 39: livebid.auction.v1.AuctionService.CancelAuction:input_type -> livebid.auction.v1.CancelAuctionRequest
+	22, // 40: livebid.auction.v1.AuctionService.DeleteAuction:input_type -> livebid.auction.v1.DeleteAuctionRequest
+	24, // 41: livebid.auction.v1.AuctionService.PlaceBid:input_type -> livebid.auction.v1.PlaceBidRequest
+	26, // 42: livebid.auction.v1.AuctionService.ListBidRecords:input_type -> livebid.auction.v1.ListBidRecordsRequest
+	1,  // 43: livebid.auction.v1.AuctionService.CreateAuction:output_type -> livebid.auction.v1.CreateAuctionResponse
+	3,  // 44: livebid.auction.v1.AuctionService.GetAuction:output_type -> livebid.auction.v1.GetAuctionResponse
+	5,  // 45: livebid.auction.v1.AuctionService.GetAuctionByGoods:output_type -> livebid.auction.v1.GetAuctionByGoodsResponse
+	7,  // 46: livebid.auction.v1.AuctionService.ListShopAuctions:output_type -> livebid.auction.v1.ListShopAuctionsResponse
+	9,  // 47: livebid.auction.v1.AuctionService.ListMerchantAuctions:output_type -> livebid.auction.v1.ListMerchantAuctionsResponse
+	11, // 48: livebid.auction.v1.AuctionService.GetAuctionRuntime:output_type -> livebid.auction.v1.GetAuctionRuntimeResponse
+	13, // 49: livebid.auction.v1.AuctionService.GetMerchantDashboardSummary:output_type -> livebid.auction.v1.GetMerchantDashboardSummaryResponse
+	15, // 50: livebid.auction.v1.AuctionService.UpdateAuction:output_type -> livebid.auction.v1.UpdateAuctionResponse
+	17, // 51: livebid.auction.v1.AuctionService.StartAuction:output_type -> livebid.auction.v1.StartAuctionResponse
+	19, // 52: livebid.auction.v1.AuctionService.FinishAuction:output_type -> livebid.auction.v1.FinishAuctionResponse
+	21, // 53: livebid.auction.v1.AuctionService.CancelAuction:output_type -> livebid.auction.v1.CancelAuctionResponse
+	23, // 54: livebid.auction.v1.AuctionService.DeleteAuction:output_type -> livebid.auction.v1.DeleteAuctionResponse
+	25, // 55: livebid.auction.v1.AuctionService.PlaceBid:output_type -> livebid.auction.v1.PlaceBidResponse
+	27, // 56: livebid.auction.v1.AuctionService.ListBidRecords:output_type -> livebid.auction.v1.ListBidRecordsResponse
+	43, // [43:57] is the sub-list for method output_type
+	29, // [29:43] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_api_proto_auction_v1_auction_proto_init() }
@@ -1823,14 +2570,17 @@ func file_api_proto_auction_v1_auction_proto_init() {
 	file_api_proto_auction_v1_auction_proto_msgTypes[0].OneofWrappers = []any{}
 	file_api_proto_auction_v1_auction_proto_msgTypes[6].OneofWrappers = []any{}
 	file_api_proto_auction_v1_auction_proto_msgTypes[8].OneofWrappers = []any{}
-	file_api_proto_auction_v1_auction_proto_msgTypes[22].OneofWrappers = []any{}
+	file_api_proto_auction_v1_auction_proto_msgTypes[14].OneofWrappers = []any{}
+	file_api_proto_auction_v1_auction_proto_msgTypes[28].OneofWrappers = []any{}
+	file_api_proto_auction_v1_auction_proto_msgTypes[29].OneofWrappers = []any{}
+	file_api_proto_auction_v1_auction_proto_msgTypes[30].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_auction_v1_auction_proto_rawDesc), len(file_api_proto_auction_v1_auction_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   24,
+			NumMessages:   33,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
