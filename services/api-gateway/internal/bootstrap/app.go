@@ -89,7 +89,6 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		return nil, err
 	}
 	liveClient := client.NewLiveServiceClient(liveConn)
-	liveHandler := handler.NewLiveHandler(liveClient, cfg.RPCTimeout())
 
 	auctionConn, err := client.NewAuctionServiceConn(cfg.AuctionService.Target)
 	if err != nil {
@@ -101,6 +100,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	}
 	auctionClient := client.NewAuctionServiceClient(auctionConn)
 	auctionHandler := handler.NewAuctionHandlerWithGoods(auctionClient, goodsClient, cfg.RPCTimeout())
+	liveHandler := handler.NewLiveHandlerWithAggregates(liveClient, shopClient, goodsClient, auctionClient, cfg.UserLive, cfg.RPCTimeout())
 
 	gin.SetMode(gin.ReleaseMode)
 	if cfg.Env == "local" {

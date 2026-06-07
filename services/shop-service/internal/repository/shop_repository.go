@@ -19,6 +19,7 @@ type ShopRepository interface {
 	Create(ctx context.Context, shop *model.Shop) error
 	FindByID(ctx context.Context, id int64) (*model.Shop, error)
 	FindByUsername(ctx context.Context, username string) (*model.Shop, error)
+	BatchFindByIDs(ctx context.Context, ids []int64) ([]*model.Shop, error)
 	Update(ctx context.Context, shop *model.Shop) error
 }
 
@@ -61,6 +62,21 @@ func (r *GormShopRepository) FindByUsername(ctx context.Context, username string
 		return nil, err
 	}
 	return &shop, nil
+}
+
+func (r *GormShopRepository) BatchFindByIDs(ctx context.Context, ids []int64) ([]*model.Shop, error) {
+	if len(ids) == 0 {
+		return []*model.Shop{}, nil
+	}
+	var list []*model.Shop
+	err := r.db.WithContext(ctx).
+		Where("id IN ? AND is_deleted = 0", ids).
+		Order("id ASC").
+		Find(&list).Error
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
 }
 
 func (r *GormShopRepository) Update(ctx context.Context, shop *model.Shop) error {

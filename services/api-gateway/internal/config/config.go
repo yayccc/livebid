@@ -22,6 +22,7 @@ type Config struct {
 	GoodsService   ServiceConfig             `yaml:"goodsService"`
 	LiveService    ServiceConfig             `yaml:"liveService"`
 	AuctionService ServiceConfig             `yaml:"auctionService"`
+	UserLive       UserLiveConfig            `yaml:"userLive"`
 	Storage        StorageConfig             `yaml:"storage"`
 	JWT            JWTConfig                 `yaml:"jwt"`
 	RPC            RPCConfig                 `yaml:"rpc"`
@@ -47,6 +48,11 @@ type StorageConfig struct {
 	AccessKeyID     string `yaml:"accessKeyId"`
 	SecretAccessKey string `yaml:"secretAccessKey"`
 	PathStyle       bool   `yaml:"pathStyle"`
+}
+
+type UserLiveConfig struct {
+	WSURL                    string `yaml:"wsUrl"`
+	HeartbeatIntervalSeconds int    `yaml:"heartbeatIntervalSeconds"`
 }
 
 type JWTConfig struct {
@@ -107,6 +113,10 @@ func defaultConfig() Config {
 		AuctionService: ServiceConfig{
 			Addr:   "127.0.0.1:9003",
 			Target: "127.0.0.1:9003",
+		},
+		UserLive: UserLiveConfig{
+			WSURL:                    "/ws/live",
+			HeartbeatIntervalSeconds: 15,
 		},
 		Storage: StorageConfig{
 			Endpoint:        "http://127.0.0.1:9000",
@@ -184,6 +194,10 @@ func applyEnvOverrides(cfg *Config) {
 	if value := os.Getenv("API_GATEWAY_AUCTION_SERVICE_TARGET"); value != "" {
 		cfg.AuctionService.Target = value
 	}
+	if value := os.Getenv("API_GATEWAY_USER_LIVE_WS_URL"); value != "" {
+		cfg.UserLive.WSURL = value
+	}
+	setIntEnv("API_GATEWAY_USER_LIVE_HEARTBEAT_INTERVAL_SECONDS", &cfg.UserLive.HeartbeatIntervalSeconds)
 	if value := os.Getenv("API_GATEWAY_STORAGE_ENDPOINT"); value != "" {
 		cfg.Storage.Endpoint = value
 	}
@@ -296,6 +310,12 @@ func normalize(cfg *Config) {
 		cfg.AuctionService.Target = cfg.AuctionService.Addr
 	} else if cfg.AuctionService.Addr == "" {
 		cfg.AuctionService.Addr = cfg.AuctionService.Target
+	}
+	if cfg.UserLive.WSURL == "" {
+		cfg.UserLive.WSURL = "/ws/live"
+	}
+	if cfg.UserLive.HeartbeatIntervalSeconds <= 0 {
+		cfg.UserLive.HeartbeatIntervalSeconds = 15
 	}
 	if cfg.Storage.Endpoint == "" {
 		cfg.Storage.Endpoint = "http://127.0.0.1:9000"

@@ -51,7 +51,11 @@
 | 创建直播间 | POST | `/api/live/rooms` | 转发到 `live-service.CreateLiveRoom` |
 | 开始直播 | POST | `/api/live/rooms/:id/start` | 转发到 `live-service.StartLive` |
 | 结束直播 | POST | `/api/live/rooms/:id/end` | 转发到 `live-service.EndLive` |
-| 推流信息 | GET | `/api/live/rooms/:id/stream` | 转发到 `live-service.GetLiveStreamInfo` |
+| 商家推流信息 | GET | `/api/live/rooms/:id/stream` | 需要商家 JWT，网关校验直播间归属后转发到 `live-service.GetLiveStreamInfo` 并返回完整推流字段 |
+| 用户直播间流 | GET | `/api/user/live/feed` | mobile-user 首页聚合接口，返回直播间、公开商铺、预览播放和当前竞拍摘要 |
+| 用户预览播放信息 | GET | `/api/user/live/rooms/:id/preview` | 转发到 `live-service.GetLiveStreamInfo`，只返回用户播放字段 |
+| 用户进入直播间详情 | GET | `/api/user/live/rooms/:id/entry` | 可选用户 JWT，聚合直播间、公开商铺、播放、当前竞拍、商品、运行态和 WebSocket 配置 |
+| 用户竞拍快照 | GET | `/api/user/live/rooms/:id/auction-snapshot` | 可选用户 JWT，返回当前运行中竞拍快照；无竞拍时返回 null |
 | SRS 推流回调 | POST | `/api/srs/callbacks/publish` | 转发到 `live-service.HandleSRSPublishCallback` |
 | SRS 断流回调 | POST | `/api/srs/callbacks/unpublish` | 转发到 `live-service.HandleSRSUnpublishCallback` |
 
@@ -213,6 +217,8 @@ services/api-gateway/configs/config.local.yaml
 | `API_GATEWAY_USER_SERVICE_TARGET` | `user-service` gRPC target，例如 `127.0.0.1:9004` 或 `nacosx:///user-service` |
 | `API_GATEWAY_GOODS_SERVICE_TARGET` | `goods-service` gRPC target，例如 `127.0.0.1:9002` 或 `nacosx:///goods-service` |
 | `API_GATEWAY_LIVE_SERVICE_TARGET` | `live-service` gRPC target，例如 `127.0.0.1:9007` 或 `nacosx:///live-service` |
+| `API_GATEWAY_USER_LIVE_WS_URL` | 用户端进入直播间后返回给前端的 WebSocket 地址，默认 `/ws/live` |
+| `API_GATEWAY_USER_LIVE_HEARTBEAT_INTERVAL_SECONDS` | 用户端 WebSocket 心跳间隔秒数，默认 15 |
 | `API_GATEWAY_SHOP_SERVICE_ADDR` | 兼容旧配置，未设置 target 时作为 target 兜底 |
 | `API_GATEWAY_USER_SERVICE_ADDR` | 兼容旧配置，未设置 target 时作为 target 兜底 |
 | `API_GATEWAY_GOODS_SERVICE_ADDR` | 兼容旧配置，未设置 target 时作为 target 兜底 |

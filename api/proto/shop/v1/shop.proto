@@ -10,6 +10,7 @@ service ShopService {
   rpc RegisterShop(RegisterShopRequest) returns (RegisterShopResponse);
   rpc LoginShop(LoginShopRequest) returns (LoginShopResponse);
   rpc GetShop(GetShopRequest) returns (GetShopResponse);
+  rpc BatchGetPublicShops(BatchGetPublicShopsRequest) returns (BatchGetPublicShopsResponse);
   rpc UpdateShop(UpdateShopRequest) returns (UpdateShopResponse);
 }
 
@@ -45,6 +46,14 @@ message GetShopRequest {
 
 message GetShopResponse {
   Shop shop = 1;
+}
+
+message BatchGetPublicShopsRequest {
+  repeated int64 ids = 1;
+}
+
+message BatchGetPublicShopsResponse {
+  repeated Shop list = 1;
 }
 
 message UpdateShopRequest {

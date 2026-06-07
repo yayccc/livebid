@@ -42,6 +42,8 @@ type AuctionRepository interface {
 	FindByID(ctx context.Context, id int64) (*model.Auction, error)
 	FindByIDForShop(ctx context.Context, id int64, shopID int64) (*model.Auction, error)
 	FindByGoodsID(ctx context.Context, goodsID int64) (*model.Auction, error)
+	FindCurrentByRoomID(ctx context.Context, roomID int64) (*model.Auction, error)
+	BatchFindCurrentByRoomIDs(ctx context.Context, roomIDs []int64) ([]*model.Auction, error)
 	ListByShop(ctx context.Context, filter ListAuctionFilter) ([]*model.Auction, int64, error)
 	SummarizeByShop(ctx context.Context, shopID int64, todayStart time.Time, todayEnd time.Time) (MerchantAuctionSummary, error)
 	UpdatePendingConfig(ctx context.Context, auction *model.Auction) error
@@ -83,6 +85,43 @@ func (r *GormAuctionRepository) FindByGoodsID(ctx context.Context, goodsID int64
 		Where("goods_id = ? AND is_delete = 0", goodsID).
 		First(&auction).Error
 	return finishFindAuction(&auction, err)
+}
+
+func (r *GormAuctionRepository) FindCurrentByRoomID(ctx context.Context, roomID int64) (*model.Auction, error) {
+	var auction model.Auction
+	err := r.db.WithContext(ctx).
+		Where("room_id = ? AND status = ? AND is_delete = 0", roomID, model.AuctionStatusRunning).
+		Order("start_time DESC, created_at DESC, id DESC").
+		First(&auction).Error
+	return finishFindAuction(&auction, err)
+}
+
+func (r *GormAuctionRepository) BatchFindCurrentByRoomIDs(ctx context.Context, roomIDs []int64) ([]*model.Auction, error) {
+	if len(roomIDs) == 0 {
+		return []*model.Auction{}, nil
+	}
+	var rows []*model.Auction
+	err := r.db.WithContext(ctx).
+		Where("room_id IN ? AND status = ? AND is_delete = 0", roomIDs, model.AuctionStatusRunning).
+		Order("room_id ASC, start_time DESC, created_at DESC, id DESC").
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	seen := make(map[int64]struct{}, len(roomIDs))
+	list := make([]*model.Auction, 0, len(rows))
+	for _, auction := range rows {
+		if auction == nil {
+			continue
+		}
+		if _, ok := seen[auction.RoomID]; ok {
+			continue
+		}
+		seen[auction.RoomID] = struct{}{}
+		list = append(list, auction)
+	}
+	return list, nil
 }
 
 func (r *GormAuctionRepository) ListByShop(ctx context.Context, filter ListAuctionFilter) ([]*model.Auction, int64, error) {

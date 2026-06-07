@@ -23,6 +23,10 @@ auctionService:
   addr: "127.0.0.1:9003"
   target: "127.0.0.1:9003"
 
+userLive:
+  wsUrl: "/ws/live"
+  heartbeatIntervalSeconds: 15
+
 storage:
   endpoint: "http://127.0.0.1:9000"
   publicBaseUrl: "http://127.0.0.1:9000/livebid"

@@ -19,10 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ShopService_RegisterShop_FullMethodName = "/livebid.shop.v1.ShopService/RegisterShop"
-	ShopService_LoginShop_FullMethodName    = "/livebid.shop.v1.ShopService/LoginShop"
-	ShopService_GetShop_FullMethodName      = "/livebid.shop.v1.ShopService/GetShop"
-	ShopService_UpdateShop_FullMethodName   = "/livebid.shop.v1.ShopService/UpdateShop"
+	ShopService_RegisterShop_FullMethodName        = "/livebid.shop.v1.ShopService/RegisterShop"
+	ShopService_LoginShop_FullMethodName           = "/livebid.shop.v1.ShopService/LoginShop"
+	ShopService_GetShop_FullMethodName             = "/livebid.shop.v1.ShopService/GetShop"
+	ShopService_BatchGetPublicShops_FullMethodName = "/livebid.shop.v1.ShopService/BatchGetPublicShops"
+	ShopService_UpdateShop_FullMethodName          = "/livebid.shop.v1.ShopService/UpdateShop"
 )
 
 // ShopServiceClient is the client API for ShopService service.
@@ -32,6 +33,7 @@ type ShopServiceClient interface {
 	RegisterShop(ctx context.Context, in *RegisterShopRequest, opts ...grpc.CallOption) (*RegisterShopResponse, error)
 	LoginShop(ctx context.Context, in *LoginShopRequest, opts ...grpc.CallOption) (*LoginShopResponse, error)
 	GetShop(ctx context.Context, in *GetShopRequest, opts ...grpc.CallOption) (*GetShopResponse, error)
+	BatchGetPublicShops(ctx context.Context, in *BatchGetPublicShopsRequest, opts ...grpc.CallOption) (*BatchGetPublicShopsResponse, error)
 	UpdateShop(ctx context.Context, in *UpdateShopRequest, opts ...grpc.CallOption) (*UpdateShopResponse, error)
 }
 
@@ -73,6 +75,16 @@ func (c *shopServiceClient) GetShop(ctx context.Context, in *GetShopRequest, opt
 	return out, nil
 }
 
+func (c *shopServiceClient) BatchGetPublicShops(ctx context.Context, in *BatchGetPublicShopsRequest, opts ...grpc.CallOption) (*BatchGetPublicShopsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BatchGetPublicShopsResponse)
+	err := c.cc.Invoke(ctx, ShopService_BatchGetPublicShops_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *shopServiceClient) UpdateShop(ctx context.Context, in *UpdateShopRequest, opts ...grpc.CallOption) (*UpdateShopResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(UpdateShopResponse)
@@ -90,6 +102,7 @@ type ShopServiceServer interface {
 	RegisterShop(context.Context, *RegisterShopRequest) (*RegisterShopResponse, error)
 	LoginShop(context.Context, *LoginShopRequest) (*LoginShopResponse, error)
 	GetShop(context.Context, *GetShopRequest) (*GetShopResponse, error)
+	BatchGetPublicShops(context.Context, *BatchGetPublicShopsRequest) (*BatchGetPublicShopsResponse, error)
 	UpdateShop(context.Context, *UpdateShopRequest) (*UpdateShopResponse, error)
 	mustEmbedUnimplementedShopServiceServer()
 }
@@ -109,6 +122,9 @@ func (UnimplementedShopServiceServer) LoginShop(context.Context, *LoginShopReque
 }
 func (UnimplementedShopServiceServer) GetShop(context.Context, *GetShopRequest) (*GetShopResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetShop not implemented")
+}
+func (UnimplementedShopServiceServer) BatchGetPublicShops(context.Context, *BatchGetPublicShopsRequest) (*BatchGetPublicShopsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BatchGetPublicShops not implemented")
 }
 func (UnimplementedShopServiceServer) UpdateShop(context.Context, *UpdateShopRequest) (*UpdateShopResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateShop not implemented")
@@ -188,6 +204,24 @@ func _ShopService_GetShop_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ShopService_BatchGetPublicShops_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BatchGetPublicShopsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ShopServiceServer).BatchGetPublicShops(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ShopService_BatchGetPublicShops_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ShopServiceServer).BatchGetPublicShops(ctx, req.(*BatchGetPublicShopsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ShopService_UpdateShop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateShopRequest)
 	if err := dec(in); err != nil {
@@ -224,6 +258,10 @@ var ShopService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetShop",
 			Handler:    _ShopService_GetShop_Handler,
+		},
+		{
+			MethodName: "BatchGetPublicShops",
+			Handler:    _ShopService_BatchGetPublicShops_Handler,
 		},
 		{
 			MethodName: "UpdateShop",

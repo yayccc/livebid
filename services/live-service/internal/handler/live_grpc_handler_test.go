@@ -298,9 +298,8 @@ func TestLiveGRPCHandlerGetLiveStreamInfo(t *testing.T) {
 		},
 	})
 
-	resp, err := handler.GetLiveStreamInfo(shopContext(room.ShopID), &livev1.GetLiveStreamInfoRequest{
-		Id:     room.ID,
-		ShopId: 9999,
+	resp, err := handler.GetLiveStreamInfo(context.Background(), &livev1.GetLiveStreamInfoRequest{
+		Id: room.ID,
 	})
 	if err != nil {
 		t.Fatalf("GetLiveStreamInfo returned error: %v", err)

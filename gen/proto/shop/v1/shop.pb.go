@@ -366,6 +366,94 @@ func (x *GetShopResponse) GetShop() *Shop {
 	return nil
 }
 
+type BatchGetPublicShopsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ids           []int64                `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BatchGetPublicShopsRequest) Reset() {
+	*x = BatchGetPublicShopsRequest{}
+	mi := &file_api_proto_shop_v1_shop_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BatchGetPublicShopsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BatchGetPublicShopsRequest) ProtoMessage() {}
+
+func (x *BatchGetPublicShopsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_shop_v1_shop_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BatchGetPublicShopsRequest.ProtoReflect.Descriptor instead.
+func (*BatchGetPublicShopsRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_shop_v1_shop_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *BatchGetPublicShopsRequest) GetIds() []int64 {
+	if x != nil {
+		return x.Ids
+	}
+	return nil
+}
+
+type BatchGetPublicShopsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	List          []*Shop                `protobuf:"bytes,1,rep,name=list,proto3" json:"list,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BatchGetPublicShopsResponse) Reset() {
+	*x = BatchGetPublicShopsResponse{}
+	mi := &file_api_proto_shop_v1_shop_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BatchGetPublicShopsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BatchGetPublicShopsResponse) ProtoMessage() {}
+
+func (x *BatchGetPublicShopsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_shop_v1_shop_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BatchGetPublicShopsResponse.ProtoReflect.Descriptor instead.
+func (*BatchGetPublicShopsResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_shop_v1_shop_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *BatchGetPublicShopsResponse) GetList() []*Shop {
+	if x != nil {
+		return x.List
+	}
+	return nil
+}
+
 type UpdateShopRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -380,7 +468,7 @@ type UpdateShopRequest struct {
 
 func (x *UpdateShopRequest) Reset() {
 	*x = UpdateShopRequest{}
-	mi := &file_api_proto_shop_v1_shop_proto_msgTypes[6]
+	mi := &file_api_proto_shop_v1_shop_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -392,7 +480,7 @@ func (x *UpdateShopRequest) String() string {
 func (*UpdateShopRequest) ProtoMessage() {}
 
 func (x *UpdateShopRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_shop_v1_shop_proto_msgTypes[6]
+	mi := &file_api_proto_shop_v1_shop_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -405,7 +493,7 @@ func (x *UpdateShopRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateShopRequest.ProtoReflect.Descriptor instead.
 func (*UpdateShopRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_shop_v1_shop_proto_rawDescGZIP(), []int{6}
+	return file_api_proto_shop_v1_shop_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *UpdateShopRequest) GetId() int64 {
@@ -459,7 +547,7 @@ type UpdateShopResponse struct {
 
 func (x *UpdateShopResponse) Reset() {
 	*x = UpdateShopResponse{}
-	mi := &file_api_proto_shop_v1_shop_proto_msgTypes[7]
+	mi := &file_api_proto_shop_v1_shop_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -471,7 +559,7 @@ func (x *UpdateShopResponse) String() string {
 func (*UpdateShopResponse) ProtoMessage() {}
 
 func (x *UpdateShopResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_shop_v1_shop_proto_msgTypes[7]
+	mi := &file_api_proto_shop_v1_shop_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -484,7 +572,7 @@ func (x *UpdateShopResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateShopResponse.ProtoReflect.Descriptor instead.
 func (*UpdateShopResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_shop_v1_shop_proto_rawDescGZIP(), []int{7}
+	return file_api_proto_shop_v1_shop_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *UpdateShopResponse) GetShop() *Shop {
@@ -514,7 +602,7 @@ type Shop struct {
 
 func (x *Shop) Reset() {
 	*x = Shop{}
-	mi := &file_api_proto_shop_v1_shop_proto_msgTypes[8]
+	mi := &file_api_proto_shop_v1_shop_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -526,7 +614,7 @@ func (x *Shop) String() string {
 func (*Shop) ProtoMessage() {}
 
 func (x *Shop) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_shop_v1_shop_proto_msgTypes[8]
+	mi := &file_api_proto_shop_v1_shop_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -539,7 +627,7 @@ func (x *Shop) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Shop.ProtoReflect.Descriptor instead.
 func (*Shop) Descriptor() ([]byte, []int) {
-	return file_api_proto_shop_v1_shop_proto_rawDescGZIP(), []int{8}
+	return file_api_proto_shop_v1_shop_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *Shop) GetId() int64 {
@@ -653,7 +741,11 @@ const file_api_proto_shop_v1_shop_proto_rawDesc = "" +
 	"\x0eGetShopRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\"<\n" +
 	"\x0fGetShopResponse\x12)\n" +
-	"\x04shop\x18\x01 \x01(\v2\x15.livebid.shop.v1.ShopR\x04shop\"\xf6\x01\n" +
+	"\x04shop\x18\x01 \x01(\v2\x15.livebid.shop.v1.ShopR\x04shop\".\n" +
+	"\x1aBatchGetPublicShopsRequest\x12\x10\n" +
+	"\x03ids\x18\x01 \x03(\x03R\x03ids\"H\n" +
+	"\x1bBatchGetPublicShopsResponse\x12)\n" +
+	"\x04list\x18\x01 \x03(\v2\x15.livebid.shop.v1.ShopR\x04list\"\xf6\x01\n" +
 	"\x11UpdateShopRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12 \n" +
 	"\tshop_name\x18\x02 \x01(\tH\x00R\bshopName\x88\x01\x01\x12\x17\n" +
@@ -684,11 +776,12 @@ const file_api_proto_shop_v1_shop_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt2\xe3\x02\n" +
+	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt2\xd5\x03\n" +
 	"\vShopService\x12[\n" +
 	"\fRegisterShop\x12$.livebid.shop.v1.RegisterShopRequest\x1a%.livebid.shop.v1.RegisterShopResponse\x12R\n" +
 	"\tLoginShop\x12!.livebid.shop.v1.LoginShopRequest\x1a\".livebid.shop.v1.LoginShopResponse\x12L\n" +
-	"\aGetShop\x12\x1f.livebid.shop.v1.GetShopRequest\x1a .livebid.shop.v1.GetShopResponse\x12U\n" +
+	"\aGetShop\x12\x1f.livebid.shop.v1.GetShopRequest\x1a .livebid.shop.v1.GetShopResponse\x12p\n" +
+	"\x13BatchGetPublicShops\x12+.livebid.shop.v1.BatchGetPublicShopsRequest\x1a,.livebid.shop.v1.BatchGetPublicShopsResponse\x12U\n" +
 	"\n" +
 	"UpdateShop\x12\".livebid.shop.v1.UpdateShopRequest\x1a#.livebid.shop.v1.UpdateShopResponseB4Z2github.com/yayccc/livebid/gen/proto/shop/v1;shopv1b\x06proto3"
 
@@ -704,39 +797,44 @@ func file_api_proto_shop_v1_shop_proto_rawDescGZIP() []byte {
 	return file_api_proto_shop_v1_shop_proto_rawDescData
 }
 
-var file_api_proto_shop_v1_shop_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_api_proto_shop_v1_shop_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_api_proto_shop_v1_shop_proto_goTypes = []any{
-	(*RegisterShopRequest)(nil),   // 0: livebid.shop.v1.RegisterShopRequest
-	(*RegisterShopResponse)(nil),  // 1: livebid.shop.v1.RegisterShopResponse
-	(*LoginShopRequest)(nil),      // 2: livebid.shop.v1.LoginShopRequest
-	(*LoginShopResponse)(nil),     // 3: livebid.shop.v1.LoginShopResponse
-	(*GetShopRequest)(nil),        // 4: livebid.shop.v1.GetShopRequest
-	(*GetShopResponse)(nil),       // 5: livebid.shop.v1.GetShopResponse
-	(*UpdateShopRequest)(nil),     // 6: livebid.shop.v1.UpdateShopRequest
-	(*UpdateShopResponse)(nil),    // 7: livebid.shop.v1.UpdateShopResponse
-	(*Shop)(nil),                  // 8: livebid.shop.v1.Shop
-	(*timestamppb.Timestamp)(nil), // 9: google.protobuf.Timestamp
+	(*RegisterShopRequest)(nil),         // 0: livebid.shop.v1.RegisterShopRequest
+	(*RegisterShopResponse)(nil),        // 1: livebid.shop.v1.RegisterShopResponse
+	(*LoginShopRequest)(nil),            // 2: livebid.shop.v1.LoginShopRequest
+	(*LoginShopResponse)(nil),           // 3: livebid.shop.v1.LoginShopResponse
+	(*GetShopRequest)(nil),              // 4: livebid.shop.v1.GetShopRequest
+	(*GetShopResponse)(nil),             // 5: livebid.shop.v1.GetShopResponse
+	(*BatchGetPublicShopsRequest)(nil),  // 6: livebid.shop.v1.BatchGetPublicShopsRequest
+	(*BatchGetPublicShopsResponse)(nil), // 7: livebid.shop.v1.BatchGetPublicShopsResponse
+	(*UpdateShopRequest)(nil),           // 8: livebid.shop.v1.UpdateShopRequest
+	(*UpdateShopResponse)(nil),          // 9: livebid.shop.v1.UpdateShopResponse
+	(*Shop)(nil),                        // 10: livebid.shop.v1.Shop
+	(*timestamppb.Timestamp)(nil),       // 11: google.protobuf.Timestamp
 }
 var file_api_proto_shop_v1_shop_proto_depIdxs = []int32{
-	8,  // 0: livebid.shop.v1.RegisterShopResponse.shop:type_name -> livebid.shop.v1.Shop
-	8,  // 1: livebid.shop.v1.LoginShopResponse.shop:type_name -> livebid.shop.v1.Shop
-	8,  // 2: livebid.shop.v1.GetShopResponse.shop:type_name -> livebid.shop.v1.Shop
-	8,  // 3: livebid.shop.v1.UpdateShopResponse.shop:type_name -> livebid.shop.v1.Shop
-	9,  // 4: livebid.shop.v1.Shop.created_at:type_name -> google.protobuf.Timestamp
-	9,  // 5: livebid.shop.v1.Shop.updated_at:type_name -> google.protobuf.Timestamp
-	0,  // 6: livebid.shop.v1.ShopService.RegisterShop:input_type -> livebid.shop.v1.RegisterShopRequest
-	2,  // 7: livebid.shop.v1.ShopService.LoginShop:input_type -> livebid.shop.v1.LoginShopRequest
-	4,  // 8: livebid.shop.v1.ShopService.GetShop:input_type -> livebid.shop.v1.GetShopRequest
-	6,  // 9: livebid.shop.v1.ShopService.UpdateShop:input_type -> livebid.shop.v1.UpdateShopRequest
-	1,  // 10: livebid.shop.v1.ShopService.RegisterShop:output_type -> livebid.shop.v1.RegisterShopResponse
-	3,  // 11: livebid.shop.v1.ShopService.LoginShop:output_type -> livebid.shop.v1.LoginShopResponse
-	5,  // 12: livebid.shop.v1.ShopService.GetShop:output_type -> livebid.shop.v1.GetShopResponse
-	7,  // 13: livebid.shop.v1.ShopService.UpdateShop:output_type -> livebid.shop.v1.UpdateShopResponse
-	10, // [10:14] is the sub-list for method output_type
-	6,  // [6:10] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	10, // 0: livebid.shop.v1.RegisterShopResponse.shop:type_name -> livebid.shop.v1.Shop
+	10, // 1: livebid.shop.v1.LoginShopResponse.shop:type_name -> livebid.shop.v1.Shop
+	10, // 2: livebid.shop.v1.GetShopResponse.shop:type_name -> livebid.shop.v1.Shop
+	10, // 3: livebid.shop.v1.BatchGetPublicShopsResponse.list:type_name -> livebid.shop.v1.Shop
+	10, // 4: livebid.shop.v1.UpdateShopResponse.shop:type_name -> livebid.shop.v1.Shop
+	11, // 5: livebid.shop.v1.Shop.created_at:type_name -> google.protobuf.Timestamp
+	11, // 6: livebid.shop.v1.Shop.updated_at:type_name -> google.protobuf.Timestamp
+	0,  // 7: livebid.shop.v1.ShopService.RegisterShop:input_type -> livebid.shop.v1.RegisterShopRequest
+	2,  // 8: livebid.shop.v1.ShopService.LoginShop:input_type -> livebid.shop.v1.LoginShopRequest
+	4,  // 9: livebid.shop.v1.ShopService.GetShop:input_type -> livebid.shop.v1.GetShopRequest
+	6,  // 10: livebid.shop.v1.ShopService.BatchGetPublicShops:input_type -> livebid.shop.v1.BatchGetPublicShopsRequest
+	8,  // 11: livebid.shop.v1.ShopService.UpdateShop:input_type -> livebid.shop.v1.UpdateShopRequest
+	1,  // 12: livebid.shop.v1.ShopService.RegisterShop:output_type -> livebid.shop.v1.RegisterShopResponse
+	3,  // 13: livebid.shop.v1.ShopService.LoginShop:output_type -> livebid.shop.v1.LoginShopResponse
+	5,  // 14: livebid.shop.v1.ShopService.GetShop:output_type -> livebid.shop.v1.GetShopResponse
+	7,  // 15: livebid.shop.v1.ShopService.BatchGetPublicShops:output_type -> livebid.shop.v1.BatchGetPublicShopsResponse
+	9,  // 16: livebid.shop.v1.ShopService.UpdateShop:output_type -> livebid.shop.v1.UpdateShopResponse
+	12, // [12:17] is the sub-list for method output_type
+	7,  // [7:12] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_api_proto_shop_v1_shop_proto_init() }
@@ -744,14 +842,14 @@ func file_api_proto_shop_v1_shop_proto_init() {
 	if File_api_proto_shop_v1_shop_proto != nil {
 		return
 	}
-	file_api_proto_shop_v1_shop_proto_msgTypes[6].OneofWrappers = []any{}
+	file_api_proto_shop_v1_shop_proto_msgTypes[8].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_shop_v1_shop_proto_rawDesc), len(file_api_proto_shop_v1_shop_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

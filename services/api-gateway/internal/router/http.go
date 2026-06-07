@@ -73,6 +73,12 @@ func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, userHandler 
 	live.GET("/rooms/:id", liveHandler.GetLiveRoom)
 	//TODO: 接口设计有问题
 
+	userLive := api.Group("/user/live")
+	userLive.GET("/feed", liveHandler.GetUserLiveFeed)
+	userLive.GET("/rooms/:id/preview", liveHandler.GetUserLivePreview)
+	userLive.GET("/rooms/:id/entry", middleware.OptionalUserAuth(userJWTManager), liveHandler.GetUserLiveEntry)
+	userLive.GET("/rooms/:id/auction-snapshot", middleware.OptionalUserAuth(userJWTManager), liveHandler.GetUserLiveAuctionSnapshot)
+
 	auction := api.Group("/auctions")
 	auction.GET("/:id", auctionHandler.Get)
 	auction.GET("/:id/bids", auctionHandler.ListBidRecords)

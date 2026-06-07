@@ -37,6 +37,14 @@ func (m mockAuctionClient) GetAuctionByGoods(ctx context.Context, in *auctionv1.
 	panic("not implemented")
 }
 
+func (m mockAuctionClient) GetCurrentAuctionByRoom(ctx context.Context, in *auctionv1.GetCurrentAuctionByRoomRequest, opts ...grpc.CallOption) (*auctionv1.GetCurrentAuctionByRoomResponse, error) {
+	panic("not implemented")
+}
+
+func (m mockAuctionClient) BatchGetCurrentAuctionsByRoom(ctx context.Context, in *auctionv1.BatchGetCurrentAuctionsByRoomRequest, opts ...grpc.CallOption) (*auctionv1.BatchGetCurrentAuctionsByRoomResponse, error) {
+	panic("not implemented")
+}
+
 func (m mockAuctionClient) ListShopAuctions(ctx context.Context, in *auctionv1.ListShopAuctionsRequest, opts ...grpc.CallOption) (*auctionv1.ListShopAuctionsResponse, error) {
 	panic("not implemented")
 }

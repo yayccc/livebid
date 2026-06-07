@@ -279,20 +279,19 @@ func (h *LiveGRPCHandler) ValidateLiveRoomForAuction(ctx context.Context, req *l
 }
 
 func (h *LiveGRPCHandler) GetLiveStreamInfo(ctx context.Context, req *livev1.GetLiveStreamInfoRequest) (*livev1.GetLiveStreamInfoResponse, error) {
-	shopID, authErr := currentShopID(ctx)
 	log := logger.FromContext(ctx).With(
 		zap.String("method", "GetLiveStreamInfo"),
 		zap.Int64("live_room_id", req.GetId()),
-		zap.Int64("shop_id", shopID),
 	)
 	log.Info("get live stream info started")
-	if authErr != nil {
-		grpcErr := toGRPCError(authErr)
+
+	if req.GetId() <= 0 {
+		grpcErr := toGRPCError(errInvalidArgument)
 		log.Warn("get live stream info rejected", zap.Error(grpcErr))
 		return nil, grpcErr
 	}
 
-	room, err := h.findOwnedRoom(ctx, req.GetId(), shopID)
+	room, err := h.rooms.FindByID(ctx, req.GetId())
 	if err != nil {
 		grpcErr := toGRPCError(err)
 		log.Warn("get live stream info rejected", zap.Error(grpcErr))

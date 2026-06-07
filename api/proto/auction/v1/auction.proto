@@ -10,6 +10,8 @@ service AuctionService {
   rpc CreateAuction(CreateAuctionRequest) returns (CreateAuctionResponse);
   rpc GetAuction(GetAuctionRequest) returns (GetAuctionResponse);
   rpc GetAuctionByGoods(GetAuctionByGoodsRequest) returns (GetAuctionByGoodsResponse);
+  rpc GetCurrentAuctionByRoom(GetCurrentAuctionByRoomRequest) returns (GetCurrentAuctionByRoomResponse);
+  rpc BatchGetCurrentAuctionsByRoom(BatchGetCurrentAuctionsByRoomRequest) returns (BatchGetCurrentAuctionsByRoomResponse);
   rpc ListShopAuctions(ListShopAuctionsRequest) returns (ListShopAuctionsResponse);
   rpc ListMerchantAuctions(ListMerchantAuctionsRequest) returns (ListMerchantAuctionsResponse);
   rpc GetAuctionRuntime(GetAuctionRuntimeRequest) returns (GetAuctionRuntimeResponse);
@@ -52,6 +54,22 @@ message GetAuctionByGoodsRequest {
 
 message GetAuctionByGoodsResponse {
   Auction auction = 1;
+}
+
+message GetCurrentAuctionByRoomRequest {
+  int64 room_id = 1;
+}
+
+message GetCurrentAuctionByRoomResponse {
+  Auction auction = 1;
+}
+
+message BatchGetCurrentAuctionsByRoomRequest {
+  repeated int64 room_ids = 1;
+}
+
+message BatchGetCurrentAuctionsByRoomResponse {
+  repeated Auction list = 1;
 }
 
 message ListShopAuctionsRequest {

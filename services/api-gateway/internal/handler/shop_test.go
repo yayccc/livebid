@@ -38,6 +38,10 @@ func (m mockShopClient) GetShop(ctx context.Context, in *shopv1.GetShopRequest, 
 	return m.get(ctx, in, opts...)
 }
 
+func (m mockShopClient) BatchGetPublicShops(ctx context.Context, in *shopv1.BatchGetPublicShopsRequest, opts ...grpc.CallOption) (*shopv1.BatchGetPublicShopsResponse, error) {
+	panic("not implemented")
+}
+
 func (m mockShopClient) UpdateShop(ctx context.Context, in *shopv1.UpdateShopRequest, opts ...grpc.CallOption) (*shopv1.UpdateShopResponse, error) {
 	return m.update(ctx, in, opts...)
 }

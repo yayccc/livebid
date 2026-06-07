@@ -130,6 +130,29 @@ func (h *AuctionGRPCHandler) GetAuctionByGoods(ctx context.Context, req *auction
 	return &auctionv1.GetAuctionByGoodsResponse{Auction: toProtoAuction(auction)}, nil
 }
 
+func (h *AuctionGRPCHandler) GetCurrentAuctionByRoom(ctx context.Context, req *auctionv1.GetCurrentAuctionByRoomRequest) (*auctionv1.GetCurrentAuctionByRoomResponse, error) {
+	if req.GetRoomId() <= 0 {
+		return nil, toGRPCError(errInvalidArgument)
+	}
+	auction, err := h.auctions.FindCurrentByRoomID(ctx, req.GetRoomId())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	return &auctionv1.GetCurrentAuctionByRoomResponse{Auction: toProtoAuction(auction)}, nil
+}
+
+func (h *AuctionGRPCHandler) BatchGetCurrentAuctionsByRoom(ctx context.Context, req *auctionv1.BatchGetCurrentAuctionsByRoomRequest) (*auctionv1.BatchGetCurrentAuctionsByRoomResponse, error) {
+	roomIDs, err := normalizeIDList(req.GetRoomIds())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	list, err := h.auctions.BatchFindCurrentByRoomIDs(ctx, roomIDs)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	return &auctionv1.BatchGetCurrentAuctionsByRoomResponse{List: orderAuctionsByRoomIDs(roomIDs, list)}, nil
+}
+
 func (h *AuctionGRPCHandler) ListShopAuctions(ctx context.Context, req *auctionv1.ListShopAuctionsRequest) (*auctionv1.ListShopAuctionsResponse, error) {
 	shopID, err := currentShopID(ctx)
 	if err != nil {
@@ -780,6 +803,41 @@ func auctionGoodsIDs(list []*model.Auction) []int64 {
 		ids = append(ids, auction.GoodsID)
 	}
 	return ids
+}
+
+func normalizeIDList(ids []int64) ([]int64, error) {
+	if len(ids) == 0 {
+		return nil, errInvalidArgument
+	}
+	seen := make(map[int64]struct{}, len(ids))
+	normalized := make([]int64, 0, len(ids))
+	for _, id := range ids {
+		if id <= 0 {
+			return nil, errInvalidArgument
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		normalized = append(normalized, id)
+	}
+	return normalized, nil
+}
+
+func orderAuctionsByRoomIDs(roomIDs []int64, list []*model.Auction) []*auctionv1.Auction {
+	byRoomID := make(map[int64]*model.Auction, len(list))
+	for _, auction := range list {
+		if auction != nil && auction.RoomID > 0 {
+			byRoomID[auction.RoomID] = auction
+		}
+	}
+	ordered := make([]*auctionv1.Auction, 0, len(list))
+	for _, roomID := range roomIDs {
+		if auction := byRoomID[roomID]; auction != nil {
+			ordered = append(ordered, toProtoAuction(auction))
+		}
+	}
+	return ordered
 }
 
 func goodsSnapshotMap(goodsList []*goodsv1.Goods) map[int64]*goodsv1.Goods {

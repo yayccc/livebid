@@ -8,6 +8,8 @@ func TestLoadAppliesTargetAndNacosEnvOverrides(t *testing.T) {
 	t.Setenv("API_GATEWAY_USER_SERVICE_TARGET", "nacosx:///user-service")
 	t.Setenv("API_GATEWAY_GOODS_SERVICE_TARGET", "nacosx:///goods-service")
 	t.Setenv("API_GATEWAY_AUCTION_SERVICE_TARGET", "nacosx:///auction-service")
+	t.Setenv("API_GATEWAY_USER_LIVE_WS_URL", "wss://example.com/ws/live")
+	t.Setenv("API_GATEWAY_USER_LIVE_HEARTBEAT_INTERVAL_SECONDS", "20")
 	t.Setenv("API_GATEWAY_NACOS_ENABLED", "true")
 	t.Setenv("API_GATEWAY_NACOS_SERVERS", "nacos:8848")
 	t.Setenv("API_GATEWAY_CONFIG_CENTER_ENABLED", "true")
@@ -24,6 +26,9 @@ func TestLoadAppliesTargetAndNacosEnvOverrides(t *testing.T) {
 	}
 	if cfg.AuctionService.Target != "nacosx:///auction-service" {
 		t.Fatalf("auction target = %q", cfg.AuctionService.Target)
+	}
+	if cfg.UserLive.WSURL != "wss://example.com/ws/live" || cfg.UserLive.HeartbeatIntervalSeconds != 20 {
+		t.Fatalf("user live config = %+v", cfg.UserLive)
 	}
 	if !cfg.Nacos.Enabled {
 		t.Fatalf("expected nacos enabled")

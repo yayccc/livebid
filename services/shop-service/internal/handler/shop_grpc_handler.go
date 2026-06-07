@@ -135,6 +135,18 @@ func (h *ShopGRPCHandler) GetShop(ctx context.Context, req *shopv1.GetShopReques
 	return &shopv1.GetShopResponse{Shop: toProtoShop(shop)}, nil
 }
 
+func (h *ShopGRPCHandler) BatchGetPublicShops(ctx context.Context, req *shopv1.BatchGetPublicShopsRequest) (*shopv1.BatchGetPublicShopsResponse, error) {
+	ids, err := normalizeIDs(req.GetIds())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	list, err := h.shops.BatchFindByIDs(ctx, ids)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	return &shopv1.BatchGetPublicShopsResponse{List: orderShopsByIDs(ids, list)}, nil
+}
+
 func (h *ShopGRPCHandler) UpdateShop(ctx context.Context, req *shopv1.UpdateShopRequest) (*shopv1.UpdateShopResponse, error) {
 	shopID := req.GetId()
 	if shopID <= 0 {
@@ -213,6 +225,41 @@ func newOpaqueToken() (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(buf), nil
+}
+
+func normalizeIDs(ids []int64) ([]int64, error) {
+	if len(ids) == 0 {
+		return nil, errInvalidShopID
+	}
+	seen := make(map[int64]struct{}, len(ids))
+	normalized := make([]int64, 0, len(ids))
+	for _, id := range ids {
+		if id <= 0 {
+			return nil, errInvalidShopID
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		normalized = append(normalized, id)
+	}
+	return normalized, nil
+}
+
+func orderShopsByIDs(ids []int64, list []*model.Shop) []*shopv1.Shop {
+	byID := make(map[int64]*model.Shop, len(list))
+	for _, shop := range list {
+		if shop != nil && shop.ID > 0 {
+			byID[shop.ID] = shop
+		}
+	}
+	ordered := make([]*shopv1.Shop, 0, len(list))
+	for _, id := range ids {
+		if shop := byID[id]; shop != nil {
+			ordered = append(ordered, toProtoShop(shop))
+		}
+	}
+	return ordered
 }
 
 func toProtoShop(shop *model.Shop) *shopv1.Shop {

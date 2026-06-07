@@ -45,6 +45,16 @@ func (r *fakeShopRepository) FindByUsername(ctx context.Context, username string
 	return nil, repository.ErrShopNotFound
 }
 
+func (r *fakeShopRepository) BatchFindByIDs(ctx context.Context, ids []int64) ([]*model.Shop, error) {
+	list := make([]*model.Shop, 0, len(ids))
+	for _, id := range ids {
+		if shop, ok := r.shops[id]; ok {
+			list = append(list, shop)
+		}
+	}
+	return list, nil
+}
+
 func (r *fakeShopRepository) Update(ctx context.Context, shop *model.Shop) error {
 	if _, ok := r.shops[shop.ID]; !ok {
 		return repository.ErrShopNotFound
@@ -92,6 +102,24 @@ func TestShopGRPCHandlerGetShopRejectsMissingIDAndMetadata(t *testing.T) {
 	_, err := handler.GetShop(context.Background(), &shopv1.GetShopRequest{})
 	if status.Code(err) != codes.Unauthenticated {
 		t.Fatalf("expected Unauthenticated, got %v", err)
+	}
+}
+
+func TestShopGRPCHandlerBatchGetPublicShopsReturnsRequestedOrder(t *testing.T) {
+	repo := &fakeShopRepository{shops: map[int64]*model.Shop{
+		1001: testModelShop(1001, "first shop"),
+		2002: testModelShop(2002, "second shop"),
+	}}
+	handler := NewShopGRPCHandler(repo, nil, idgen.New(1))
+
+	resp, err := handler.BatchGetPublicShops(context.Background(), &shopv1.BatchGetPublicShopsRequest{
+		Ids: []int64{2002, 1001},
+	})
+	if err != nil {
+		t.Fatalf("BatchGetPublicShops returned error: %v", err)
+	}
+	if len(resp.GetList()) != 2 || resp.GetList()[0].GetId() != 2002 || resp.GetList()[1].GetId() != 1001 {
+		t.Fatalf("unexpected shop order: %#v", resp.GetList())
 	}
 }
 
