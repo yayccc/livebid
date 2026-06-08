@@ -59,7 +59,7 @@ export type UserLiveAuctionHint = {
   bid_count?: number
   status?: number
   status_text?: string
-  end_time?: string
+  end_time?: string | number
   winner_user_id?: EntityID
   winner_display_name?: string
 }
@@ -93,8 +93,8 @@ export type UserLiveAuction = {
   bid_count: number
   status: number
   status_text?: string
-  start_time?: string
-  end_time?: string
+  start_time?: string | number
+  end_time?: string | number
   winner_user_id?: EntityID
   winner_display_name?: string
 }
@@ -151,7 +151,7 @@ export type UserLiveAuctionSnapshot = {
 
 export type BidEventMessage = {
   id: string
-  type: 'system' | 'bid' | 'deal' | 'error'
+  type: 'system' | 'bid' | 'deal' | 'error' | 'chat'
   text: string
   createdAt: number
 }

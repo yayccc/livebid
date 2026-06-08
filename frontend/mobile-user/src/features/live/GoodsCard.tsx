@@ -4,15 +4,16 @@ import type { UserLiveGoods } from '../../types/domain'
 type GoodsCardProps = {
   goods?: UserLiveGoods | null
   onOpen: () => void
+  variant?: 'overlay' | 'inline'
 }
 
-export function GoodsCard({ goods, onOpen }: GoodsCardProps) {
+export function GoodsCard({ goods, onOpen, variant = 'overlay' }: GoodsCardProps) {
   if (!goods) {
     return null
   }
 
   return (
-    <button type="button" className="goods-card" onClick={onOpen}>
+    <button type="button" className={`goods-card${variant === 'inline' ? ' goods-card--inline' : ''}`} onClick={onOpen}>
       <span className="goods-card__cover">
         {goods.cover_url ? (
           <img src={goods.cover_url} alt="" />

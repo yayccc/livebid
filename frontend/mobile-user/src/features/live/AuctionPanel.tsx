@@ -8,6 +8,7 @@ type AuctionPanelProps = {
   canBid: boolean
   isBidding: boolean
   onBid: () => void
+  variant?: 'overlay' | 'dock'
 }
 
 export function AuctionPanel({
@@ -16,6 +17,7 @@ export function AuctionPanel({
   canBid,
   isBidding,
   onBid,
+  variant = 'overlay',
 }: AuctionPanelProps) {
   if (!auction) {
     return (
@@ -34,7 +36,7 @@ export function AuctionPanel({
   const bidLabel = canBid ? `出价 ${formatCentAmount(nextBidPrice)}` : '登录出价'
 
   return (
-    <aside className="auction-panel" aria-label="当前竞拍">
+    <aside className={`auction-panel${variant === 'dock' ? ' auction-panel--dock' : ''}`} aria-label="当前竞拍">
       <div className="auction-panel__summary">
         <span className="auction-panel__label">当前价</span>
         <strong>{formatCentAmount(currentPrice)}</strong>

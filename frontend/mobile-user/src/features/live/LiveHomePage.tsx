@@ -54,6 +54,8 @@ export function LiveHomePage() {
   const [statsByRoom, setStatsByRoom] = useState<Record<EntityID, UserLiveStats>>({})
   const [isGoodsOpen, setIsGoodsOpen] = useState(false)
   const [isBidding, setIsBidding] = useState(false)
+  const [chatDraft, setChatDraft] = useState('')
+  const bidTimeoutRef = useRef<number | null>(null)
   const socketRef = useRef<LiveSocketClient | null>(null)
 
   const feedQuery = useInfiniteQuery({
@@ -83,6 +85,7 @@ export function LiveHomePage() {
 
   useEffect(() => {
     return () => {
+      clearBidTimeout()
       socketRef.current?.close()
     }
   }, [])
@@ -109,7 +112,9 @@ export function LiveHomePage() {
   const leaveRoom = useCallback(() => {
     socketRef.current?.close()
     socketRef.current = null
+    clearBidTimeout()
     setIsBidding(false)
+    setChatDraft('')
     setSession({
       roomID: null,
       status: 'preview',
@@ -166,6 +171,7 @@ export function LiveHomePage() {
               void refreshAuctionSnapshot(roomID)
             }
             if (patch.bidResolved) {
+              clearBidTimeout()
               setIsBidding(false)
             }
             if (patch.bidError) {
@@ -239,6 +245,10 @@ export function LiveHomePage() {
 
   function handleBid() {
     if (!activeAuction) {
+      if (activeRoom?.room.id) {
+        void refreshAuctionSnapshot(activeRoom.room.id)
+      }
+      Toast.show('竞拍信息同步中，请稍后再试')
       return
     }
     if (!isLoggedIn) {
@@ -258,6 +268,35 @@ export function LiveHomePage() {
     }
 
     setIsBidding(true)
+    clearBidTimeout()
+    bidTimeoutRef.current = window.setTimeout(() => {
+      setIsBidding(false)
+      Toast.show('出价响应超时，请刷新竞拍状态后重试')
+      if (activeRoom?.room.id) {
+        void refreshAuctionSnapshot(activeRoom.room.id)
+      }
+    }, 8000)
+  }
+
+  function handleSendChat() {
+    if (!isEntered) {
+      return
+    }
+
+    const text = chatDraft.trim()
+    if (!text) {
+      return
+    }
+
+    appendMessage(createMessage('chat', `我：${text}`, 'chat'))
+    setChatDraft('')
+  }
+
+  function clearBidTimeout() {
+    if (bidTimeoutRef.current !== null) {
+      window.clearTimeout(bidTimeoutRef.current)
+      bidTimeoutRef.current = null
+    }
   }
 
   function appendMessage(message: BidEventMessage) {
@@ -321,7 +360,6 @@ export function LiveHomePage() {
 
   return (
     <section className="live-home">
-      <SearchOverlay />
       <Swiper
         className="live-swiper"
         direction="vertical"
@@ -341,42 +379,69 @@ export function LiveHomePage() {
             <SwiperSlide key={item.room.id}>
               <article className={cx('live-slide', isActive && isEntered && 'is-entered')}>
                 <LiveVideo item={displayItem} stream={itemEntry?.stream} enabled={isActive} />
-                <LiveRoomMeta item={displayItem} entry={itemEntry} />
 
-                {!isEntered && (
-                  <div className="live-preview-action">
-                    <button
-                      type="button"
-                      disabled={session.status === 'entering' && session.roomID === item.room.id}
-                      onClick={handleEnterRoom}
-                    >
-                      {session.status === 'entering' && session.roomID === item.room.id ? (
-                        <>
-                          <DotLoading />
-                          进入中
-                        </>
-                      ) : (
-                        '进入直播间'
-                      )}
-                    </button>
-                    {session.status === 'error' && session.roomID === item.room.id && (
-                      <p>{session.error}</p>
-                    )}
-                  </div>
-                )}
-
-                {isEntered && (
+                {!isEntered ? (
                   <>
-                    <LiveMessageList messages={session.messages} />
-                    <GoodsCard goods={goods} onOpen={() => setIsGoodsOpen(true)} />
-                    <AuctionPanel
-                      auction={auction}
-                      runtime={activeRuntime}
-                      canBid={canBid}
-                      isBidding={isBidding}
-                      onBid={handleBid}
-                    />
+                    <SearchOverlay />
+                    <LiveRoomMeta item={displayItem} entry={itemEntry} variant="preview" />
+                    <div className="live-preview-action">
+                      <button
+                        type="button"
+                        disabled={session.status === 'entering' && session.roomID === item.room.id}
+                        onClick={handleEnterRoom}
+                      >
+                        {session.status === 'entering' && session.roomID === item.room.id ? (
+                          <>
+                            <DotLoading />
+                            进入中
+                          </>
+                        ) : (
+                          '进入直播间'
+                        )}
+                      </button>
+                      {session.status === 'error' && session.roomID === item.room.id && (
+                        <p>{session.error}</p>
+                      )}
+                    </div>
                   </>
+                ) : (
+                  <div className="live-room-entered">
+                    <div className="live-room-entered__head">
+                      <LiveRoomMeta item={displayItem} entry={itemEntry} variant="entered" />
+                      <GoodsCard goods={goods} onOpen={() => setIsGoodsOpen(true)} variant="inline" />
+                    </div>
+
+                    <div className="live-room-entered__body">
+                      <LiveMessageList messages={session.messages} variant="dock" />
+
+                      <div className="live-chat-composer">
+                        <textarea
+                          value={chatDraft}
+                          rows={2}
+                          placeholder="发送弹幕"
+                          onChange={(event) => setChatDraft(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' && !event.shiftKey) {
+                              event.preventDefault()
+                              handleSendChat()
+                            }
+                          }}
+                        />
+                        <button type="button" onClick={handleSendChat} disabled={!chatDraft.trim()}>
+                          发送
+                        </button>
+                      </div>
+
+                      <AuctionPanel
+                        auction={auction}
+                        runtime={activeRuntime}
+                        canBid={canBid}
+                        isBidding={isBidding}
+                        onBid={handleBid}
+                        variant="dock"
+                      />
+                    </div>
+                  </div>
                 )}
               </article>
             </SwiperSlide>

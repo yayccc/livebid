@@ -41,6 +41,15 @@ export function mapIncomingLiveEvent(
       }
     }
 
+    if (data.accepted === true) {
+      const bidPrice = toNumber(data.current_price) ?? toNumber(data.bid_price)
+      return {
+        bidResolved: true,
+        runtime: buildRuntimePatch(data, auction, 1),
+        message: buildMessage('bid', `出价成功 ${formatCentAmount(bidPrice || auction?.current_price || 0)}`),
+      }
+    }
+
     return {
       bidResolved: true,
       runtime: buildRuntimePatch(data, auction),
@@ -101,6 +110,10 @@ function buildRuntimePatch(
   const expireAt = toNumber(data.expire_at)
 
   return {
+    next_bid_price:
+      currentPrice !== undefined && auction?.bid_increment
+        ? currentPrice + auction.bid_increment
+        : undefined,
     current_price: currentPrice ?? auction?.current_price,
     bid_count: bidCount ?? auction?.bid_count,
     status: toNumber(data.status) ?? fallbackStatus ?? auction?.status,

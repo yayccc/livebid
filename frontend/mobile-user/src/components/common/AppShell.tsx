@@ -4,9 +4,17 @@ import { BottomNav } from './BottomNav'
 export function AppShell() {
   const location = useLocation()
   const isHome = location.pathname === '/'
+  const isLightPage = location.pathname === '/messages' || location.pathname === '/profile'
+  const shellClassName = [
+    'app-shell',
+    isHome ? 'app-shell--immersive' : '',
+    isLightPage ? 'app-shell--light' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return (
-    <main className={isHome ? 'app-shell app-shell--immersive' : 'app-shell'}>
+    <main className={shellClassName}>
       <Outlet />
       <BottomNav />
     </main>

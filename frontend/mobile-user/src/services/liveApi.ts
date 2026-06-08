@@ -60,7 +60,7 @@ type RawAuctionHint = {
   bid_count?: number
   status?: number
   status_text?: string
-  end_time?: string
+  end_time?: string | number
   winner_user_id?: EntityID
   winner_display_name?: string
 }
@@ -256,7 +256,7 @@ function normalizeAuctionHint(hint?: RawAuctionHint | null) {
     bid_count: optionalNumber(hint.bid_count),
     status: optionalNumber(hint.status),
     status_text: stringValue(hint.status_text),
-    end_time: stringValue(hint.end_time),
+    end_time: timeValue(hint.end_time),
     winner_user_id: optionalID(hint.winner_user_id),
     winner_display_name: stringValue(hint.winner_display_name),
   }
@@ -276,6 +276,8 @@ function normalizeAuction(auction?: RawAuction | null): UserLiveAuction | null {
     current_price: numberValue(auction.current_price),
     bid_count: numberValue(auction.bid_count),
     status: numberValue(auction.status),
+    start_time: timeValue(auction.start_time),
+    end_time: timeValue(auction.end_time),
   }
 }
 
@@ -346,6 +348,14 @@ function optionalID(value: unknown) {
 function optionalNumber(value: unknown) {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function timeValue(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  return stringValue(value)
 }
 
 function stringValue(value: unknown, fallback = '') {

@@ -1,5 +1,6 @@
 import type { IncomingLiveEvent } from '../types/domain'
 import type { EntityID } from '../types/domain'
+import { idToJsonNumberLiteral } from '../lib/id'
 
 export type LiveSocketHandlers = {
   onOpen?: () => void
@@ -40,17 +41,13 @@ export function openLiveSocket(
       if (socket.readyState !== WebSocket.OPEN) {
         return false
       }
+      const auctionIDText = idToJsonNumberLiteral(auctionID)
+      if (!auctionIDText || !Number.isSafeInteger(bidPrice) || bidPrice <= 0) {
+        return false
+      }
 
       socket.send(
-        JSON.stringify({
-          type: 'place_bid',
-          request_id: `bid_${auctionID}_${Date.now()}`,
-          timestamp: Date.now(),
-          data: {
-            auction_id: auctionID,
-            bid_price: bidPrice,
-          },
-        }),
+        `{"type":"place_bid","request_id":"bid_${auctionIDText}_${Date.now()}","timestamp":${Date.now()},"data":{"auction_id":${auctionIDText},"bid_price":${bidPrice}}}`,
       )
       return true
     },
