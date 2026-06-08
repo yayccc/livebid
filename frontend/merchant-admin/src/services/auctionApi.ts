@@ -96,6 +96,7 @@ export async function listBidRecords(
 function toAuctionPayload(input: AuctionDraft) {
   return {
     goods_id: Number(input.goods_id),
+    room_id: Number(input.room_id),
     start_price: parseCentInput(input.start_price) || 0,
     bid_increment: parseCentInput(input.bid_increment) || 0,
     seal_price: parseCentInput(input.seal_price),

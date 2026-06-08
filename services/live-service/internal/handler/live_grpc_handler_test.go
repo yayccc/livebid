@@ -174,6 +174,44 @@ func TestLiveGRPCHandlerListLiveRoomsUsesLivingFilter(t *testing.T) {
 	}
 }
 
+func TestLiveGRPCHandlerListLiveRoomsSupportsShopAndStatusFilter(t *testing.T) {
+	initTestLogger(t)
+
+	notLiveRoom := testLiveRoom(2001, 1001, model.LiveRoomStatusNotLive)
+	handler := newTestLiveHandler(&mockLiveRoomRepository{
+		list: func(ctx context.Context, filter repository.ListLiveRoomsFilter) ([]*model.LiveRoom, int64, error) {
+			if filter.ShopID != 1001 {
+				t.Fatalf("expected shop filter 1001, got %d", filter.ShopID)
+			}
+			if filter.Status != model.LiveRoomStatusNotLive {
+				t.Fatalf("expected not_live filter, got %d", filter.Status)
+			}
+			if filter.Limit != 20 || filter.Offset != 0 {
+				t.Fatalf("unexpected pagination filter: %#v", filter)
+			}
+			return []*model.LiveRoom{notLiveRoom}, 1, nil
+		},
+	})
+
+	shopID := int64(1001)
+	statusFilter := livev1.LiveRoomStatus_LIVE_ROOM_STATUS_NOT_LIVE
+	resp, err := handler.ListLiveRooms(shopContext(shopID), &livev1.ListLiveRoomsRequest{
+		Page:     1,
+		PageSize: 20,
+		ShopId:   &shopID,
+		Status:   &statusFilter,
+	})
+	if err != nil {
+		t.Fatalf("ListLiveRooms returned error: %v", err)
+	}
+	if resp.GetTotal() != 1 || len(resp.GetLiveRooms()) != 1 {
+		t.Fatalf("unexpected response: %#v", resp)
+	}
+	if resp.GetLiveRooms()[0].GetStatus() != livev1.LiveRoomStatus_LIVE_ROOM_STATUS_NOT_LIVE {
+		t.Fatalf("unexpected room status: %s", resp.GetLiveRooms()[0].GetStatus())
+	}
+}
+
 func TestLiveGRPCHandlerStartLive(t *testing.T) {
 	initTestLogger(t)
 

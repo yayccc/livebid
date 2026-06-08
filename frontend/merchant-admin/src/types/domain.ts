@@ -20,6 +20,7 @@ export type Auction = {
   id: number
   goods_id: number
   shop_id: number
+  room_id: number
   start_price: number
   bid_increment?: number
   seal_price?: number
@@ -39,6 +40,7 @@ export type BidRecord = {
   auction_id: number
   goods_id: number
   shop_id: number
+  room_id: number
   user_id: number
   bid_price: number
   bid_time?: string
@@ -54,9 +56,41 @@ export type GoodsDraft = {
 
 export type AuctionDraft = {
   goods_id: string
+  room_id: string
   start_price: string
   bid_increment: string
   seal_price: string
   start_time: string
   end_time: string
+}
+
+export type LiveRoomStatus = 'not_live' | 'living' | 'unspecified'
+
+export type MediaStreamStatus = 'offline' | 'online' | 'unspecified'
+
+export type LiveRoom = {
+  id: number
+  shop_id: number
+  title: string
+  cover?: string
+  description?: string
+  status: LiveRoomStatus
+  media_stream_status: MediaStreamStatus
+  actual_start_time?: string
+  actual_end_time?: string
+  created_at?: string
+  updated_at?: string
+}
+
+export type LiveRoomDraft = {
+  title: string
+  cover: string
+  description: string
+}
+
+export type LiveStreamInfo = {
+  stream_name: string
+  rtmp_push_url: string
+  webrtc_play_url: string
+  media_stream_status: MediaStreamStatus
 }

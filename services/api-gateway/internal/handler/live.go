@@ -307,6 +307,47 @@ func (h *LiveHandler) ListLiveRooms(c *gin.Context) {
 	})
 }
 
+func (h *LiveHandler) ListMerchantLiveRooms(c *gin.Context) {
+	shopID, ok := currentShopID(c)
+	if !ok {
+		return
+	}
+	page := parsePositiveQueryInt(c, "page", 1)
+	pageSize := parsePositiveQueryInt(c, "page_size", 10)
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	statusFilter, ok := parseLiveRoomStatusQuery(c, "status")
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), h.rpcTimeout)
+	defer cancel()
+
+	resp, err := h.liveClient.ListLiveRooms(ctx, &livev1.ListLiveRoomsRequest{
+		Page:     int32(page),
+		PageSize: int32(pageSize),
+		ShopId:   &shopID,
+		Status:   statusFilter,
+	})
+	if err != nil {
+		respondGRPCError(c, err)
+		return
+	}
+
+	rooms := make([]liveRoomResponse, 0, len(resp.GetLiveRooms()))
+	for _, room := range resp.GetLiveRooms() {
+		rooms = append(rooms, toLiveRoomResponse(room))
+	}
+	respondOK(c, gin.H{
+		"total":     resp.GetTotal(),
+		"page":      page,
+		"page_size": pageSize,
+		"list":      rooms,
+	})
+}
+
 func (h *LiveHandler) GetUserLiveFeed(c *gin.Context) {
 	page := parsePositiveQueryInt(c, "page", 1)
 	pageSize := parsePositiveQueryInt(c, "page_size", 10)
@@ -774,6 +815,24 @@ func streamCodeFromSRSParam(param string) string {
 		}
 	}
 	return ""
+}
+
+func parseLiveRoomStatusQuery(c *gin.Context, key string) (*livev1.LiveRoomStatus, bool) {
+	raw := strings.TrimSpace(c.Query(key))
+	if raw == "" {
+		return nil, true
+	}
+	var statusFilter livev1.LiveRoomStatus
+	switch raw {
+	case "not_live":
+		statusFilter = livev1.LiveRoomStatus_LIVE_ROOM_STATUS_NOT_LIVE
+	case "living":
+		statusFilter = livev1.LiveRoomStatus_LIVE_ROOM_STATUS_LIVING
+	default:
+		respondError(c, http.StatusBadRequest, "直播间状态无效，请使用 not_live 或 living")
+		return nil, false
+	}
+	return &statusFilter, true
 }
 
 func toLiveRoomResponse(room *livev1.LiveRoom) liveRoomResponse {

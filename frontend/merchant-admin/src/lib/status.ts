@@ -43,3 +43,37 @@ export function auctionStatusTone(status: number): StatusTone {
 
   return tones[status] || 'muted'
 }
+
+export function liveRoomStatusLabel(status?: string) {
+  if (status === 'living') {
+    return '直播中'
+  }
+  if (status === 'not_live') {
+    return '未开播'
+  }
+  return '未知'
+}
+
+export function liveRoomStatusTone(status?: string): StatusTone {
+  if (status === 'living') {
+    return 'primary'
+  }
+  return 'muted'
+}
+
+export function mediaStreamStatusLabel(status?: string) {
+  if (status === 'online') {
+    return '推流中'
+  }
+  if (status === 'offline') {
+    return '未推流'
+  }
+  return '未知'
+}
+
+export function mediaStreamStatusTone(status?: string): StatusTone {
+  if (status === 'online') {
+    return 'success'
+  }
+  return 'muted'
+}
