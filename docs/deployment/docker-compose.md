@@ -25,6 +25,25 @@ docker compose -f deployments/docker-compose.yml up --build
 
 首次启动会构建 `shop-service`、`user-service`、`goods-service`、`live-service`、`auction-service`、`api-gateway` 和 `ws-gateway` 七个镜像，并启动 MySQL、Redis、Nacos、RocketMQ、RustFS 与 SRS。
 
+本地 WebRTC 调试时，如果浏览器需要访问宿主机/WSL 地址 `172.21.103.73`，可以使用脚本启动：
+
+```bash
+scripts/start-compose-local.sh
+```
+
+脚本默认设置：
+
+```text
+SRS_PUBLIC_HOST=172.21.103.73
+SRS_RTC_CANDIDATE=172.21.103.73
+```
+
+因此 SRS 返回的 WebRTC ICE candidate，以及 `live-service` 返回给前端的 RTMP/WebRTC 地址会使用同一个本地可访问 IP。需要临时改 IP 时：
+
+```bash
+SRS_HOST=172.21.x.x scripts/start-compose-local.sh
+```
+
 HTTP 网关健康检查：
 
 ```bash
