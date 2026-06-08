@@ -67,11 +67,12 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 
 	auctionRepo := repository.NewGormAuctionRepository(db)
 	bidRepo := repository.NewGormBidRecordRepository(db)
-	stateStore := repository.NewRedisAuctionStateStore(cfg.Redis)
+	stateStore := repository.NewRedisAuctionStateStore(cfg.Redis, cfg.Auction)
 	eventProcessor := client.NewAuctionEventProcessor(
 		auctionRepo,
 		bidRepo,
 		stateStore,
+		eventPublisher,
 		log,
 		cfg.RocketMQ.MaxReconsumeTimes,
 	)

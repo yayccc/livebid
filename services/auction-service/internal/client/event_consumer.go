@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	rocketmq "github.com/apache/rocketmq-client-go/v2"
@@ -61,6 +62,7 @@ type AuctionEventProcessor struct {
 	auctions          repository.AuctionRepository
 	bids              repository.BidRecordRepository
 	states            repository.AuctionStateStore
+	events            EventPublisher
 	log               *zap.Logger
 	maxReconsumeTimes int32
 }
@@ -69,6 +71,7 @@ func NewAuctionEventProcessor(
 	auctions repository.AuctionRepository,
 	bids repository.BidRecordRepository,
 	states repository.AuctionStateStore,
+	events EventPublisher,
 	log *zap.Logger,
 	maxReconsumeTimes int32,
 ) *AuctionEventProcessor {
@@ -79,6 +82,7 @@ func NewAuctionEventProcessor(
 		auctions:          auctions,
 		bids:              bids,
 		states:            states,
+		events:            events,
 		log:               log,
 		maxReconsumeTimes: maxReconsumeTimes,
 	}
@@ -151,15 +155,47 @@ func (p *AuctionEventProcessor) applyExpireCheck(ctx context.Context, event Auct
 	if err != nil {
 		return err
 	}
-	if !changed {
+	if changed {
+		return p.publishAndSnapshotFinalState(ctx, auctionFromState(state))
+	}
+	current, err := p.states.GetState(ctx, event.AuctionID)
+	if err != nil {
 		return nil
 	}
-	err = p.auctions.UpdateStatusSnapshot(ctx, auctionFromState(state))
-	if errors.Is(err, repository.ErrOutdatedAuctionVersion) {
+	if current.Status == model.AuctionStatusDeal || current.Status == model.AuctionStatusFailed {
+		return p.publishAndSnapshotFinalState(ctx, auctionFromState(current))
+	}
+	return nil
+}
+
+func (p *AuctionEventProcessor) publishAndSnapshotFinalState(ctx context.Context, auction *model.Auction) error {
+	if auction == nil {
+		return nil
+	}
+	if p.events != nil {
+		eventType := EventAuctionFailed
+		if auction.Status == model.AuctionStatusDeal {
+			eventType = EventAuctionFinished
+		}
+		auctionEvent := NewAuctionEvent(
+			fmt.Sprintf("auction_%d_%d", auction.ID, auction.Version),
+			eventType,
+			auction.ID,
+			auction.ShopID,
+			auction.RoomID,
+			auction.Version,
+			auctionEventDataFromState(auction),
+		)
+		if err := p.events.Publish(ctx, auctionEvent); err != nil {
+			return err
+		}
+	}
+	if err := p.auctions.UpdateStatusSnapshot(ctx, auction); errors.Is(err, repository.ErrOutdatedAuctionVersion) {
 		// DB 已经被更新到更高版本时，延迟检查结果无需再次应用。
 		return nil
+	} else {
+		return err
 	}
-	return err
 }
 
 func auctionFromEvent(event AuctionEvent) *model.Auction {
@@ -213,6 +249,37 @@ func auctionFromState(state repository.AuctionState) *model.Auction {
 	return auction
 }
 
+func auctionEventDataFromState(auction *model.Auction) map[string]any {
+	if auction == nil {
+		return nil
+	}
+	data := map[string]any{
+		"goods_id":       auction.GoodsID,
+		"shop_id":        auction.ShopID,
+		"room_id":        auction.RoomID,
+		"start_price":    auction.StartPrice,
+		"bid_increment":  auction.BidIncrement,
+		"current_price":  auction.CurrentPrice,
+		"bid_count":      auction.BidCount,
+		"status":         int32(auction.Status),
+		"start_time":     auctionTimeMillis(auction.StartTime),
+		"end_time":       auctionTimeMillis(auction.EndTime),
+		"winner_user_id": int64(0),
+		"deal_price":     int64(0),
+		"seal_price":     int64(0),
+	}
+	if auction.WinnerUserID != nil {
+		data["winner_user_id"] = *auction.WinnerUserID
+	}
+	if auction.DealPrice != nil {
+		data["deal_price"] = *auction.DealPrice
+	}
+	if auction.SealPrice != nil {
+		data["seal_price"] = *auction.SealPrice
+	}
+	return data
+}
+
 func bidRecordFromEvent(event AuctionEvent) *model.BidRecord {
 	id := int64FromData(event.Data, "bid_record_id")
 	if id <= 0 {
@@ -257,6 +324,13 @@ func timePtrFromUnixMilli(data map[string]any, key string) *time.Time {
 	}
 	t := time.UnixMilli(value)
 	return &t
+}
+
+func auctionTimeMillis(t *time.Time) int64 {
+	if t == nil {
+		return 0
+	}
+	return t.UnixMilli()
 }
 
 func timeFromUnix(data map[string]any, key string) time.Time {

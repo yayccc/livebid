@@ -19,6 +19,8 @@ rocketmq:
   topic: "auction_event"
   delayLevel: 4
   maxReconsumeTimes: 5
+auction:
+  bidCountdownSeconds: 30
 goods:
   addr: "127.0.0.1:9002"
   target: "127.0.0.1:9002"

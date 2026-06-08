@@ -19,6 +19,7 @@ type Config struct {
 	MySQL        MySQLConfig               `yaml:"mysql"`
 	Redis        RedisConfig               `yaml:"redis"`
 	RocketMQ     RocketMQConfig            `yaml:"rocketmq"`
+	Auction      AuctionConfig             `yaml:"auction"`
 	Goods        GoodsConfig               `yaml:"goods"`
 	Live         LiveConfig                `yaml:"live"`
 	Log          logger.Config             `yaml:"log"`
@@ -54,6 +55,10 @@ type RocketMQConfig struct {
 	Topic             string   `yaml:"topic"`
 	DelayLevel        int      `yaml:"delayLevel"`
 	MaxReconsumeTimes int32    `yaml:"maxReconsumeTimes"`
+}
+
+type AuctionConfig struct {
+	BidCountdownSeconds int `yaml:"bidCountdownSeconds"`
 }
 
 type GoodsConfig struct {
@@ -101,8 +106,11 @@ func defaultConfig() Config {
 			ProducerGroup:     "auction-service-producer",
 			ConsumerGroup:     "auction-service-consumer",
 			Topic:             "auction_event",
-			DelayLevel:        5,
+			DelayLevel:        4,
 			MaxReconsumeTimes: 5,
+		},
+		Auction: AuctionConfig{
+			BidCountdownSeconds: 30,
 		},
 		Goods: GoodsConfig{
 			Addr: "127.0.0.1:9002",
@@ -180,6 +188,7 @@ func applyEnvOverrides(cfg *Config) {
 	setIntEnv("AUCTION_SERVICE_MYSQL_CONN_MAX_LIFETIME_SECONDS", &cfg.MySQL.ConnMaxLifetimeSeconds)
 	setIntEnv("AUCTION_SERVICE_REDIS_DB", &cfg.Redis.DB)
 	setIntEnv("AUCTION_SERVICE_ROCKETMQ_DELAY_LEVEL", &cfg.RocketMQ.DelayLevel)
+	setIntEnv("AUCTION_SERVICE_BID_COUNTDOWN_SECONDS", &cfg.Auction.BidCountdownSeconds)
 	setInt32Env("AUCTION_SERVICE_ROCKETMQ_MAX_RECONSUME_TIMES", &cfg.RocketMQ.MaxReconsumeTimes)
 	setInt64Env("AUCTION_SERVICE_WORKER_ID", &cfg.WorkerID)
 
@@ -252,10 +261,13 @@ func normalize(cfg *Config) {
 		cfg.RocketMQ.Topic = "auction_event"
 	}
 	if cfg.RocketMQ.DelayLevel <= 0 {
-		cfg.RocketMQ.DelayLevel = 5
+		cfg.RocketMQ.DelayLevel = 4
 	}
 	if cfg.RocketMQ.MaxReconsumeTimes <= 0 {
 		cfg.RocketMQ.MaxReconsumeTimes = 5
+	}
+	if cfg.Auction.BidCountdownSeconds <= 0 {
+		cfg.Auction.BidCountdownSeconds = 30
 	}
 	if cfg.Goods.Addr == "" {
 		cfg.Goods.Addr = "127.0.0.1:9002"

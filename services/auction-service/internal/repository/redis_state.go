@@ -57,16 +57,22 @@ type AuctionStateStore interface {
 }
 
 type RedisAuctionStateStore struct {
-	client *redis.Client
+	client             *redis.Client
+	bidCountdownMillis int64
 }
 
-func NewRedisAuctionStateStore(cfg config.RedisConfig) *RedisAuctionStateStore {
+func NewRedisAuctionStateStore(redisCfg config.RedisConfig, auctionCfg config.AuctionConfig) *RedisAuctionStateStore {
+	bidCountdownMillis := int64(auctionCfg.BidCountdownSeconds) * 1000
+	if bidCountdownMillis <= 0 {
+		bidCountdownMillis = 30 * 1000
+	}
 	return &RedisAuctionStateStore{
 		client: redis.NewClient(&redis.Options{
-			Addr:     cfg.Addr,
-			Password: cfg.Password,
-			DB:       cfg.DB,
+			Addr:     redisCfg.Addr,
+			Password: redisCfg.Password,
+			DB:       redisCfg.DB,
 		}),
+		bidCountdownMillis: bidCountdownMillis,
 	}
 }
 
@@ -113,7 +119,7 @@ func (s *RedisAuctionStateStore) PlaceBid(ctx context.Context, auctionID int64, 
 		bidRequestKey(auctionID, requestID),
 		lastBidKey(auctionID, userID),
 		rankKey(auctionID),
-	}, now.UnixMilli(), roomID, userID, bidPrice, bidRecordID).Result()
+	}, now.UnixMilli(), roomID, userID, bidPrice, bidRecordID, s.bidCountdownMillis).Result()
 	if err != nil {
 		return BidResult{}, mapRedisScriptError(err)
 	}
@@ -202,6 +208,7 @@ local room_id = tonumber(ARGV[2])
 local user_id = tonumber(ARGV[3])
 local bid_price = tonumber(ARGV[4])
 local bid_record_id = tonumber(ARGV[5])
+local bid_countdown_millis = tonumber(ARGV[6])
 
 if redis.call("EXISTS", state_key) == 0 then return redis.error_reply("auction not found") end
 
@@ -227,7 +234,7 @@ if seal_price > 0 and bid_price > seal_price then return redis.error_reply("bid 
 
 local bid_count = tonumber(redis.call("HINCRBY", state_key, "bid_count", 1))
 local version = tonumber(redis.call("HINCRBY", state_key, "version", 1))
-redis.call("HSET", state_key, "current_price", bid_price, "winner_user_id", user_id, "expire_at", now + 15000)
+redis.call("HSET", state_key, "current_price", bid_price, "winner_user_id", user_id, "expire_at", now + bid_countdown_millis)
 redis.call("SET", last_bid_key, bid_price, "EX", 86400)
 redis.call("ZADD", rank_key, bid_price, user_id)
 
