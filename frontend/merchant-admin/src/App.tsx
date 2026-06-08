@@ -125,7 +125,7 @@ function App() {
       )}
       {activePage === 'goods' && <GoodsPage token={token} />}
       {activePage === 'auctions' && <AuctionPage token={token} />}
-      {activePage === 'live' && <LivePage />}
+      {activePage === 'live' && <LivePage token={token} />}
       {activePage === 'shop' && (
         <ShopPage shop={shop} isLoadingShop={isLoadingShop} onRefreshShop={handleRefreshShop} />
       )}

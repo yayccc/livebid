@@ -68,6 +68,58 @@ POST /api/srs/callbacks/publish
 POST /api/srs/callbacks/unpublish
 ```
 
+【新增说明：2026-06-08，本段根据商铺管理后台直播间管理和竞拍创建 RoomID 选择需求补充】
+
+商家后台新增商家视角直播间列表接口：
+
+```text
+GET /api/merchant/live/rooms
+```
+
+查询参数：
+
+| 参数 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| page | int | 否 | 页码，默认 1 |
+| page_size | int | 否 | 每页数量，默认 10，最大 100 |
+| status | string | 否 | 直播间状态，支持 `not_live`、`living` |
+
+响应数据：
+
+```json
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "total": 1,
+    "page": 1,
+    "page_size": 10,
+    "list": [
+      {
+        "id": 700000000001,
+        "shop_id": 10001,
+        "title": "翡翠专场直播",
+        "cover": "https://example.com/live-cover.jpg",
+        "description": "晚场专拍",
+        "status": "not_live",
+        "media_stream_status": "offline",
+        "actual_start_time": "",
+        "actual_end_time": "",
+        "created_at": "2026-06-08T12:00:00Z",
+        "updated_at": "2026-06-08T12:00:00Z"
+      }
+    ]
+  }
+}
+```
+
+约定：
+
+- 商家身份从 JWT 注入，不允许客户端传 `shop_id`。
+- 与公开 `GET /api/live/rooms` 不同，本接口返回当前商铺未删除的直播间，可包含 `not_live` 和 `living`，用于直播间管理和创建竞拍时选择 `room_id`。
+- 本接口不返回 `stream_name`、`rtmp_push_url`、`webrtc_play_url`；商家查看推流信息继续调用 `GET /api/live/rooms/{id}/stream`。
+- `live-service.ListLiveRooms` 内部请求保留用户侧默认行为：未传 `shop_id/status` 时固定查询 `living`；传入 `shop_id` 时按商家维度查询，`status` 可选。
+
 约定：
 
 - 商家创建、开播、关播需要 `Authorization: Bearer <token>`。

@@ -124,9 +124,14 @@ func (h *LiveGRPCHandler) GetLiveRoom(ctx context.Context, req *livev1.GetLiveRo
 }
 
 func (h *LiveGRPCHandler) ListLiveRooms(ctx context.Context, req *livev1.ListLiveRoomsRequest) (*livev1.ListLiveRoomsResponse, error) {
+	statusFilter, err := listLiveRoomStatusFilter(req)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
 	log := logger.FromContext(ctx).With(
 		zap.String("method", "ListLiveRooms"),
-		zap.String("status", livev1.LiveRoomStatus_LIVE_ROOM_STATUS_LIVING.String()),
+		zap.Int64("shop_id", req.GetShopId()),
+		zap.Int8("status", int8(statusFilter)),
 	)
 	log.Info("list live rooms started")
 
@@ -143,7 +148,8 @@ func (h *LiveGRPCHandler) ListLiveRooms(ctx context.Context, req *livev1.ListLiv
 	}
 
 	rooms, total, err := h.rooms.List(ctx, repository.ListLiveRoomsFilter{
-		Status: model.LiveRoomStatusLiving,
+		ShopID: req.GetShopId(),
+		Status: statusFilter,
 		Limit:  pageSize,
 		Offset: (page - 1) * pageSize,
 	})
@@ -398,6 +404,20 @@ func currentShopID(ctx context.Context) (int64, error) {
 		return 0, errInvalidCredential
 	}
 	return shopID, nil
+}
+
+func listLiveRoomStatusFilter(req *livev1.ListLiveRoomsRequest) (model.LiveRoomStatus, error) {
+	if req.Status == nil {
+		if req.GetShopId() > 0 {
+			return 0, nil
+		}
+		return model.LiveRoomStatusLiving, nil
+	}
+	statusFilter := fromProtoLiveRoomStatus(req.GetStatus())
+	if statusFilter == 0 {
+		return 0, errInvalidArgument
+	}
+	return statusFilter, nil
 }
 
 func (h *LiveGRPCHandler) streamInfo(room *model.LiveRoom) *livev1.LiveStreamInfo {

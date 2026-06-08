@@ -46,6 +46,9 @@ message GetLiveRoomResponse {
 message ListLiveRoomsRequest {
   int32 page = 1;
   int32 page_size = 2;
+  // Optional shop filter. When omitted, the first version keeps user feed behavior and lists living rooms only.
+  optional int64 shop_id = 3;
+  optional LiveRoomStatus status = 4;
 }
 
 message ListLiveRoomsResponse {

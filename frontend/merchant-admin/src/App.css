@@ -518,6 +518,13 @@ textarea:focus {
   align-items: start;
 }
 
+.live-layout {
+  display: grid;
+  grid-template-columns: minmax(640px, 1fr) 420px;
+  gap: 18px;
+  align-items: start;
+}
+
 .detail-column {
   display: grid;
   gap: 18px;
@@ -566,6 +573,10 @@ textarea:focus {
 
 .auction-table {
   min-width: 980px;
+}
+
+.live-table {
+  min-width: 860px;
 }
 
 .data-table th,
@@ -726,6 +737,15 @@ textarea:focus {
   font-weight: 700;
 }
 
+.stream-detail-grid {
+  grid-template-columns: 1fr;
+}
+
+.stream-detail-grid dd {
+  font-family: var(--font-number);
+  font-size: 13px;
+}
+
 .bid-row,
 .compact-row {
   display: grid;
@@ -787,11 +807,13 @@ textarea:focus {
   .metric-grid,
   .content-grid,
   .goods-layout,
-  .auction-layout {
+  .auction-layout,
+  .live-layout {
     grid-template-columns: 1fr;
   }
 
-  .auction-layout {
+  .auction-layout,
+  .live-layout {
     display: flex;
     flex-direction: column;
   }
