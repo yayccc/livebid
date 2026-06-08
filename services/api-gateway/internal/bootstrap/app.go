@@ -99,7 +99,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		return nil, err
 	}
 	auctionClient := client.NewAuctionServiceClient(auctionConn)
-	auctionHandler := handler.NewAuctionHandlerWithGoods(auctionClient, goodsClient, cfg.RPCTimeout())
+	auctionHandler := handler.NewAuctionHandlerWithGoodsAndLive(auctionClient, goodsClient, liveClient, cfg.RPCTimeout())
 	liveHandler := handler.NewLiveHandlerWithAggregates(liveClient, shopClient, goodsClient, auctionClient, cfg.UserLive, cfg.RPCTimeout())
 
 	gin.SetMode(gin.ReleaseMode)

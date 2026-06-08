@@ -8,9 +8,12 @@ import (
 	"github.com/gin-gonic/gin"
 	auctionv1 "github.com/yayccc/livebid/gen/proto/auction/v1"
 	goodsv1 "github.com/yayccc/livebid/gen/proto/goods/v1"
+	livev1 "github.com/yayccc/livebid/gen/proto/live/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+const createOptionsPageSize int32 = 100
 
 type auctionServiceClient interface {
 	CreateAuction(ctx context.Context, in *auctionv1.CreateAuctionRequest, opts ...grpc.CallOption) (*auctionv1.CreateAuctionResponse, error)
@@ -32,6 +35,7 @@ type auctionServiceClient interface {
 type AuctionHandler struct {
 	auctionClient auctionServiceClient
 	goodsClient   goodsServiceClient
+	liveClient    liveServiceClient
 	rpcTimeout    time.Duration
 }
 
@@ -40,9 +44,14 @@ func NewAuctionHandler(auctionClient auctionServiceClient, rpcTimeout time.Durat
 }
 
 func NewAuctionHandlerWithGoods(auctionClient auctionServiceClient, goodsClient goodsServiceClient, rpcTimeout time.Duration) *AuctionHandler {
+	return NewAuctionHandlerWithGoodsAndLive(auctionClient, goodsClient, nil, rpcTimeout)
+}
+
+func NewAuctionHandlerWithGoodsAndLive(auctionClient auctionServiceClient, goodsClient goodsServiceClient, liveClient liveServiceClient, rpcTimeout time.Duration) *AuctionHandler {
 	return &AuctionHandler{
 		auctionClient: auctionClient,
 		goodsClient:   goodsClient,
+		liveClient:    liveClient,
 		rpcTimeout:    normalizeRPCTimeout(rpcTimeout),
 	}
 }
@@ -198,6 +207,11 @@ type merchantDashboardSummaryResponse struct {
 	AuctionCancelled int64 `json:"auction_cancelled"`
 	TodayDealAmount  int64 `json:"today_deal_amount"`
 	TodayBidCount    int64 `json:"today_bid_count"`
+}
+
+type auctionCreateOptionsResponse struct {
+	Goods []goodsResponse    `json:"goods"`
+	Rooms []liveRoomResponse `json:"rooms"`
 }
 
 func (h *AuctionHandler) Create(c *gin.Context) {
@@ -397,6 +411,61 @@ func (h *AuctionHandler) DashboardSummary(c *gin.Context) {
 		response.GoodsOffSale = goodsOffSale
 	}
 	respondOK(c, response)
+}
+
+func (h *AuctionHandler) CreateOptions(c *gin.Context) {
+	shopID, ok := currentShopID(c)
+	if !ok {
+		return
+	}
+	if h.goodsClient == nil || h.liveClient == nil {
+		respondError(c, http.StatusBadGateway, "商品或直播服务暂不可用")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), h.rpcTimeout)
+	defer cancel()
+
+	goodsList, err := h.listCreateOptionGoods(ctx, shopID)
+	if err != nil {
+		respondGRPCError(c, err)
+		return
+	}
+	auctionList, err := h.listCreateOptionAuctions(ctx, shopID)
+	if err != nil {
+		respondGRPCError(c, err)
+		return
+	}
+	roomList, err := h.listCreateOptionRooms(ctx, shopID)
+	if err != nil {
+		respondGRPCError(c, err)
+		return
+	}
+
+	usedGoods := make(map[int64]struct{}, len(auctionList))
+	for _, auction := range auctionList {
+		if auction.GetGoodsId() > 0 {
+			usedGoods[auction.GetGoodsId()] = struct{}{}
+		}
+	}
+
+	goodsOptions := make([]goodsResponse, 0, len(goodsList))
+	for _, goods := range goodsList {
+		if _, used := usedGoods[goods.GetId()]; used {
+			continue
+		}
+		goodsOptions = append(goodsOptions, toGoodsResponse(goods))
+	}
+
+	roomOptions := make([]liveRoomResponse, 0, len(roomList))
+	for _, room := range roomList {
+		roomOptions = append(roomOptions, toLiveRoomResponse(room))
+	}
+
+	respondOK(c, auctionCreateOptionsResponse{
+		Goods: goodsOptions,
+		Rooms: roomOptions,
+	})
 }
 
 func (h *AuctionHandler) Update(c *gin.Context) {
@@ -797,6 +866,64 @@ func (h *AuctionHandler) goodsCount(ctx context.Context, req *goodsv1.ListGoodsR
 		return 0, err
 	}
 	return resp.GetTotal(), nil
+}
+
+func (h *AuctionHandler) listCreateOptionGoods(ctx context.Context, shopID int64) ([]*goodsv1.Goods, error) {
+	onSaleStatus := int32(1)
+	var all []*goodsv1.Goods
+	for page := int32(1); ; page++ {
+		resp, err := h.goodsClient.ListGoods(ctx, &goodsv1.ListGoodsRequest{
+			ShopId:   &shopID,
+			Status:   &onSaleStatus,
+			Page:     page,
+			PageSize: createOptionsPageSize,
+		})
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, resp.GetList()...)
+		if len(resp.GetList()) == 0 || int64(len(all)) >= resp.GetTotal() {
+			return all, nil
+		}
+	}
+}
+
+func (h *AuctionHandler) listCreateOptionAuctions(ctx context.Context, shopID int64) ([]*auctionv1.Auction, error) {
+	var all []*auctionv1.Auction
+	for page := int32(1); ; page++ {
+		resp, err := h.auctionClient.ListShopAuctions(ctx, &auctionv1.ListShopAuctionsRequest{
+			ShopId:   shopID,
+			Page:     page,
+			PageSize: createOptionsPageSize,
+		})
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, resp.GetList()...)
+		if len(resp.GetList()) == 0 || int64(len(all)) >= resp.GetTotal() {
+			return all, nil
+		}
+	}
+}
+
+func (h *AuctionHandler) listCreateOptionRooms(ctx context.Context, shopID int64) ([]*livev1.LiveRoom, error) {
+	living := livev1.LiveRoomStatus_LIVE_ROOM_STATUS_LIVING
+	var all []*livev1.LiveRoom
+	for page := int32(1); ; page++ {
+		resp, err := h.liveClient.ListLiveRooms(ctx, &livev1.ListLiveRoomsRequest{
+			ShopId:   &shopID,
+			Status:   &living,
+			Page:     page,
+			PageSize: createOptionsPageSize,
+		})
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, resp.GetLiveRooms()...)
+		if len(resp.GetLiveRooms()) == 0 || int64(len(all)) >= resp.GetTotal() {
+			return all, nil
+		}
+	}
 }
 
 func toStartAuctionResponse(auction *auctionv1.Auction) startAuctionResponse {

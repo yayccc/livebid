@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	auctionv1 "github.com/yayccc/livebid/gen/proto/auction/v1"
 	goodsv1 "github.com/yayccc/livebid/gen/proto/goods/v1"
+	livev1 "github.com/yayccc/livebid/gen/proto/live/v1"
 	"github.com/yayccc/livebid/pkg/identity"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -19,6 +20,7 @@ import (
 
 type mockAuctionClient struct {
 	create   func(ctx context.Context, in *auctionv1.CreateAuctionRequest, opts ...grpc.CallOption) (*auctionv1.CreateAuctionResponse, error)
+	shopList func(ctx context.Context, in *auctionv1.ListShopAuctionsRequest, opts ...grpc.CallOption) (*auctionv1.ListShopAuctionsResponse, error)
 	merchant func(ctx context.Context, in *auctionv1.ListMerchantAuctionsRequest, opts ...grpc.CallOption) (*auctionv1.ListMerchantAuctionsResponse, error)
 	runtime  func(ctx context.Context, in *auctionv1.GetAuctionRuntimeRequest, opts ...grpc.CallOption) (*auctionv1.GetAuctionRuntimeResponse, error)
 	summary  func(ctx context.Context, in *auctionv1.GetMerchantDashboardSummaryRequest, opts ...grpc.CallOption) (*auctionv1.GetMerchantDashboardSummaryResponse, error)
@@ -46,7 +48,7 @@ func (m mockAuctionClient) BatchGetCurrentAuctionsByRoom(ctx context.Context, in
 }
 
 func (m mockAuctionClient) ListShopAuctions(ctx context.Context, in *auctionv1.ListShopAuctionsRequest, opts ...grpc.CallOption) (*auctionv1.ListShopAuctionsResponse, error) {
-	panic("not implemented")
+	return m.shopList(ctx, in, opts...)
 }
 
 func (m mockAuctionClient) ListMerchantAuctions(ctx context.Context, in *auctionv1.ListMerchantAuctionsRequest, opts ...grpc.CallOption) (*auctionv1.ListMerchantAuctionsResponse, error) {
@@ -251,6 +253,68 @@ func TestAuctionHandlerDashboardSummaryMergesGoodsCounts(t *testing.T) {
 	}
 	if resp.Data.GoodsTotal != 128 || resp.Data.GoodsOnSale != 86 || resp.Data.AuctionRunning != 6 || resp.Data.TodayBidCount != 238 {
 		t.Fatalf("unexpected dashboard summary: %#v", resp.Data)
+	}
+}
+
+func TestAuctionHandlerCreateOptionsFiltersUnusedGoodsAndLivingRooms(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	handler := NewAuctionHandlerWithGoodsAndLive(mockAuctionClient{
+		shopList: func(ctx context.Context, in *auctionv1.ListShopAuctionsRequest, opts ...grpc.CallOption) (*auctionv1.ListShopAuctionsResponse, error) {
+			if in.GetShopId() != 1001 || in.GetPage() != 1 || in.GetPageSize() != createOptionsPageSize {
+				t.Fatalf("unexpected auction list request: %#v", in)
+			}
+			return &auctionv1.ListShopAuctionsResponse{
+				Total: 1,
+				List:  []*auctionv1.Auction{{Id: 3001, GoodsId: 2001, ShopId: 1001}},
+			}, nil
+		},
+	}, mockAuctionGoodsClient{
+		list: func(ctx context.Context, in *goodsv1.ListGoodsRequest, opts ...grpc.CallOption) (*goodsv1.ListGoodsResponse, error) {
+			if in.GetShopId() != 1001 || in.GetStatus() != 1 || in.GetPage() != 1 || in.GetPageSize() != createOptionsPageSize {
+				t.Fatalf("unexpected goods list request: %#v", in)
+			}
+			return &goodsv1.ListGoodsResponse{
+				Total: 2,
+				List: []*goodsv1.Goods{
+					{Id: 2001, ShopId: 1001, Title: "已参拍商品", Status: 1},
+					{Id: 2002, ShopId: 1001, Title: "可选商品", Status: 1},
+				},
+			}, nil
+		},
+	}, mockLiveClient{
+		listLiveRooms: func(ctx context.Context, in *livev1.ListLiveRoomsRequest, opts ...grpc.CallOption) (*livev1.ListLiveRoomsResponse, error) {
+			if in.GetShopId() != 1001 || in.GetStatus() != livev1.LiveRoomStatus_LIVE_ROOM_STATUS_LIVING || in.GetPage() != 1 || in.GetPageSize() != createOptionsPageSize {
+				t.Fatalf("unexpected live room list request: %#v", in)
+			}
+			return &livev1.ListLiveRoomsResponse{
+				Total: 1,
+				LiveRooms: []*livev1.LiveRoom{{
+					Id:     4001,
+					ShopId: 1001,
+					Title:  "直播中直播间",
+					Status: livev1.LiveRoomStatus_LIVE_ROOM_STATUS_LIVING,
+				}},
+			}, nil
+		},
+	}, time.Second)
+
+	w := performAuctionRequest(handler.CreateOptions, http.MethodGet, "/api/merchant/auctions/create-options", bytes.NewBuffer(nil), identity.Principal{Kind: identity.KindShop, ID: 1001})
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp struct {
+		Data auctionCreateOptionsResponse `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if len(resp.Data.Goods) != 1 || resp.Data.Goods[0].ID != 2002 {
+		t.Fatalf("unexpected goods options: %#v", resp.Data.Goods)
+	}
+	if len(resp.Data.Rooms) != 1 || resp.Data.Rooms[0].ID != 4001 {
+		t.Fatalf("unexpected room options: %#v", resp.Data.Rooms)
 	}
 }
 

@@ -96,6 +96,7 @@ func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, userHandler 
 
 	merchantAPI := merchant.Group("/merchant")
 	merchantAPI.GET("/auctions", auctionHandler.ListMerchant)
+	merchantAPI.GET("/auctions/create-options", auctionHandler.CreateOptions)
 	merchantAPI.GET("/dashboard/summary", auctionHandler.DashboardSummary)
 	merchantAPI.GET("/live/rooms", liveHandler.ListMerchantLiveRooms)
 
