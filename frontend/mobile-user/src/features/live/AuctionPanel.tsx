@@ -5,7 +5,7 @@ import type { UserLiveAuction, UserLiveRuntime } from '../../types/domain'
 type AuctionPanelProps = {
   auction: UserLiveAuction | null
   runtime?: UserLiveRuntime | null
-  isLoggedIn: boolean
+  canBid: boolean
   isBidding: boolean
   onBid: () => void
 }
@@ -13,7 +13,7 @@ type AuctionPanelProps = {
 export function AuctionPanel({
   auction,
   runtime,
-  isLoggedIn,
+  canBid,
   isBidding,
   onBid,
 }: AuctionPanelProps) {
@@ -28,10 +28,10 @@ export function AuctionPanel({
 
   const currentPrice = runtime?.current_price ?? auction.current_price
   const bidCount = runtime?.bid_count ?? auction.bid_count
-  const nextBidPrice = auction.next_bid_price || currentPrice + auction.bid_increment
+  const nextBidPrice = runtime?.next_bid_price || auction.next_bid_price || currentPrice + auction.bid_increment
   const status = runtime?.status ?? auction.status
-  const canBid = status === 1 && !isBidding
-  const bidLabel = isLoggedIn ? `出价 ${formatCentAmount(nextBidPrice)}` : '登录出价'
+  const isBidEnabled = status === 1 && canBid && !isBidding
+  const bidLabel = canBid ? `出价 ${formatCentAmount(nextBidPrice)}` : '登录出价'
 
   return (
     <aside className="auction-panel" aria-label="当前竞拍">
@@ -61,7 +61,7 @@ export function AuctionPanel({
       <button
         type="button"
         className="auction-panel__bid"
-        disabled={!canBid && isLoggedIn}
+        disabled={!isBidEnabled}
         onClick={onBid}
       >
         {isBidding ? <LoaderCircle className="spin" size={18} aria-hidden="true" /> : null}

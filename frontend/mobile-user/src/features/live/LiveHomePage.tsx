@@ -15,7 +15,7 @@ import { LiveVideo } from './LiveVideo'
 import { SearchOverlay } from './SearchOverlay'
 import { mapIncomingLiveEvent } from './eventMapper'
 import { cx, getErrorText } from '../../lib/format'
-import { getUserLiveEntry, getUserLiveFeed } from '../../services/liveApi'
+import { getUserLiveAuctionSnapshot, getUserLiveEntry, getUserLiveFeed } from '../../services/liveApi'
 import { openLiveSocket, type LiveSocketClient } from '../../services/liveSocket'
 import { useAuthStore } from '../../stores/authStore'
 import type {
@@ -79,6 +79,7 @@ export function LiveHomePage() {
   const activeEntry = isEntered ? session.entry : null
   const activeAuction = activeEntry?.current_auction || activeEntry?.auction || null
   const activeRuntime = session.runtime || activeEntry?.runtime || null
+  const canBid = Boolean(isLoggedIn && activeEntry?.viewer?.can_bid !== false)
 
   useEffect(() => {
     return () => {
@@ -161,6 +162,9 @@ export function LiveHomePage() {
           },
           onEvent: (event) => {
             const patch = mapIncomingLiveEvent(event, auction)
+            if (event.type === 'auction_started') {
+              void refreshAuctionSnapshot(roomID)
+            }
             if (patch.bidResolved) {
               setIsBidding(false)
             }
@@ -207,6 +211,32 @@ export function LiveHomePage() {
     }
   }
 
+  async function refreshAuctionSnapshot(roomID: EntityID) {
+    try {
+      const snapshot = await getUserLiveAuctionSnapshot(roomID, token)
+      setSession((current) => {
+        if (current.roomID !== roomID || current.status !== 'entered' || !current.entry) {
+          return current
+        }
+
+        return {
+          ...current,
+          entry: {
+            ...current.entry,
+            viewer: snapshot.viewer || current.entry.viewer,
+            current_auction: snapshot.current_auction ?? snapshot.auction ?? null,
+            auction: snapshot.auction ?? snapshot.current_auction ?? null,
+            goods: snapshot.goods ?? null,
+            runtime: snapshot.runtime ?? null,
+          },
+          runtime: snapshot.runtime ?? null,
+        }
+      })
+    } catch (err) {
+      appendMessage(createMessage('error', getErrorText(err, '竞拍快照刷新失败'), 'snapshot_error'))
+    }
+  }
+
   function handleBid() {
     if (!activeAuction) {
       return
@@ -215,9 +245,13 @@ export function LiveHomePage() {
       Toast.show('请先登录后参与出价')
       return
     }
+    if (!canBid) {
+      Toast.show('当前账号暂不能出价')
+      return
+    }
 
     const currentPrice = activeRuntime?.current_price ?? activeAuction.current_price
-    const nextBidPrice = activeAuction.next_bid_price || currentPrice + activeAuction.bid_increment
+    const nextBidPrice = activeRuntime?.next_bid_price || activeAuction.next_bid_price || currentPrice + activeAuction.bid_increment
     if (!socketRef.current?.sendBid(activeAuction.id, nextBidPrice)) {
       Toast.show('互动连接未就绪，请稍后重试')
       return
@@ -338,7 +372,7 @@ export function LiveHomePage() {
                     <AuctionPanel
                       auction={auction}
                       runtime={activeRuntime}
-                      isLoggedIn={isLoggedIn}
+                      canBid={canBid}
                       isBidding={isBidding}
                       onBid={handleBid}
                     />

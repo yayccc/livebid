@@ -130,7 +130,7 @@
 }
 
 .live-video__media {
-  z-index: 1;
+  z-index: 2;
   object-fit: contain;
   object-position: center center;
 }
@@ -145,7 +145,7 @@
 }
 
 .live-video__cover {
-  z-index: 2;
+  z-index: 3;
   object-fit: contain;
   object-position: center center;
   opacity: 0.92;
@@ -172,7 +172,7 @@
 .live-video__shade {
   position: absolute;
   inset: 0;
-  z-index: 3;
+  z-index: 1;
   background:
     linear-gradient(180deg, rgba(0, 0, 0, 0.24) 0%, transparent 22%, transparent 64%, rgba(0, 0, 0, 0.38) 100%),
     linear-gradient(90deg, rgba(0, 0, 0, 0.16) 0%, transparent 22%, transparent 78%, rgba(0, 0, 0, 0.12) 100%);

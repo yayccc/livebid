@@ -74,6 +74,7 @@ export type UserLiveFeedItem = {
 
 export type UserLiveViewer = {
   entered: boolean
+  can_bid?: boolean
   user_id?: EntityID
   nickname?: string
 }
@@ -108,14 +109,18 @@ export type UserLiveGoods = {
 }
 
 export type UserLiveRuntime = {
+  auction_id?: EntityID
   current_price?: number
+  next_bid_price?: number
   bid_count?: number
   status?: number
   status_text?: string
   winner_user_id?: EntityID
   winner_display_name?: string
   remaining_seconds?: number
-  expire_at?: string
+  server_time?: number
+  expire_at?: number
+  version?: number
 }
 
 export type UserLiveWSConfig = {

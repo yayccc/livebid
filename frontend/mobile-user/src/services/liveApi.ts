@@ -8,6 +8,7 @@ import type {
   UserLiveFeedItem,
   UserLiveGoods,
   UserLiveRoom,
+  UserLiveRuntime,
   UserLiveShop,
   UserLiveStats,
   UserLiveStream,
@@ -65,13 +66,22 @@ type RawAuctionHint = {
 }
 
 type RawEntry = Omit<UserLiveEntry, 'room' | 'shop' | 'stream' | 'current_auction' | 'auction' | 'goods' | 'viewer'> & {
-  room: RawRoom
+  room?: RawRoom
   shop?: RawShop | null
   stream?: RawStream | null
   current_auction?: RawAuction | null
   auction?: RawAuction | null
   goods?: RawGoods | null
   viewer?: RawViewer | null
+  runtime?: RawRuntime | null
+}
+
+type RawAuctionSnapshot = Omit<UserLiveAuctionSnapshot, 'current_auction' | 'auction' | 'goods' | 'viewer' | 'runtime'> & {
+  current_auction?: RawAuction | null
+  auction?: RawAuction | null
+  goods?: RawGoods | null
+  viewer?: RawViewer | null
+  runtime?: RawRuntime | null
 }
 
 type RawRoom = Omit<Partial<UserLiveRoom>, 'status' | 'media_stream_status'> & {
@@ -94,6 +104,14 @@ type RawViewer = Partial<UserLiveViewer> & {
   is_logged_in?: boolean
   can_bid?: boolean
   enter_state?: string
+}
+
+type RawRuntime = Omit<Partial<UserLiveRuntime>, 'expire_at'> & {
+  auction_id?: EntityID
+  next_bid_price?: number
+  server_time?: number
+  expire_at?: number | string
+  version?: number
 }
 
 export async function getUserLiveFeed(page: number, pageSize: number, signal?: AbortSignal) {
@@ -127,11 +145,11 @@ export async function getUserLiveAuctionSnapshot(
   token?: string | null,
   signal?: AbortSignal,
 ) {
-  const data = await requestJson<UserLiveAuctionSnapshot>(`/api/user/live/rooms/${roomID}/auction-snapshot`, {
+  const data = await requestJson<RawAuctionSnapshot>(`/api/user/live/rooms/${roomID}/auction-snapshot`, {
     token,
     signal,
   })
-  return data
+  return normalizeAuctionSnapshot(data)
 }
 
 function normalizeFeedItem(item: RawFeedItem): UserLiveFeedItem {
@@ -157,13 +175,25 @@ function normalizeFeedItem(item: RawFeedItem): UserLiveFeedItem {
 function normalizeEntry(entry: RawEntry): UserLiveEntry {
   return {
     ...entry,
-    room: normalizeRoom(entry.room),
+    room: normalizeRoom(entry.room || {}),
     shop: normalizeShop(entry.shop),
     stream: normalizeStream(entry.stream),
     viewer: normalizeViewer(entry.viewer),
     current_auction: normalizeAuction(entry.current_auction),
     auction: normalizeAuction(entry.auction),
     goods: normalizeGoods(entry.goods),
+    runtime: normalizeRuntime(entry.runtime),
+  }
+}
+
+function normalizeAuctionSnapshot(snapshot: RawAuctionSnapshot): UserLiveAuctionSnapshot {
+  return {
+    ...snapshot,
+    viewer: normalizeViewer(snapshot.viewer),
+    current_auction: normalizeAuction(snapshot.current_auction),
+    auction: normalizeAuction(snapshot.auction),
+    goods: normalizeGoods(snapshot.goods),
+    runtime: normalizeRuntime(snapshot.runtime),
   }
 }
 
@@ -271,8 +301,30 @@ function normalizeViewer(viewer?: RawViewer | null): UserLiveViewer | null {
 
   return {
     entered: viewer.entered ?? viewer.enter_state === 'entered',
+    can_bid: viewer.can_bid,
     user_id: optionalID(viewer.user_id),
     nickname: stringValue(viewer.nickname),
+  }
+}
+
+function normalizeRuntime(runtime?: RawRuntime | null): UserLiveRuntime | null {
+  if (!runtime) {
+    return null
+  }
+
+  return {
+    auction_id: optionalID(runtime.auction_id),
+    current_price: optionalNumber(runtime.current_price),
+    next_bid_price: optionalNumber(runtime.next_bid_price),
+    bid_count: optionalNumber(runtime.bid_count),
+    status: optionalNumber(runtime.status),
+    status_text: stringValue(runtime.status_text),
+    winner_user_id: optionalID(runtime.winner_user_id),
+    winner_display_name: stringValue(runtime.winner_display_name),
+    remaining_seconds: optionalNumber(runtime.remaining_seconds),
+    server_time: optionalNumber(runtime.server_time),
+    expire_at: optionalNumber(runtime.expire_at),
+    version: optionalNumber(runtime.version),
   }
 }
 
