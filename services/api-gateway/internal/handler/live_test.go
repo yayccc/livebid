@@ -191,6 +191,36 @@ func TestLiveHandlerListLiveRooms(t *testing.T) {
 	}
 }
 
+func TestLiveHandlerListMerchantLiveRoomsInjectsShopFilter(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	handler := NewLiveHandler(mockLiveClient{
+		listLiveRooms: func(ctx context.Context, in *livev1.ListLiveRoomsRequest, opts ...grpc.CallOption) (*livev1.ListLiveRoomsResponse, error) {
+			if in.GetPage() != 1 || in.GetPageSize() != 10 || in.GetShopId() != 1001 {
+				t.Fatalf("unexpected request: %#v", in)
+			}
+			if in.Status == nil || in.GetStatus() != livev1.LiveRoomStatus_LIVE_ROOM_STATUS_NOT_LIVE {
+				t.Fatalf("unexpected status filter: %#v", in)
+			}
+			room := testLiveProtoRoom()
+			room.Status = livev1.LiveRoomStatus_LIVE_ROOM_STATUS_NOT_LIVE
+			return &livev1.ListLiveRoomsResponse{
+				LiveRooms: []*livev1.LiveRoom{room},
+				Total:     1,
+			}, nil
+		},
+	}, time.Second)
+
+	w := performLiveRequestWithShopID(handler.ListMerchantLiveRooms, http.MethodGet, "/api/merchant/live/rooms?status=not_live&page=1&page_size=10", bytes.NewBuffer(nil), 1001)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, `"total":1`) || !strings.Contains(body, `"page_size":10`) || !strings.Contains(body, `"status":"not_live"`) {
+		t.Fatalf("unexpected response: %s", body)
+	}
+}
+
 func TestLiveHandlerGetLiveStreamInfoChecksShopOwnershipAtGateway(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

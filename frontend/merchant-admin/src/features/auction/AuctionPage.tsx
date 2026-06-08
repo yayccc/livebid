@@ -13,12 +13,14 @@ import {
   startAuction,
 } from '../../services/auctionApi'
 import { batchGetGoods, listShopGoods } from '../../services/goodsApi'
-import type { Auction, AuctionDraft, BidRecord, Goods, PageResult } from '../../types/domain'
+import { listMerchantLiveRooms } from '../../services/liveApi'
+import type { Auction, AuctionDraft, BidRecord, Goods, LiveRoom, PageResult } from '../../types/domain'
 import { compactTime, formatCentAmount, getErrorText } from '../../lib/format'
-import { auctionStatusLabel, auctionStatusTone } from '../../lib/status'
+import { auctionStatusLabel, auctionStatusTone, liveRoomStatusLabel } from '../../lib/status'
 
 const emptyAuctionDraft: AuctionDraft = {
   goods_id: '',
+  room_id: '',
   start_price: '',
   bid_increment: '',
   seal_price: '',
@@ -40,6 +42,7 @@ export function AuctionPage({ token }: AuctionPageProps) {
   const [statusFilter, setStatusFilter] = useState('')
   const [goodsMap, setGoodsMap] = useState<Record<number, Goods>>({})
   const [goodsOptions, setGoodsOptions] = useState<Goods[]>([])
+  const [roomOptions, setRoomOptions] = useState<LiveRoom[]>([])
   const [selectedID, setSelectedID] = useState<number | null>(null)
   const [selectedAuction, setSelectedAuction] = useState<Auction | null>(null)
   const [bidRecords, setBidRecords] = useState<BidRecord[]>([])
@@ -80,13 +83,15 @@ export function AuctionPage({ token }: AuctionPageProps) {
     Promise.all([
       listShopAuctions(token, { page: 1, pageSize: result.page_size }),
       listShopGoods(token, { page: 1, pageSize: 100 }),
+      listMerchantLiveRooms(token, { page: 1, pageSize: 100 }),
     ])
-      .then(([auctionResp, goodsResp]) => {
+      .then(([auctionResp, goodsResp, roomResp]) => {
         if (!isActive) {
           return
         }
         setResult(auctionResp)
         setGoodsOptions(goodsResp.list)
+        setRoomOptions(roomResp.list)
         setSelectedID(auctionResp.list[0]?.id || null)
         if (auctionResp.list.length === 0) {
           setSelectedAuction(null)
@@ -138,6 +143,9 @@ export function AuctionPage({ token }: AuctionPageProps) {
   }, [selectedID])
 
   const selectedGoods = selectedAuction ? goodsMap[selectedAuction.goods_id] : undefined
+  const selectedRoom = selectedAuction
+    ? roomOptions.find((room) => room.id === selectedAuction.room_id)
+    : undefined
   const runningCount = useMemo(
     () => result.list.filter((auction) => auction.status === 1).length,
     [result.list],
@@ -145,8 +153,8 @@ export function AuctionPage({ token }: AuctionPageProps) {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!draft.goods_id || !draft.start_price || !draft.bid_increment) {
-      setError('商品、起拍价和加价幅度不能为空')
+    if (!draft.goods_id || !draft.room_id || !draft.start_price || !draft.bid_increment) {
+      setError('商品、直播间、起拍价和加价幅度不能为空')
       return
     }
 
@@ -267,7 +275,9 @@ export function AuctionPage({ token }: AuctionPageProps) {
                           )}
                           <div>
                             <strong>{goods?.title || `商品 #${auction.goods_id}`}</strong>
-                            <span>竞拍 #{auction.id}</span>
+                            <span>
+                              竞拍 #{auction.id} · 直播间 #{auction.room_id}
+                            </span>
                           </div>
                         </div>
                       </td>
@@ -363,7 +373,9 @@ export function AuctionPage({ token }: AuctionPageProps) {
               <>
                 <div className="detail-title">
                   <strong>{selectedGoods?.title || `商品 #${selectedAuction.goods_id}`}</strong>
-                  <span>竞拍 #{selectedAuction.id}</span>
+                  <span>
+                    竞拍 #{selectedAuction.id} · 直播间 #{selectedAuction.room_id}
+                  </span>
                 </div>
                 <div className="current-price">
                   <span>当前价</span>
@@ -385,6 +397,10 @@ export function AuctionPage({ token }: AuctionPageProps) {
                   <div>
                     <dt>出价次数</dt>
                     <dd>{selectedAuction.bid_count}</dd>
+                  </div>
+                  <div>
+                    <dt>直播间</dt>
+                    <dd>{selectedRoom?.title || `#${selectedAuction.room_id}`}</dd>
                   </div>
                   <div>
                     <dt>领先用户</dt>
@@ -438,6 +454,23 @@ export function AuctionPage({ token }: AuctionPageProps) {
                   {goodsOptions.map((goods) => (
                     <option key={goods.id} value={goods.id}>
                       {goods.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span className="field-label">直播间 *</span>
+                <select
+                  className="select-input"
+                  value={draft.room_id}
+                  onChange={(event) =>
+                    setDraft((current) => ({ ...current, room_id: event.target.value }))
+                  }
+                >
+                  <option value="">选择直播间</option>
+                  {roomOptions.map((room) => (
+                    <option key={room.id} value={room.id}>
+                      {room.title} · {liveRoomStatusLabel(room.status)}
                     </option>
                   ))}
                 </select>
