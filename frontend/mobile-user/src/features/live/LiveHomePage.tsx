@@ -5,7 +5,7 @@ import { Gavel, RefreshCw, Smile } from 'lucide-react'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Keyboard, Mousewheel } from 'swiper/modules'
 import type { Swiper as SwiperInstance } from 'swiper'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import 'swiper/css'
 import { AuctionPanel } from './AuctionPanel'
 import { AuctionRecordsDrawer } from './AuctionRecordsDrawer'
@@ -40,6 +40,7 @@ import type {
 
 const pageSize = 8
 const preloadThreshold = 2
+const returnRoomStorageKey = 'livebid:return-room-id'
 
 type RoomSession = {
   roomID: EntityID | null
@@ -69,8 +70,13 @@ type LocalLeadingBid = {
   winnerID?: EntityID
 }
 
+type LiveHomeLocationState = {
+  returnRoomID?: EntityID
+} | null
+
 export function LiveHomePage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const token = useAuthStore((state) => state.token)
   const userID = useAuthStore((state) => state.userID)
   const profile = useAuthStore((state) => state.profile)
@@ -98,6 +104,9 @@ export function LiveHomePage() {
   const publicUserCacheRef = useRef<Map<EntityID, UserProfile>>(new Map())
   const socketRef = useRef<LiveSocketClient | null>(null)
   const activeAuctionRef = useRef<UserLiveAuction | null>(null)
+  const swiperRef = useRef<SwiperInstance | null>(null)
+  const restoringRoomRef = useRef<EntityID | null>(null)
+  const returnRoomID = (location.state as LiveHomeLocationState)?.returnRoomID || getStoredReturnRoomID()
 
   const feedQuery = useInfiniteQuery({
     queryKey: ['user-live-feed'],
@@ -190,12 +199,12 @@ export function LiveHomePage() {
     setIsAuctionRecordsOpen(false)
   }, [])
 
-  async function handleEnterRoom() {
-    if (!activeRoom || session.status === 'entering') {
+  async function handleEnterRoom(targetRoomID = activeRoom?.room.id) {
+    if (!targetRoomID || session.status === 'entering') {
       return
     }
 
-    const roomID = activeRoom.room.id
+    const roomID = targetRoomID
     socketRef.current?.close()
     socketRef.current = null
     setSession({
@@ -558,7 +567,12 @@ export function LiveHomePage() {
 
   function handleSlideChange(swiper: SwiperInstance) {
     if (swiper.activeIndex !== activeIndex) {
-      leaveRoom()
+      const nextRoomID = rooms[swiper.activeIndex]?.room.id
+      if (restoringRoomRef.current && restoringRoomRef.current === nextRoomID) {
+        restoringRoomRef.current = null
+      } else {
+        leaveRoom()
+      }
     }
     setActiveIndex(swiper.activeIndex)
     if (
@@ -571,6 +585,41 @@ export function LiveHomePage() {
       })
     }
   }
+
+  function openGoodsDetail(goodsID: EntityID, context?: { startPrice?: number; returnRoomID?: EntityID }) {
+    if (context?.returnRoomID) {
+      storeReturnRoomID(context.returnRoomID)
+    }
+    navigate(`/goods/${goodsID}`, { state: context })
+  }
+
+  useEffect(() => {
+    if (!returnRoomID || rooms.length === 0) {
+      return
+    }
+
+    const roomIndex = rooms.findIndex((item) => item.room.id === returnRoomID)
+    if (roomIndex < 0) {
+      if (feedQuery.hasNextPage && !feedQuery.isFetchingNextPage) {
+        void feedQuery.fetchNextPage().catch(() => undefined)
+      }
+      return
+    }
+
+    clearStoredReturnRoomID()
+    navigate('/', { replace: true, state: null })
+    restoringRoomRef.current = returnRoomID
+    if (roomIndex !== activeIndex) {
+      swiperRef.current?.slideTo(roomIndex, 0)
+      setActiveIndex(roomIndex)
+    } else {
+      restoringRoomRef.current = null
+    }
+
+    if (session.roomID !== returnRoomID || session.status !== 'entered') {
+      void handleEnterRoom(returnRoomID)
+    }
+  }, [activeIndex, feedQuery, navigate, returnRoomID, rooms, session.roomID, session.status])
 
   if (feedQuery.isLoading) {
     return (
@@ -615,6 +664,9 @@ export function LiveHomePage() {
         modules={[Keyboard, Mousewheel]}
         keyboard
         mousewheel
+        onSwiper={(swiper) => {
+          swiperRef.current = swiper
+        }}
         onSlideChange={handleSlideChange}
       >
         {rooms.map((item) => {
@@ -638,7 +690,7 @@ export function LiveHomePage() {
                       <button
                         type="button"
                         disabled={session.status === 'entering' && session.roomID === item.room.id}
-                        onClick={handleEnterRoom}
+                        onClick={() => void handleEnterRoom()}
                       >
                         {session.status === 'entering' && session.roomID === item.room.id ? (
                           <>
@@ -677,7 +729,10 @@ export function LiveHomePage() {
                             goods={goods}
                             onOpenGoods={() => {
                               if (goods?.id) {
-                                navigate(`/goods/${goods.id}`)
+                                openGoodsDetail(goods.id, {
+                                  startPrice: auction?.start_price,
+                                  returnRoomID: item.room.id,
+                                })
                               }
                             }}
                             onOpenRecords={() => openAuctionRecords()}
@@ -748,7 +803,11 @@ export function LiveHomePage() {
         records={isEntered ? mergeCurrentGoodsIntoAuctionRecords(session.auctionRecords, activeAuction, activeEntry?.goods) : []}
         isBidding={isBidding}
         onBid={handleBid}
-        onOpenGoods={(goodsID) => navigate(`/goods/${goodsID}`)}
+        onOpenGoods={(goodsID, context) =>
+          openGoodsDetail(goodsID, {
+            startPrice: context?.startPrice,
+            returnRoomID: activeRoom?.room.id,
+          })}
         onClose={() => setIsAuctionRecordsOpen(false)}
       />
 
@@ -1056,4 +1115,28 @@ function mergeAuctionRecordsGoods(records: UserLiveAuctionRecord[], goodsByID: M
       goods: record.goods ? { ...goods, ...record.goods, cover_url: record.goods.cover_url || goods.cover_url } : goods,
     }
   })
+}
+
+function getStoredReturnRoomID() {
+  try {
+    return window.sessionStorage.getItem(returnRoomStorageKey) || undefined
+  } catch {
+    return undefined
+  }
+}
+
+function storeReturnRoomID(roomID: EntityID) {
+  try {
+    window.sessionStorage.setItem(returnRoomStorageKey, roomID)
+  } catch {
+    // Ignore storage failures; route state still handles normal in-app back.
+  }
+}
+
+function clearStoredReturnRoomID() {
+  try {
+    window.sessionStorage.removeItem(returnRoomStorageKey)
+  } catch {
+    // Ignore storage failures.
+  }
 }

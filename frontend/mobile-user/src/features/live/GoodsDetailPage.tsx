@@ -1,17 +1,35 @@
 import { Button, DotLoading } from 'antd-mobile'
 import { ChevronLeft, ShoppingBag } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { formatTimeText, getErrorText } from '../../lib/format'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { formatCentAmount, getErrorText } from '../../lib/format'
 import { getGoods } from '../../services/liveApi'
 import type { UserLiveGoods } from '../../types/domain'
 
+type GoodsDetailState = {
+  startPrice?: number
+  returnRoomID?: string
+}
+
 export function GoodsDetailPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const params = useParams<{ goodsId: string }>()
   const [goods, setGoods] = useState<UserLiveGoods | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState('')
+  const detailState = location.state as GoodsDetailState | null
+  const startPrice = typeof detailState?.startPrice === 'number' ? detailState.startPrice : undefined
+  const returnRoomID = detailState?.returnRoomID
+
+  function handleBack() {
+    if (returnRoomID) {
+      navigate('/', { replace: true, state: { returnRoomID } })
+      return
+    }
+
+    navigate(-1)
+  }
 
   useEffect(() => {
     const goodsId = params.goodsId?.trim()
@@ -42,7 +60,7 @@ export function GoodsDetailPage() {
   return (
     <section className="goods-detail-page">
       <header className="goods-detail-page__header">
-        <button type="button" aria-label="返回" onClick={() => navigate(-1)}>
+        <button type="button" aria-label="返回" onClick={handleBack}>
           <ChevronLeft size={20} aria-hidden="true" />
         </button>
         <div>
@@ -60,7 +78,7 @@ export function GoodsDetailPage() {
         <div className="goods-detail-page__state">
           <h2>加载失败</h2>
           <p>{error}</p>
-          <Button color="danger" size="small" onClick={() => navigate(-1)}>
+          <Button color="danger" size="small" onClick={handleBack}>
             返回
           </Button>
         </div>
@@ -70,25 +88,13 @@ export function GoodsDetailPage() {
             {goods.cover_url ? <img src={goods.cover_url} alt="" /> : <ShoppingBag size={36} aria-hidden="true" />}
           </div>
           <h2>{goods.title}</h2>
+          {startPrice !== undefined ? (
+            <div className="goods-detail-page__start-price">
+              <span>起拍价</span>
+              <strong>{formatCentAmount(startPrice)}</strong>
+            </div>
+          ) : null}
           {goods.description ? <p className="goods-detail-page__description">{goods.description}</p> : null}
-          <dl className="goods-detail-page__facts">
-            <div>
-              <dt>商品 ID</dt>
-              <dd>{goods.id}</dd>
-            </div>
-            <div>
-              <dt>店铺 ID</dt>
-              <dd>{goods.shop_id || '-'}</dd>
-            </div>
-            <div>
-              <dt>商品状态</dt>
-              <dd>{goods.status ?? '-'}</dd>
-            </div>
-            <div>
-              <dt>更新时间</dt>
-              <dd>{formatTimeText(goods.updated_at || goods.created_at)}</dd>
-            </div>
-          </dl>
         </article>
       ) : null}
     </section>
