@@ -30,6 +30,8 @@ const filters: Array<{
   { key: 'cancelled', label: '已取消' },
 ]
 
+const getPopupContainer = () => document.querySelector<HTMLElement>('.app-shell') || document.body
+
 export function AuctionRecordsDrawer({
   visible,
   roomTitle,
@@ -142,7 +144,13 @@ export function AuctionRecordsDrawer({
 
   return (
     <>
-      <Popup visible={visible} onMaskClick={onClose} bodyClassName="auction-records-drawer" position="bottom">
+      <Popup
+        visible={visible}
+        onMaskClick={onClose}
+        bodyClassName="auction-records-drawer"
+        position="bottom"
+        getContainer={getPopupContainer}
+      >
         <header className="auction-records-drawer__header">
           <div>
             <h2>本场直播竞拍</h2>
@@ -241,6 +249,7 @@ export function AuctionRecordsDrawer({
         }}
         bodyClassName="auction-bid-sheet"
         position="bottom"
+        getContainer={getPopupContainer}
       >
         <header className="auction-bid-sheet__header">
           <div>
