@@ -1522,6 +1522,26 @@
   font-size: 18px;
 }
 
+.goods-detail-page__start-price {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 10px;
+  color: #e11945;
+}
+
+.goods-detail-page__start-price span {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.goods-detail-page__start-price strong {
+  font-family: var(--font-number);
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1;
+}
+
 .goods-detail-page__description {
   margin: 10px 0 0;
   color: rgba(23, 25, 29, 0.72);

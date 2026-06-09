@@ -12,7 +12,7 @@ type AuctionRecordsDrawerProps = {
   records: UserLiveAuctionRecord[]
   isBidding: boolean
   onBid: (bidPrice: number) => void
-  onOpenGoods: (goodsID: string) => void
+  onOpenGoods: (goodsID: string, context?: { startPrice?: number }) => void
   onClose: () => void
 }
 
@@ -195,7 +195,7 @@ export function AuctionRecordsDrawer({
                     className="auction-records-drawer__cover"
                     onClick={() => {
                       if (record.goods?.id) {
-                        onOpenGoods(record.goods.id)
+                        onOpenGoods(record.goods.id, { startPrice: record.start_price })
                       }
                     }}
                   >
@@ -213,7 +213,7 @@ export function AuctionRecordsDrawer({
                         className="auction-records-drawer__title"
                         onClick={() => {
                           if (record.goods?.id) {
-                            onOpenGoods(record.goods.id)
+                            onOpenGoods(record.goods.id, { startPrice: record.start_price })
                           }
                         }}
                       >
