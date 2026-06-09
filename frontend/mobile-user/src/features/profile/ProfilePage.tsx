@@ -8,6 +8,7 @@ import {
   ShoppingBag,
   UserRound,
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { AuthPanel } from './AuthPanel'
 import { useAuthProfile } from '../../hooks/useAuthProfile'
 import { useAuthStore } from '../../stores/authStore'
@@ -21,6 +22,7 @@ const featureItems = [
 ]
 
 export function ProfilePage() {
+  const navigate = useNavigate()
   const token = useAuthStore((state) => state.token)
   const userID = useAuthStore((state) => state.userID)
   const profile = useAuthStore((state) => state.profile)
@@ -36,19 +38,21 @@ export function ProfilePage() {
   }
 
   const displayName = profile?.nickname || profile?.username || `用户${userID || ''}`
+  const contactText = profile?.phone || profile?.email || profile?.username || '用户资料待完善'
 
   return (
     <div className="profile-page">
-      <section className="profile-header">
-        <div className="profile-header__avatar">
+      <button type="button" className="profile-header" onClick={() => navigate('/profile/edit')}>
+        <span className="profile-header__avatar">
           {profile?.avatar ? <img src={profile.avatar} alt="" /> : <UserRound size={34} aria-hidden="true" />}
-        </div>
-        <div className="profile-header__body">
+        </span>
+        <span className="profile-header__body">
           <h1>{displayName}</h1>
           <p>{profileQuery.isLoading ? '正在同步用户信息' : profile?.username || '用户资料待完善'}</p>
-          <span>{profile?.phone || profile?.email || '登录后可参与直播竞拍'}</span>
-        </div>
-      </section>
+          <span>{contactText}</span>
+        </span>
+        <ChevronRight size={18} aria-hidden="true" />
+      </button>
 
       <section className="profile-actions" aria-label="用户功能入口">
         {featureItems.map((item) => {

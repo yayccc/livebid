@@ -23,7 +23,7 @@ export function GoodsCard({ goods, onOpen, variant = 'overlay' }: GoodsCardProps
       </span>
       <span className="goods-card__body">
         <span>{goods.title}</span>
-        <small>查看竞拍商品</small>
+        <small>{goods.description || '点击查看竞拍商品'}</small>
       </span>
       <ChevronRight size={16} aria-hidden="true" />
     </button>

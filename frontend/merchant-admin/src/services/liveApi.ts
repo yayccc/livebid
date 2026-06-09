@@ -47,7 +47,7 @@ export async function createLiveRoom(
   })
 }
 
-export async function startLive(token: string, roomID: number): Promise<LiveRoom> {
+export async function startLive(token: string, roomID: string): Promise<LiveRoom> {
   const data = await requestJson<{ live_room: LiveRoom }>(`/api/live/rooms/${roomID}/start`, {
     method: 'POST',
     token,
@@ -55,7 +55,7 @@ export async function startLive(token: string, roomID: number): Promise<LiveRoom
   return data.live_room
 }
 
-export async function endLive(token: string, roomID: number): Promise<LiveRoom> {
+export async function endLive(token: string, roomID: string): Promise<LiveRoom> {
   const data = await requestJson<{ live_room: LiveRoom }>(`/api/live/rooms/${roomID}/end`, {
     method: 'POST',
     token,
@@ -65,11 +65,23 @@ export async function endLive(token: string, roomID: number): Promise<LiveRoom> 
 
 export async function getLiveStreamInfo(
   token: string,
-  roomID: number,
+  roomID: string,
 ): Promise<LiveStreamInfo> {
   const data = await requestJson<{ stream_info: LiveStreamInfo }>(
     `/api/live/rooms/${roomID}/stream`,
     { token },
   )
   return data.stream_info
+}
+
+export async function uploadLiveCover(file: File): Promise<string> {
+  const form = new FormData()
+  form.append('file', file)
+
+  const data = await requestJson<{ url: string }>('/api/files/upload', {
+    method: 'POST',
+    body: form,
+  })
+
+  return data.url
 }

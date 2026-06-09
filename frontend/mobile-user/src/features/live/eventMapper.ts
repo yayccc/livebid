@@ -2,6 +2,7 @@ import { formatCentAmount } from '../../lib/format'
 import type {
   BidEventMessage,
   IncomingLiveEvent,
+  UserLiveAuctionRecord,
   UserLiveAuction,
   UserLiveRuntime,
   UserLiveStats,
@@ -13,14 +14,28 @@ export type LiveEventPatch = {
   message?: BidEventMessage
   bidResolved?: boolean
   bidError?: string
+  auctionRecord?: UserLiveAuctionRecord
 }
 
 export function mapIncomingLiveEvent(
   event: IncomingLiveEvent,
   auction: UserLiveAuction | null,
 ): LiveEventPatch {
-  const type = event.type || ''
-  const data = toRecord(event.data)
+  const type = event.type || event.event_type || ''
+  const envelope = toRecord(event)
+  const eventData = toRecord(event.data)
+  const data: Record<string, unknown> = {
+    ...eventData,
+    auction_id: eventData.auction_id ?? envelope.auction_id,
+    room_id: eventData.room_id ?? envelope.room_id,
+    server_time: eventData.server_time ?? envelope.server_time,
+    version: eventData.version ?? envelope.version,
+    code: eventData.code ?? envelope.code,
+    message: eventData.message ?? envelope.message,
+  }
+  const requestType = toString(event.request_type)
+  const requestID = toString(envelope.request_id)
+  const isBidResponse = requestType === 'place_bid' || requestID.startsWith('bid_')
 
   if (type === 'room_online_changed') {
     return {
@@ -31,35 +46,44 @@ export function mapIncomingLiveEvent(
   }
 
   if (type === 'response') {
-    const code = toNumber(data.code ?? toRecord(event).code) ?? 0
-    const message = toString(toRecord(event).message) || 'success'
-    if (code !== 0) {
+    if (requestType === 'ping' || requestType === 'connect') {
+      return {}
+    }
+
+    if (isBidResponse) {
+      const code = toNumber(data.code) ?? 0
+      const message = toString(data.message) || 'success'
+      if (code !== 0) {
+        return {
+          bidResolved: true,
+          bidError: message,
+          message: buildMessage('error', message),
+        }
+      }
+
+      if (data.accepted === true) {
+        const bidPrice = toNumber(data.current_price) ?? toNumber(data.bid_price)
+        return {
+          bidResolved: true,
+          runtime: buildRuntimePatch(data, auction, 1),
+          message: buildMessage('bid', `出价成功 ${formatCentAmount(bidPrice || auction?.current_price || 0)}`),
+        }
+      }
+
       return {
         bidResolved: true,
-        bidError: message,
-        message: buildMessage('error', message),
+        runtime: buildRuntimePatch(data, auction),
+        message: buildMessage('system', '出价已提交，等待直播间同步'),
       }
     }
 
-    if (data.accepted === true) {
-      const bidPrice = toNumber(data.current_price) ?? toNumber(data.bid_price)
-      return {
-        bidResolved: true,
-        runtime: buildRuntimePatch(data, auction, 1),
-        message: buildMessage('bid', `出价成功 ${formatCentAmount(bidPrice || auction?.current_price || 0)}`),
-      }
-    }
-
-    return {
-      bidResolved: true,
-      runtime: buildRuntimePatch(data, auction),
-      message: buildMessage('system', '出价已提交，等待直播间同步'),
-    }
+    return {}
   }
 
   if (type === 'auction_started') {
     return {
       runtime: buildRuntimePatch(data, auction, 1),
+      auctionRecord: buildAuctionRecord(data, auction, 1),
       message: buildMessage('system', '新一轮竞拍开始'),
     }
   }
@@ -68,6 +92,7 @@ export function mapIncomingLiveEvent(
     const bidPrice = toNumber(data.bid_price) ?? toNumber(data.current_price)
     return {
       runtime: buildRuntimePatch(data, auction, 1),
+      auctionRecord: buildAuctionRecord(data, auction, 1),
       message: buildMessage(
         'bid',
         `${winnerText(data)} 出价 ${formatCentAmount(bidPrice || 0)}`,
@@ -78,6 +103,7 @@ export function mapIncomingLiveEvent(
   if (type === 'auction_finished' || type === 'auction_deal') {
     return {
       runtime: buildRuntimePatch(data, auction, 2),
+      auctionRecord: buildAuctionRecord(data, auction, 2),
       message: buildMessage('deal', `竞拍成交，成交价 ${formatCentAmount(toNumber(data.deal_price) || toNumber(data.current_price) || auction?.current_price)}`),
     }
   }
@@ -85,6 +111,7 @@ export function mapIncomingLiveEvent(
   if (type === 'auction_failed') {
     return {
       runtime: buildRuntimePatch(data, auction, 3),
+      auctionRecord: buildAuctionRecord(data, auction, 3),
       message: buildMessage('system', '本轮竞拍已流拍'),
     }
   }
@@ -92,6 +119,7 @@ export function mapIncomingLiveEvent(
   if (type === 'auction_cancelled' || type === 'auction_canceled') {
     return {
       runtime: buildRuntimePatch(data, auction, 4),
+      auctionRecord: buildAuctionRecord(data, auction, 4),
       message: buildMessage('system', '本轮竞拍已取消'),
     }
   }
@@ -108,6 +136,8 @@ function buildRuntimePatch(
   const bidCount = toNumber(data.bid_count)
   const winnerUserID = toID(data.winner_user_id) ?? toID(data.user_id)
   const expireAt = toNumber(data.expire_at)
+  const serverTime = toNumber(data.server_time)
+  const version = toNumber(data.version)
 
   return {
     next_bid_price:
@@ -119,13 +149,81 @@ function buildRuntimePatch(
     status: toNumber(data.status) ?? fallbackStatus ?? auction?.status,
     winner_user_id: winnerUserID,
     winner_display_name: winnerUserID ? `用户${winnerUserID}` : auction?.winner_display_name,
-    remaining_seconds: expireAt ? Math.max(0, Math.ceil((expireAt - Date.now()) / 1000)) : undefined,
+    remaining_seconds: expireAt ? Math.max(0, Math.ceil((expireAt - (serverTime || Date.now())) / 1000)) : undefined,
+    server_time: serverTime,
+    expire_at: expireAt,
+    version,
+    countdown_received_at: expireAt ? Date.now() : undefined,
+  }
+}
+
+function buildAuctionRecord(
+  data: Record<string, unknown>,
+  auction: UserLiveAuction | null,
+  statusOverride?: number,
+): UserLiveAuctionRecord | undefined {
+  const auctionID = toID(data.auction_id) ?? auction?.id
+  if (!auctionID) {
+    return undefined
+  }
+
+  const currentPrice = toNumber(data.current_price) ?? toNumber(data.bid_price) ?? auction?.current_price ?? 0
+  const bidCount = toNumber(data.bid_count) ?? auction?.bid_count ?? 0
+  const status = toNumber(data.status) ?? statusOverride ?? auction?.status ?? 0
+  const dealPrice = toNumber(data.deal_price)
+  const winnerUserID = toID(data.winner_user_id) ?? toID(data.user_id) ?? auction?.winner_user_id
+  const serverTime = toNumber(data.server_time)
+  const expireAt = toNumber(data.expire_at)
+
+  return {
+    id: auctionID,
+    room_id: toID(data.room_id) ?? auction?.room_id,
+    goods_id: toID(data.goods_id) ?? auction?.goods_id ?? '',
+    shop_id: toID(data.shop_id) ?? auction?.shop_id,
+    status,
+    status_text: statusText(status, toString(data.status_text) || auction?.status_text),
+    start_price: toNumber(data.start_price) ?? auction?.start_price ?? currentPrice,
+    bid_increment: toNumber(data.bid_increment) ?? auction?.bid_increment ?? 0,
+    current_price: currentPrice,
+    deal_price: dealPrice,
+    bid_count: bidCount,
+    start_time: toTimeValue(data.start_time) ?? auction?.start_time,
+    end_time: toTimeValue(data.end_time) ?? auction?.end_time,
+    server_time: serverTime,
+    expire_at: expireAt,
+    version: toNumber(data.version),
+    countdown_received_at: expireAt ? Date.now() : undefined,
+    winner_user_id: winnerUserID,
+    winner_display_name: winnerUserID ? `用户${winnerUserID}` : auction?.winner_display_name,
+    created_at: toTimeValue(data.created_at),
+    updated_at: toTimeValue(data.updated_at),
   }
 }
 
 function winnerText(data: Record<string, unknown>) {
   const userID = toID(data.winner_user_id) ?? toID(data.user_id)
   return userID ? `用户${userID}` : '用户'
+}
+
+function statusText(status: number, fallback?: string) {
+  if (fallback) {
+    return fallback
+  }
+
+  switch (status) {
+    case 0:
+      return '即将开始'
+    case 1:
+      return '竞拍中'
+    case 2:
+      return '已成交'
+    case 3:
+      return '已流拍'
+    case 4:
+      return '已取消'
+    default:
+      return ''
+  }
 }
 
 function buildMessage(type: BidEventMessage['type'], text: string): BidEventMessage {
@@ -171,4 +269,15 @@ function toID(value: unknown) {
 
 function toString(value: unknown) {
   return typeof value === 'string' ? value : ''
+}
+
+function toTimeValue(value: unknown): string | number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+  if (typeof value === 'string' && value.trim()) {
+    return value
+  }
+
+  return undefined
 }

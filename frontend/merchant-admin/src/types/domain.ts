@@ -6,8 +6,8 @@ export type PageResult<T> = {
 }
 
 export type Goods = {
-  id: number
-  shop_id: number
+  id: string
+  shop_id: string
   title: string
   cover_url?: string
   description?: string
@@ -17,10 +17,10 @@ export type Goods = {
 }
 
 export type Auction = {
-  id: number
-  goods_id: number
-  shop_id: number
-  room_id: number
+  id: string
+  goods_id: string
+  shop_id: string
+  room_id: string
   start_price: number
   bid_increment?: number
   seal_price?: number
@@ -30,18 +30,18 @@ export type Auction = {
   status: number
   start_time?: string
   end_time?: string
-  winner_user_id?: number
+  winner_user_id?: string
   created_at?: string
   updated_at?: string
 }
 
 export type BidRecord = {
-  id: number
-  auction_id: number
-  goods_id: number
-  shop_id: number
-  room_id: number
-  user_id: number
+  id: string
+  auction_id: string
+  goods_id: string
+  shop_id: string
+  room_id: string
+  user_id: string
   bid_price: number
   bid_time?: string
   created_at?: string
@@ -69,8 +69,8 @@ export type LiveRoomStatus = 'not_live' | 'living' | 'unspecified'
 export type MediaStreamStatus = 'offline' | 'online' | 'unspecified'
 
 export type LiveRoom = {
-  id: number
-  shop_id: number
+  id: string
+  shop_id: string
   title: string
   cover?: string
   description?: string

@@ -8,12 +8,12 @@ import {
   deleteAuction,
   finishAuction,
   getAuction,
+  getAuctionCreateOptions,
   listBidRecords,
   listShopAuctions,
   startAuction,
 } from '../../services/auctionApi'
-import { batchGetGoods, listShopGoods } from '../../services/goodsApi'
-import { listMerchantLiveRooms } from '../../services/liveApi'
+import { batchGetGoods } from '../../services/goodsApi'
 import type { Auction, AuctionDraft, BidRecord, Goods, LiveRoom, PageResult } from '../../types/domain'
 import { compactTime, formatCentAmount, getErrorText } from '../../lib/format'
 import { auctionStatusLabel, auctionStatusTone, liveRoomStatusLabel } from '../../lib/status'
@@ -28,6 +28,8 @@ const emptyAuctionDraft: AuctionDraft = {
   end_time: '',
 }
 
+const defaultAuctionDurationMinutes = 30
+
 type AuctionPageProps = {
   token: string
 }
@@ -40,10 +42,10 @@ export function AuctionPage({ token }: AuctionPageProps) {
     list: [],
   })
   const [statusFilter, setStatusFilter] = useState('')
-  const [goodsMap, setGoodsMap] = useState<Record<number, Goods>>({})
+  const [goodsMap, setGoodsMap] = useState<Record<string, Goods>>({})
   const [goodsOptions, setGoodsOptions] = useState<Goods[]>([])
   const [roomOptions, setRoomOptions] = useState<LiveRoom[]>([])
-  const [selectedID, setSelectedID] = useState<number | null>(null)
+  const [selectedID, setSelectedID] = useState<string | null>(null)
   const [selectedAuction, setSelectedAuction] = useState<Auction | null>(null)
   const [bidRecords, setBidRecords] = useState<BidRecord[]>([])
   const [draft, setDraft] = useState<AuctionDraft>(emptyAuctionDraft)
@@ -51,6 +53,7 @@ export function AuctionPage({ token }: AuctionPageProps) {
   const [notice, setNotice] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
   function loadAuctions(nextPage = result.page) {
     setIsLoading(true)
@@ -78,20 +81,25 @@ export function AuctionPage({ token }: AuctionPageProps) {
     }))
   }
 
+  async function refreshCreateOptions() {
+    const options = await getAuctionCreateOptions(token)
+    setGoodsOptions(options.goods)
+    setRoomOptions(options.live_rooms)
+  }
+
   useEffect(() => {
     let isActive = true
     Promise.all([
       listShopAuctions(token, { page: 1, pageSize: result.page_size }),
-      listShopGoods(token, { page: 1, pageSize: 100 }),
-      listMerchantLiveRooms(token, { page: 1, pageSize: 100 }),
+      getAuctionCreateOptions(token),
     ])
-      .then(([auctionResp, goodsResp, roomResp]) => {
+      .then(([auctionResp, options]) => {
         if (!isActive) {
           return
         }
         setResult(auctionResp)
-        setGoodsOptions(goodsResp.list)
-        setRoomOptions(roomResp.list)
+        setGoodsOptions(options.goods)
+        setRoomOptions(options.live_rooms)
         setSelectedID(auctionResp.list[0]?.id || null)
         if (auctionResp.list.length === 0) {
           setSelectedAuction(null)
@@ -151,10 +159,27 @@ export function AuctionPage({ token }: AuctionPageProps) {
     [result.list],
   )
 
+  function openCreateDialog() {
+    setDraft(createDefaultAuctionDraft())
+    refreshCreateOptions().catch(() => undefined)
+    setIsCreateDialogOpen(true)
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!draft.goods_id || !draft.room_id || !draft.start_price || !draft.bid_increment) {
-      setError('商品、直播间、起拍价和加价幅度不能为空')
+    if (
+      !draft.goods_id ||
+      !draft.room_id ||
+      !draft.start_price ||
+      !draft.bid_increment ||
+      !draft.start_time ||
+      !draft.end_time
+    ) {
+      setError('商品、直播间、起拍价、加价幅度、开始时间和结束时间不能为空')
+      return
+    }
+    if (!validTimeRange(draft.start_time, draft.end_time)) {
+      setError('结束时间必须晚于开始时间')
       return
     }
 
@@ -166,7 +191,9 @@ export function AuctionPage({ token }: AuctionPageProps) {
       setNotice('竞拍已创建')
       setDraft(emptyAuctionDraft)
       setSelectedID(auction.id)
+      setIsCreateDialogOpen(false)
       loadAuctions(1)
+      refreshCreateOptions().catch(() => undefined)
     } catch (err) {
       setError(getErrorText(err, '创建竞拍失败'))
     } finally {
@@ -181,6 +208,7 @@ export function AuctionPage({ token }: AuctionPageProps) {
       await action()
       setNotice(successMessage)
       loadAuctions(result.page)
+      refreshCreateOptions().catch(() => undefined)
       if (selectedID) {
         const [auction, bids] = await Promise.all([
           getAuction(selectedID),
@@ -204,6 +232,13 @@ export function AuctionPage({ token }: AuctionPageProps) {
         <div className="header-stats">
           <span>竞拍中 {runningCount}</span>
           <span>当前页 {result.list.length}</span>
+          <button
+            type="button"
+            className="primary-inline"
+            onClick={openCreateDialog}
+          >
+            新建竞拍
+          </button>
         </div>
       </div>
 
@@ -436,9 +471,30 @@ export function AuctionPage({ token }: AuctionPageProps) {
             </div>
           </section>
 
-          <section className="panel">
+        </aside>
+      </div>
+
+      {isCreateDialogOpen && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !isSubmitting) {
+              setIsCreateDialogOpen(false)
+            }
+          }}
+        >
+          <section className="modal-panel" role="dialog" aria-modal="true" aria-labelledby="create-auction-title">
             <div className="panel-header">
-              <h2>新建竞拍</h2>
+              <h2 id="create-auction-title">新建竞拍</h2>
+              <button
+                type="button"
+                className="ghost-button"
+                disabled={isSubmitting}
+                onClick={() => setIsCreateDialogOpen(false)}
+              >
+                关闭
+              </button>
             </div>
             <form className="stack-form" onSubmit={handleSubmit}>
               <label className="field">
@@ -446,6 +502,7 @@ export function AuctionPage({ token }: AuctionPageProps) {
                 <select
                   className="select-input"
                   value={draft.goods_id}
+                  autoFocus
                   onChange={(event) =>
                     setDraft((current) => ({ ...current, goods_id: event.target.value }))
                   }
@@ -495,36 +552,82 @@ export function AuctionPage({ token }: AuctionPageProps) {
                 onChange={(value) => setDraft((current) => ({ ...current, seal_price: value }))}
               />
               <label className="field">
-                <span className="field-label">开始时间</span>
+                <span className="field-label">开始时间 *</span>
                 <input
                   className="text-input"
+                  type="datetime-local"
                   value={draft.start_time}
-                  placeholder="YYYY-MM-DD HH:mm:ss"
                   onChange={(event) =>
                     setDraft((current) => ({ ...current, start_time: event.target.value }))
                   }
                 />
               </label>
               <label className="field">
-                <span className="field-label">结束时间</span>
+                <span className="field-label">结束时间 *</span>
                 <input
                   className="text-input"
+                  type="datetime-local"
                   value={draft.end_time}
-                  placeholder="YYYY-MM-DD HH:mm:ss"
                   onChange={(event) =>
                     setDraft((current) => ({ ...current, end_time: event.target.value }))
                   }
                 />
               </label>
-              <button type="submit" className="primary-action" disabled={isSubmitting}>
-                {isSubmitting ? '创建中...' : '创建竞拍'}
-              </button>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  disabled={isSubmitting}
+                  onClick={() => setIsCreateDialogOpen(false)}
+                >
+                  取消
+                </button>
+                <button type="submit" className="primary-action" disabled={isSubmitting}>
+                  {isSubmitting ? '创建中...' : '创建竞拍'}
+                </button>
+              </div>
             </form>
           </section>
-        </aside>
-      </div>
+        </div>
+      )}
     </>
   )
+}
+
+function createDefaultAuctionDraft(): AuctionDraft {
+  const startTime = roundToNextMinutes(new Date(), 5)
+  const endTime = new Date(startTime.getTime() + defaultAuctionDurationMinutes * 60 * 1000)
+  return {
+    ...emptyAuctionDraft,
+    start_time: toDateTimeLocalValue(startTime),
+    end_time: toDateTimeLocalValue(endTime),
+  }
+}
+
+function roundToNextMinutes(date: Date, minutes: number) {
+  const result = new Date(date)
+  result.setSeconds(0, 0)
+  const step = minutes * 60 * 1000
+  return new Date(Math.ceil(result.getTime() / step) * step)
+}
+
+function toDateTimeLocalValue(date: Date) {
+  const year = date.getFullYear()
+  const month = pad2(date.getMonth() + 1)
+  const day = pad2(date.getDate())
+  const hour = pad2(date.getHours())
+  const minute = pad2(date.getMinutes())
+  return `${year}-${month}-${day}T${hour}:${minute}`
+}
+
+function validTimeRange(startTime: string, endTime: string) {
+  const start = new Date(startTime).getTime()
+  const end = new Date(endTime).getTime()
+  return Number.isFinite(start) && Number.isFinite(end) && end > start
+}
+
+function pad2(value: number) {
+  return String(value).padStart(2, '0')
 }
 
 function MoneyInput({
