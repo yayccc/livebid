@@ -101,7 +101,6 @@ export function AuthPanel() {
   return (
     <section className="auth-panel" aria-label="用户登录注册">
       <div className="auth-panel__brand">
-        <div className="auth-panel__logo" aria-hidden="true">LB</div>
         <h1>登录后，体验完整功能</h1>
       </div>
 

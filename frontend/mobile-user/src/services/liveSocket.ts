@@ -1,5 +1,7 @@
 import type { IncomingLiveEvent } from '../types/domain'
 import type { EntityID } from '../types/domain'
+import { idToJsonNumberLiteral } from '../lib/id'
+import { parseJsonPreservingIDs } from '../lib/json'
 
 export type LiveSocketHandlers = {
   onOpen?: () => void
@@ -9,7 +11,7 @@ export type LiveSocketHandlers = {
 }
 
 export type LiveSocketClient = {
-  sendBid: (auctionID: EntityID, bidPrice: number) => boolean
+  sendBid: (auctionID: EntityID, bidPrice: number) => string | null
   close: () => void
 }
 
@@ -38,21 +40,18 @@ export function openLiveSocket(
   return {
     sendBid(auctionID: EntityID, bidPrice: number) {
       if (socket.readyState !== WebSocket.OPEN) {
-        return false
+        return null
+      }
+      const auctionIDText = idToJsonNumberLiteral(auctionID)
+      if (!auctionIDText || !Number.isSafeInteger(bidPrice) || bidPrice <= 0) {
+        return null
       }
 
+      const requestID = `bid_${auctionIDText}_${Date.now()}`
       socket.send(
-        JSON.stringify({
-          type: 'place_bid',
-          request_id: `bid_${auctionID}_${Date.now()}`,
-          timestamp: Date.now(),
-          data: {
-            auction_id: auctionID,
-            bid_price: bidPrice,
-          },
-        }),
+        `{"type":"place_bid","request_id":"${requestID}","timestamp":${Date.now()},"data":{"auction_id":${auctionIDText},"bid_price":${bidPrice}}}`,
       )
-      return true
+      return requestID
     },
     close() {
       socket.close()
@@ -89,7 +88,7 @@ function parseSocketEvent(data: unknown): IncomingLiveEvent | null {
   }
 
   try {
-    return JSON.parse(data) as IncomingLiveEvent
+    return parseJsonPreservingIDs<IncomingLiveEvent>(data)
   } catch {
     return {
       type: 'message',

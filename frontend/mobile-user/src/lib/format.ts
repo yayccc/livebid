@@ -31,9 +31,20 @@ export function formatCompactCount(value?: number | null) {
   return String(value)
 }
 
-export function formatTimeText(value?: string) {
+export function formatTimeText(value?: string | number | null) {
   if (!value) {
     return '-'
+  }
+
+  if (typeof value === 'number') {
+    const timestamp = value > 10_000_000_000 ? value : value * 1000
+    return new Intl.DateTimeFormat('zh-CN', {
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(new Date(timestamp))
   }
 
   return value.replace(/^20\d{2}-/, '').replace('T', ' ').replace(/\.\d+Z$/, '')

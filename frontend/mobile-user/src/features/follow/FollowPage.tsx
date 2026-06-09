@@ -7,7 +7,7 @@ export function FollowPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="plain-page">
+    <div className="plain-page plain-page--dark">
       <EmptyState
         title="关注功能开发中"
         description="后续会展示你关注的直播间和主播动态"

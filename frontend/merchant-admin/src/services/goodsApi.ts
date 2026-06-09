@@ -1,4 +1,4 @@
-import { requestJson } from './request'
+import { rawJson, requestJson } from './request'
 import type { Goods, GoodsDraft, PageResult } from '../types/domain'
 
 export type GoodsListParams = {
@@ -33,7 +33,7 @@ export async function createGoods(token: string, input: GoodsDraft): Promise<Goo
   })
 }
 
-export async function updateGoods(token: string, goodsID: number, input: GoodsDraft): Promise<Goods> {
+export async function updateGoods(token: string, goodsID: string, input: GoodsDraft): Promise<Goods> {
   return requestJson<Goods>(`/api/goods/${goodsID}`, {
     method: 'PUT',
     token,
@@ -41,36 +41,43 @@ export async function updateGoods(token: string, goodsID: number, input: GoodsDr
   })
 }
 
-export async function deleteGoods(token: string, goodsID: number): Promise<void> {
+export async function deleteGoods(token: string, goodsID: string): Promise<void> {
   await requestJson<string>(`/api/goods/${goodsID}`, {
     method: 'DELETE',
     token,
   })
 }
 
-export async function putGoodsOnSale(token: string, goodsID: number): Promise<void> {
+export async function putGoodsOnSale(token: string, goodsID: string): Promise<void> {
   await requestJson<string>(`/api/goods/${goodsID}/on-sale`, {
     method: 'PUT',
     token,
   })
 }
 
-export async function putGoodsOffSale(token: string, goodsID: number): Promise<void> {
+export async function putGoodsOffSale(token: string, goodsID: string): Promise<void> {
   await requestJson<string>(`/api/goods/${goodsID}/off-sale`, {
     method: 'PUT',
     token,
   })
 }
 
-export async function batchGetGoods(ids: number[]): Promise<Goods[]> {
+export async function batchGetGoods(ids: string[]): Promise<Goods[]> {
   if (ids.length === 0) {
     return []
   }
 
   return requestJson<Goods[]>('/api/goods/batch', {
     method: 'POST',
-    body: { ids },
+    body: rawJson(`{"ids":[${ids.map(assertIntegerID).join(',')}]}`),
   })
+}
+
+function assertIntegerID(id: string) {
+  if (!/^\d+$/.test(id)) {
+    throw new Error('ID 格式无效')
+  }
+  return id
 }
 
 export async function uploadGoodsCover(token: string, file: File): Promise<string> {

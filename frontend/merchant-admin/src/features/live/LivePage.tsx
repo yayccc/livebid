@@ -8,6 +8,7 @@ import {
   getLiveStreamInfo,
   listMerchantLiveRooms,
   startLive,
+  uploadLiveCover,
 } from '../../services/liveApi'
 import type { LiveRoom, LiveRoomDraft, LiveStreamInfo, PageResult } from '../../types/domain'
 import { compactTime, getErrorText } from '../../lib/format'
@@ -43,7 +44,7 @@ export function LivePage({ token }: LivePageProps) {
     list: [],
   })
   const [statusFilter, setStatusFilter] = useState('')
-  const [selectedID, setSelectedID] = useState<number | null>(null)
+  const [selectedID, setSelectedID] = useState<string | null>(null)
   const [streamInfo, setStreamInfo] = useState<LiveStreamInfo | null>(null)
   const [draft, setDraft] = useState<LiveRoomDraft>(emptyLiveRoomDraft)
   const [createdStream, setCreatedStream] = useState<CreatedStreamNotice | null>(null)
@@ -51,6 +52,7 @@ export function LivePage({ token }: LivePageProps) {
   const [notice, setNotice] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
   const selectedRoom = useMemo(
     () => result.list.find((room) => room.id === selectedID) || null,
@@ -155,9 +157,28 @@ export function LivePage({ token }: LivePageProps) {
       })
       setDraft(emptyLiveRoomDraft)
       setSelectedID(resp.live_room.id)
+      setIsCreateDialogOpen(false)
       loadRooms(1)
     } catch (err) {
       setError(getErrorText(err, '创建直播间失败'))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function handleCoverUpload(file: File | null) {
+    if (!file) {
+      return
+    }
+
+    setIsSubmitting(true)
+    setError('')
+    try {
+      const coverURL = await uploadLiveCover(file)
+      setDraft((current) => ({ ...current, cover: coverURL }))
+      setNotice('直播间封面已上传')
+    } catch (err) {
+      setError(getErrorText(err, '直播间封面上传失败'))
     } finally {
       setIsSubmitting(false)
     }
@@ -186,6 +207,16 @@ export function LivePage({ token }: LivePageProps) {
         <div className="header-stats">
           <span>直播中 {livingCount}</span>
           <span>当前页 {result.list.length}</span>
+          <button
+            type="button"
+            className="primary-inline"
+            onClick={() => {
+              setDraft(emptyLiveRoomDraft)
+              setIsCreateDialogOpen(true)
+            }}
+          >
+            新建直播间
+          </button>
         </div>
       </div>
 
@@ -375,9 +406,30 @@ export function LivePage({ token }: LivePageProps) {
             </section>
           )}
 
-          <section className="panel">
+        </aside>
+      </div>
+
+      {isCreateDialogOpen && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !isSubmitting) {
+              setIsCreateDialogOpen(false)
+            }
+          }}
+        >
+          <section className="modal-panel" role="dialog" aria-modal="true" aria-labelledby="create-live-title">
             <div className="panel-header">
-              <h2>新建直播间</h2>
+              <h2 id="create-live-title">新建直播间</h2>
+              <button
+                type="button"
+                className="ghost-button"
+                disabled={isSubmitting}
+                onClick={() => setIsCreateDialogOpen(false)}
+              >
+                关闭
+              </button>
             </div>
             <form className="stack-form" onSubmit={handleCreate}>
               <label className="field">
@@ -387,6 +439,7 @@ export function LivePage({ token }: LivePageProps) {
                   value={draft.title}
                   maxLength={128}
                   placeholder="例如：翡翠晚场专拍"
+                  autoFocus
                   onChange={(event) =>
                     setDraft((current) => ({ ...current, title: event.target.value }))
                   }
@@ -397,11 +450,19 @@ export function LivePage({ token }: LivePageProps) {
                 <input
                   className="text-input"
                   value={draft.cover}
-                  placeholder="直播间封面 URL"
+                  placeholder="上传后自动填入封面 URL"
                   onChange={(event) =>
                     setDraft((current) => ({ ...current, cover: event.target.value }))
                   }
                 />
+              </label>
+              <label className="file-picker wide">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(event) => handleCoverUpload(event.target.files?.[0] || null)}
+                />
+                <span>上传封面</span>
               </label>
               <label className="field">
                 <span className="field-label">简介</span>
@@ -413,13 +474,23 @@ export function LivePage({ token }: LivePageProps) {
                   }
                 />
               </label>
-              <button type="submit" className="primary-action" disabled={isSubmitting}>
-                {isSubmitting ? '创建中...' : '创建直播间'}
-              </button>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  disabled={isSubmitting}
+                  onClick={() => setIsCreateDialogOpen(false)}
+                >
+                  取消
+                </button>
+                <button type="submit" className="primary-action" disabled={isSubmitting}>
+                  {isSubmitting ? '创建中...' : '创建直播间'}
+                </button>
+              </div>
             </form>
           </section>
-        </aside>
-      </div>
+        </div>
+      )}
     </>
   )
 }

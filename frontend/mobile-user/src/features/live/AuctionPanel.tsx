@@ -1,21 +1,23 @@
-import { Clock3, Gavel, LoaderCircle, Radio, Timer } from 'lucide-react'
-import { formatCentAmount, formatCount, formatRemaining } from '../../lib/format'
-import type { UserLiveAuction, UserLiveRuntime } from '../../types/domain'
+import { Radio, ShoppingBag, X } from 'lucide-react'
+import { formatCentAmount } from '../../lib/format'
+import type { UserLiveAuction, UserLiveGoods } from '../../types/domain'
 
 type AuctionPanelProps = {
   auction: UserLiveAuction | null
-  runtime?: UserLiveRuntime | null
-  isLoggedIn: boolean
-  isBidding: boolean
-  onBid: () => void
+  goods?: UserLiveGoods | null
+  onOpenGoods?: () => void
+  onOpenRecords?: () => void
+  onClose?: () => void
+  variant?: 'overlay' | 'dock'
 }
 
 export function AuctionPanel({
   auction,
-  runtime,
-  isLoggedIn,
-  isBidding,
-  onBid,
+  goods,
+  onOpenGoods,
+  onOpenRecords,
+  onClose,
+  variant = 'overlay',
 }: AuctionPanelProps) {
   if (!auction) {
     return (
@@ -26,47 +28,88 @@ export function AuctionPanel({
     )
   }
 
-  const currentPrice = runtime?.current_price ?? auction.current_price
-  const bidCount = runtime?.bid_count ?? auction.bid_count
-  const nextBidPrice = auction.next_bid_price || currentPrice + auction.bid_increment
-  const status = runtime?.status ?? auction.status
-  const canBid = status === 1 && !isBidding
-  const bidLabel = isLoggedIn ? `出价 ${formatCentAmount(nextBidPrice)}` : '登录出价'
+  const statusMeta = getAuctionPanelStatus(auction)
 
   return (
-    <aside className="auction-panel" aria-label="当前竞拍">
-      <div className="auction-panel__summary">
-        <span className="auction-panel__label">当前价</span>
-        <strong>{formatCentAmount(currentPrice)}</strong>
-        <span className="auction-panel__leader">
-          {auction.winner_display_name || runtime?.winner_display_name || '暂无领先用户'}
-        </span>
-      </div>
+    <aside className={`auction-panel${variant === 'dock' ? ' auction-panel--dock' : ''}`} aria-label="当前竞拍">
+      <div className={`auction-panel__card auction-panel__card--${statusMeta.key}`}>
+        <span className={`auction-panel__badge auction-panel__badge--${statusMeta.key}`}>{statusMeta.badge}</span>
+        {onClose ? (
+          <button type="button" className="auction-panel__dismiss" aria-label="关闭竞拍卡片" onClick={onClose}>
+            <X size={12} aria-hidden="true" />
+          </button>
+        ) : null}
+        <button type="button" className="auction-panel__goods" onClick={onOpenGoods}>
+          <span className="auction-panel__cover">
+            {goods?.cover_url ? (
+              <img src={goods.cover_url} alt="" />
+            ) : (
+              <ShoppingBag size={24} aria-hidden="true" />
+            )}
+          </span>
+          <span className="auction-panel__info">
+            <span className="auction-panel__price">
+              <strong>{formatCentAmount(statusMeta.price)}</strong>
+              <small>{statusMeta.priceLabel}</small>
+            </span>
+          </span>
+        </button>
 
-      <div className="auction-panel__facts">
-        <span>
-          <Timer size={13} aria-hidden="true" />
-          {formatRemaining(runtime?.remaining_seconds)}
-        </span>
-        <span>
-          <Gavel size={13} aria-hidden="true" />
-          {formatCount(bidCount)} 次
-        </span>
-        <span>
-          <Clock3 size={13} aria-hidden="true" />
-          加价 {formatCentAmount(auction.bid_increment)}
-        </span>
+        <button
+          type="button"
+          className="auction-panel__open"
+          onClick={onOpenRecords}
+        >
+          <span>去看看</span>
+        </button>
       </div>
-
-      <button
-        type="button"
-        className="auction-panel__bid"
-        disabled={!canBid && isLoggedIn}
-        onClick={onBid}
-      >
-        {isBidding ? <LoaderCircle className="spin" size={18} aria-hidden="true" /> : null}
-        {isBidding ? '出价中' : bidLabel}
-      </button>
     </aside>
   )
+}
+
+function getAuctionPanelStatus(auction: UserLiveAuction) {
+  switch (auction.status) {
+    case 0:
+      return {
+        key: 'upcoming',
+        badge: auction.status_text || '即将开拍',
+        priceLabel: '起拍价',
+        price: auction.start_price,
+      }
+    case 1:
+      return {
+        key: 'running',
+        badge: auction.status_text || '正在竞拍',
+        priceLabel: '当前价',
+        price: auction.current_price,
+      }
+    case 2:
+      return {
+        key: 'deal',
+        badge: auction.status_text || '已成交',
+        priceLabel: '成交价',
+        price: auction.deal_price || auction.current_price,
+      }
+    case 3:
+      return {
+        key: 'failed',
+        badge: auction.status_text || '已流拍',
+        priceLabel: '最高价',
+        price: auction.current_price || auction.start_price,
+      }
+    case 4:
+      return {
+        key: 'cancelled',
+        badge: auction.status_text || '已取消',
+        priceLabel: '起拍价',
+        price: auction.start_price,
+      }
+    default:
+      return {
+        key: 'unknown',
+        badge: auction.status_text || '竞拍商品',
+        priceLabel: '当前价',
+        price: auction.current_price || auction.start_price,
+      }
+  }
 }

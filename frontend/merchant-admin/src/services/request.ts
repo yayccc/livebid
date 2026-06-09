@@ -13,6 +13,18 @@ export type RequestOptions = {
   headers?: HeadersInit
 }
 
+class RawJsonBody {
+  value: string
+
+  constructor(value: string) {
+    this.value = value
+  }
+}
+
+export function rawJson(value: string) {
+  return new RawJsonBody(value)
+}
+
 export class HttpError extends Error {
   status: number
 
@@ -57,13 +69,19 @@ function buildRequestBody(body: unknown, headers: Headers): BodyInit | undefined
     return body
   }
 
+  if (body instanceof RawJsonBody) {
+    headers.set('Content-Type', 'application/json')
+    return body.value
+  }
+
   headers.set('Content-Type', 'application/json')
   return JSON.stringify(body)
 }
 
 async function parseApiResponse<T>(response: Response): Promise<ApiResponse<T>> {
   try {
-    const payload = (await response.json()) as Partial<ApiResponse<T>>
+    const text = await response.text()
+    const payload = JSON.parse(preserveIDIntegers(text)) as Partial<ApiResponse<T>>
     return {
       code: typeof payload.code === 'number' ? payload.code : response.status,
       message: typeof payload.message === 'string' ? payload.message : response.statusText,
@@ -75,4 +93,11 @@ async function parseApiResponse<T>(response: Response): Promise<ApiResponse<T>> 
       message: response.statusText || '请求失败，请稍后重试',
     }
   }
+}
+
+function preserveIDIntegers(json: string) {
+  return json.replace(
+    /"(id|shop_id|goods_id|room_id|auction_id|user_id|winner_user_id)"\s*:\s*(-?\d+)/g,
+    (_match, key: string, value: string) => `"${key}":"${value}"`,
+  )
 }

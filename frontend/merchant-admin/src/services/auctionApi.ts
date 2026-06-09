@@ -1,11 +1,16 @@
-import { requestJson } from './request'
-import type { Auction, AuctionDraft, BidRecord, PageResult } from '../types/domain'
+import { rawJson, requestJson } from './request'
+import type { Auction, AuctionDraft, BidRecord, Goods, LiveRoom, PageResult } from '../types/domain'
 import { parseCentInput } from '../lib/format'
 
 export type AuctionListParams = {
   page: number
   pageSize: number
   status?: string
+}
+
+export type AuctionCreateOptions = {
+  goods: Goods[]
+  live_rooms: LiveRoom[]
 }
 
 export async function listShopAuctions(
@@ -26,7 +31,7 @@ export async function listShopAuctions(
   })
 }
 
-export async function getAuction(auctionID: number): Promise<Auction> {
+export async function getAuction(auctionID: string): Promise<Auction> {
   return requestJson<Auction>(`/api/auctions/${auctionID}`)
 }
 
@@ -34,44 +39,60 @@ export async function createAuction(token: string, input: AuctionDraft): Promise
   return requestJson<Auction>('/api/auctions', {
     method: 'POST',
     token,
-    body: toAuctionPayload(input),
+    body: rawJson(toAuctionPayloadJSON(input)),
   })
+}
+
+export async function getAuctionCreateOptions(token: string): Promise<AuctionCreateOptions> {
+  const data = await requestJson<
+    Partial<AuctionCreateOptions> & {
+      rooms?: LiveRoom[]
+      liveRooms?: LiveRoom[]
+      available_goods?: Goods[]
+      available_live_rooms?: LiveRoom[]
+    }
+  >('/api/merchant/auctions/create-options', { token })
+
+  return {
+    goods: data.goods || data.available_goods || [],
+    live_rooms: data.live_rooms || data.rooms || data.available_live_rooms || data.liveRooms || [],
+  }
 }
 
 export async function updateAuction(
   token: string,
-  auctionID: number,
+  auctionID: string,
   input: AuctionDraft,
 ): Promise<Record<string, never>> {
   return requestJson<Record<string, never>>(`/api/auctions/${auctionID}`, {
     method: 'PUT',
     token,
-    body: toAuctionPayload(input),
+    body: rawJson(toAuctionPayloadJSON(input)),
   })
 }
 
-export async function startAuction(token: string, auctionID: number): Promise<Auction> {
+export async function startAuction(token: string, auctionID: string): Promise<Auction> {
   return requestJson<Auction>(`/api/auctions/${auctionID}/start`, {
     method: 'POST',
     token,
   })
 }
 
-export async function finishAuction(token: string, auctionID: number): Promise<Auction> {
+export async function finishAuction(token: string, auctionID: string): Promise<Auction> {
   return requestJson<Auction>(`/api/auctions/${auctionID}/finish`, {
     method: 'POST',
     token,
   })
 }
 
-export async function cancelAuction(token: string, auctionID: number): Promise<Auction> {
+export async function cancelAuction(token: string, auctionID: string): Promise<Auction> {
   return requestJson<Auction>(`/api/auctions/${auctionID}/cancel`, {
     method: 'POST',
     token,
   })
 }
 
-export async function deleteAuction(token: string, auctionID: number): Promise<boolean> {
+export async function deleteAuction(token: string, auctionID: string): Promise<boolean> {
   return requestJson<boolean>(`/api/auctions/${auctionID}`, {
     method: 'DELETE',
     token,
@@ -79,7 +100,7 @@ export async function deleteAuction(token: string, auctionID: number): Promise<b
 }
 
 export async function listBidRecords(
-  auctionID: number,
+  auctionID: string,
   page = 1,
   pageSize = 20,
 ): Promise<PageResult<BidRecord>> {
@@ -93,14 +114,39 @@ export async function listBidRecords(
   )
 }
 
-function toAuctionPayload(input: AuctionDraft) {
-  return {
-    goods_id: Number(input.goods_id),
-    room_id: Number(input.room_id),
-    start_price: parseCentInput(input.start_price) || 0,
-    bid_increment: parseCentInput(input.bid_increment) || 0,
-    seal_price: parseCentInput(input.seal_price),
-    start_time: input.start_time.trim(),
-    end_time: input.end_time.trim(),
+function toAuctionPayloadJSON(input: AuctionDraft) {
+  const fields = [
+    `"goods_id":${assertIntegerID(input.goods_id)}`,
+    `"room_id":${assertIntegerID(input.room_id)}`,
+    `"start_price":${parseCentInput(input.start_price) || 0}`,
+    `"bid_increment":${parseCentInput(input.bid_increment) || 0}`,
+    `"start_time":${JSON.stringify(toServerDateTime(input.start_time))}`,
+    `"end_time":${JSON.stringify(toServerDateTime(input.end_time))}`,
+  ]
+  const sealPrice = parseCentInput(input.seal_price)
+  if (sealPrice !== undefined) {
+    fields.push(`"seal_price":${sealPrice}`)
   }
+  return `{${fields.join(',')}}`
+}
+
+function assertIntegerID(id: string) {
+  if (!/^\d+$/.test(id)) {
+    throw new Error('ID 格式无效')
+  }
+  return id
+}
+
+function toServerDateTime(value: string) {
+  const normalized = value.trim()
+  if (!normalized) {
+    return ''
+  }
+
+  const parsed = new Date(normalized)
+  if (Number.isFinite(parsed.getTime())) {
+    return parsed.toISOString()
+  }
+
+  return normalized
 }
