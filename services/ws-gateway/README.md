@@ -83,6 +83,19 @@ GET /ws/live?room_id={room_id}&token={access_token}
 }
 ```
 
+WebSocket 连接成功时，`request_type=connect` 的响应 `data` 会返回重连恢复提示：
+
+```json
+{
+  "reconnect_strategy": "http_snapshot",
+  "resync_on_connect": true,
+  "snapshot_url": "/api/user/live/rooms/500000000001/auction-snapshot",
+  "auction_records_url": "/api/user/live/rooms/500000000001/auction-records"
+}
+```
+
+客户端每次首次连接或断线重连成功后，应通过上述 HTTP 接口重新拉取当前竞拍快照和本场竞拍记录，用 HTTP 权威状态覆盖断线期间可能漏掉的 WebSocket 增量事件。
+
 用户端出价推荐优先走 WebSocket `place_bid`；api-gateway 的 HTTP 出价接口仅作为 WebSocket 不可用、重连中或旧客户端兼容时的降级入口。两条入口都需要复用同一个 `request_id` 幂等语义。
 
 在线状态写入 Redis 后实时维护；面向客户端的 `room_online_changed` 展示消息由 `ws-gateway` 按房间聚合，默认每 3 秒最多广播一次最新人数。
