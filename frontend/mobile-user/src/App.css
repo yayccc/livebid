@@ -1578,10 +1578,9 @@
 .auction-mobile-popup.adm-popup,
 .auction-mobile-popup .adm-mask {
   top: 0;
-  left: 50%;
+  left: max(0px, calc((100vw - var(--page-max-width)) / 2));
   width: min(100vw, var(--page-max-width));
   height: 100dvh;
-  transform: translateX(-50%);
 }
 
 .auction-mobile-popup .adm-popup-body-position-bottom {
