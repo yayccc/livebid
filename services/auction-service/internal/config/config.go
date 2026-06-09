@@ -58,7 +58,14 @@ type RocketMQConfig struct {
 }
 
 type AuctionConfig struct {
-	BidCountdownSeconds int `yaml:"bidCountdownSeconds"`
+	BidCountdownSeconds int                        `yaml:"bidCountdownSeconds"`
+	ExpireScanner       AuctionExpireScannerConfig `yaml:"expireScanner"`
+}
+
+type AuctionExpireScannerConfig struct {
+	Enabled         bool `yaml:"enabled"`
+	IntervalSeconds int  `yaml:"intervalSeconds"`
+	BatchSize       int  `yaml:"batchSize"`
 }
 
 type GoodsConfig struct {
@@ -111,6 +118,11 @@ func defaultConfig() Config {
 		},
 		Auction: AuctionConfig{
 			BidCountdownSeconds: 30,
+			ExpireScanner: AuctionExpireScannerConfig{
+				Enabled:         true,
+				IntervalSeconds: 5,
+				BatchSize:       100,
+			},
 		},
 		Goods: GoodsConfig{
 			Addr: "127.0.0.1:9002",
@@ -189,6 +201,9 @@ func applyEnvOverrides(cfg *Config) {
 	setIntEnv("AUCTION_SERVICE_REDIS_DB", &cfg.Redis.DB)
 	setIntEnv("AUCTION_SERVICE_ROCKETMQ_DELAY_LEVEL", &cfg.RocketMQ.DelayLevel)
 	setIntEnv("AUCTION_SERVICE_BID_COUNTDOWN_SECONDS", &cfg.Auction.BidCountdownSeconds)
+	setBoolEnv("AUCTION_SERVICE_EXPIRE_SCANNER_ENABLED", &cfg.Auction.ExpireScanner.Enabled)
+	setIntEnv("AUCTION_SERVICE_EXPIRE_SCANNER_INTERVAL_SECONDS", &cfg.Auction.ExpireScanner.IntervalSeconds)
+	setIntEnv("AUCTION_SERVICE_EXPIRE_SCANNER_BATCH_SIZE", &cfg.Auction.ExpireScanner.BatchSize)
 	setInt32Env("AUCTION_SERVICE_ROCKETMQ_MAX_RECONSUME_TIMES", &cfg.RocketMQ.MaxReconsumeTimes)
 	setInt64Env("AUCTION_SERVICE_WORKER_ID", &cfg.WorkerID)
 
@@ -268,6 +283,12 @@ func normalize(cfg *Config) {
 	}
 	if cfg.Auction.BidCountdownSeconds <= 0 {
 		cfg.Auction.BidCountdownSeconds = 30
+	}
+	if cfg.Auction.ExpireScanner.IntervalSeconds <= 0 {
+		cfg.Auction.ExpireScanner.IntervalSeconds = 5
+	}
+	if cfg.Auction.ExpireScanner.BatchSize <= 0 {
+		cfg.Auction.ExpireScanner.BatchSize = 100
 	}
 	if cfg.Goods.Addr == "" {
 		cfg.Goods.Addr = "127.0.0.1:9002"

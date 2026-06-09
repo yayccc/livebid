@@ -21,6 +21,10 @@ rocketmq:
   maxReconsumeTimes: 5
 auction:
   bidCountdownSeconds: 30
+  expireScanner:
+    enabled: true
+    intervalSeconds: 5
+    batchSize: 100
 goods:
   addr: "127.0.0.1:9002"
   target: "127.0.0.1:9002"

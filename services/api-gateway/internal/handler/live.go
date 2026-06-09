@@ -190,6 +190,9 @@ type userLiveAuctionResponse struct {
 	WinnerDisplayName string `json:"winner_display_name,omitempty"`
 	StartTime         int64  `json:"start_time,omitempty"`
 	EndTime           int64  `json:"end_time,omitempty"`
+	ServerTime        int64  `json:"server_time,omitempty"`
+	ExpireAt          int64  `json:"expire_at,omitempty"`
+	Version           int64  `json:"version,omitempty"`
 }
 
 type userLiveGoodsResponse struct {
@@ -1057,10 +1060,16 @@ func toUserLiveAuctionResponse(auction *auctionv1.Auction, runtime *auctionv1.Au
 	currentPrice := auction.GetCurrentPrice()
 	bidCount := auction.GetBidCount()
 	winnerUserID := auction.WinnerUserId
+	serverTime := int64(0)
+	expireAt := int64(0)
+	version := auction.GetVersion()
 	if runtime != nil {
 		currentPrice = runtime.GetCurrentPrice()
 		bidCount = runtime.GetBidCount()
 		winnerUserID = runtime.WinnerUserId
+		serverTime = timestampMillis(runtime.GetServerTime())
+		expireAt = timestampMillis(runtime.GetExpireAt())
+		version = runtime.GetVersion()
 	}
 	return &userLiveAuctionResponse{
 		AuctionID:         auction.GetId(),
@@ -1078,6 +1087,9 @@ func toUserLiveAuctionResponse(auction *auctionv1.Auction, runtime *auctionv1.Au
 		WinnerDisplayName: winnerDisplayName(winnerUserID),
 		StartTime:         timestampMillis(auction.GetStartTime()),
 		EndTime:           timestampMillis(auction.GetEndTime()),
+		ServerTime:        serverTime,
+		ExpireAt:          expireAt,
+		Version:           version,
 	}
 }
 

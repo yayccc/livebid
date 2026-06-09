@@ -383,6 +383,11 @@ func (h *AuctionGRPCHandler) StartAuction(ctx context.Context, req *auctionv1.St
 	if auction.Status != model.AuctionStatusPending {
 		return nil, toGRPCError(repository.ErrInvalidAuctionState)
 	}
+	if current, err := h.auctions.FindCurrentByRoomID(ctx, auction.RoomID); err == nil && current.ID != auction.ID {
+		return nil, toGRPCError(repository.ErrRoomAuctionRunning)
+	} else if err != nil && !errors.Is(err, repository.ErrAuctionNotFound) {
+		return nil, toGRPCError(err)
+	}
 	now := time.Now()
 	if auction.EndTime == nil {
 		// 文档允许不传结束时间，这里给运行态一个保守兜底，避免 Redis 中出现无期限竞拍。
@@ -510,6 +515,8 @@ func (h *AuctionGRPCHandler) PlaceBid(ctx context.Context, req *auctionv1.PlaceB
 		"bid_time":      now.Unix(),
 		"current_price": result.State.CurrentPrice,
 		"bid_count":     result.State.BidCount,
+		"server_time":   now.UnixMilli(),
+		"expire_at":     result.State.ExpireAt.UnixMilli(),
 		"request_id":    requestID,
 	})
 	h.publishDelay(ctx, auction, map[string]any{
@@ -931,7 +938,7 @@ func toGRPCError(err error) error {
 		return status.Error(codes.NotFound, err.Error())
 	case errors.Is(err, repository.ErrAuctionDuplicated):
 		return status.Error(codes.AlreadyExists, err.Error())
-	case errors.Is(err, repository.ErrInvalidAuctionState), errors.Is(err, repository.ErrBidTooLow), errors.Is(err, repository.ErrBidOverSealPrice), errors.Is(err, repository.ErrAuctionExpired), errors.Is(err, repository.ErrDuplicateBidRequest), errors.Is(err, repository.ErrConsecutiveBid):
+	case errors.Is(err, repository.ErrInvalidAuctionState), errors.Is(err, repository.ErrRoomAuctionRunning), errors.Is(err, repository.ErrBidTooLow), errors.Is(err, repository.ErrBidOverSealPrice), errors.Is(err, repository.ErrAuctionExpired), errors.Is(err, repository.ErrDuplicateBidRequest), errors.Is(err, repository.ErrConsecutiveBid):
 		return status.Error(codes.FailedPrecondition, err.Error())
 	case errors.Is(err, repository.ErrAuctionRoomMismatch):
 		return status.Error(codes.PermissionDenied, err.Error())

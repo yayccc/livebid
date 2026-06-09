@@ -39,6 +39,18 @@ func (s *fakeAuctionStateStore) GetState(ctx context.Context, auctionID int64) (
 	return s.state, nil
 }
 
+func (s *fakeAuctionStateStore) ListExpiredAuctionIDs(ctx context.Context, now time.Time, limit int64) ([]int64, error) {
+	return nil, nil
+}
+
+func (s *fakeAuctionStateStore) IndexRunningAuction(ctx context.Context, auctionID int64, expireAt time.Time) error {
+	return nil
+}
+
+func (s *fakeAuctionStateStore) RemoveRunningAuction(ctx context.Context, auctionID int64) error {
+	return nil
+}
+
 func (s *fakeAuctionStateStore) Close() error { return nil }
 
 type fakeAuctionRepository struct {

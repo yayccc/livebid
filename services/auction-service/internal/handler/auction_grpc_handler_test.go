@@ -6,6 +6,8 @@ import (
 	"time"
 
 	auctionv1 "github.com/yayccc/livebid/gen/proto/auction/v1"
+	"github.com/yayccc/livebid/pkg/identity"
+	"github.com/yayccc/livebid/services/auction-service/internal/client"
 	"github.com/yayccc/livebid/services/auction-service/internal/model"
 	"github.com/yayccc/livebid/services/auction-service/internal/repository"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -85,6 +87,95 @@ func (r *fakeAuctionRepository) UpdateStatusSnapshot(ctx context.Context, auctio
 func (r *fakeAuctionRepository) Delete(ctx context.Context, id int64, shopID int64) error {
 	return nil
 }
+
+type fakeBidRepository struct {
+	created []*model.BidRecord
+}
+
+func (r *fakeBidRepository) Create(ctx context.Context, record *model.BidRecord) error {
+	r.created = append(r.created, record)
+	return nil
+}
+
+func (r *fakeBidRepository) CreateIfNotExists(ctx context.Context, record *model.BidRecord) error {
+	return r.Create(ctx, record)
+}
+
+func (r *fakeBidRepository) ListByAuction(ctx context.Context, filter repository.ListBidRecordFilter) ([]*model.BidRecord, int64, error) {
+	return nil, 0, nil
+}
+
+func (r *fakeBidRepository) CountByShopBetween(ctx context.Context, shopID int64, start time.Time, end time.Time) (int64, error) {
+	return 0, nil
+}
+
+type fakeAuctionStateStore struct {
+	result repository.BidResult
+}
+
+func (s *fakeAuctionStateStore) LoadAuction(ctx context.Context, auction *model.Auction, now time.Time) error {
+	return nil
+}
+
+func (s *fakeAuctionStateStore) PlaceBid(ctx context.Context, auctionID int64, roomID int64, userID int64, bidPrice int64, requestID string, bidRecordID int64, now time.Time) (repository.BidResult, error) {
+	result := s.result
+	result.BidRecordID = bidRecordID
+	result.BidTime = now
+	result.State.AuctionID = auctionID
+	result.State.RoomID = roomID
+	result.State.WinnerUserID = &userID
+	result.State.CurrentPrice = bidPrice
+	return result, nil
+}
+
+func (s *fakeAuctionStateStore) FinishAuction(ctx context.Context, auctionID int64, now time.Time) (repository.AuctionState, error) {
+	return repository.AuctionState{}, nil
+}
+
+func (s *fakeAuctionStateStore) FinishExpiredAuction(ctx context.Context, auctionID int64, version int64, expireAt int64, now time.Time) (repository.AuctionState, bool, error) {
+	return repository.AuctionState{}, false, nil
+}
+
+func (s *fakeAuctionStateStore) CancelAuction(ctx context.Context, auctionID int64, now time.Time) (repository.AuctionState, error) {
+	return repository.AuctionState{}, nil
+}
+
+func (s *fakeAuctionStateStore) GetState(ctx context.Context, auctionID int64) (repository.AuctionState, error) {
+	return s.result.State, nil
+}
+
+func (s *fakeAuctionStateStore) ListExpiredAuctionIDs(ctx context.Context, now time.Time, limit int64) ([]int64, error) {
+	return nil, nil
+}
+
+func (s *fakeAuctionStateStore) IndexRunningAuction(ctx context.Context, auctionID int64, expireAt time.Time) error {
+	return nil
+}
+
+func (s *fakeAuctionStateStore) RemoveRunningAuction(ctx context.Context, auctionID int64) error {
+	return nil
+}
+
+func (s *fakeAuctionStateStore) Close() error { return nil }
+
+type fakeEventPublisher struct {
+	events      []client.AuctionEvent
+	delayEvents []client.AuctionEvent
+	delayLevels []int
+}
+
+func (p *fakeEventPublisher) Publish(ctx context.Context, event client.AuctionEvent) error {
+	p.events = append(p.events, event)
+	return nil
+}
+
+func (p *fakeEventPublisher) PublishDelay(ctx context.Context, event client.AuctionEvent, delayLevel int) error {
+	p.delayEvents = append(p.delayEvents, event)
+	p.delayLevels = append(p.delayLevels, delayLevel)
+	return nil
+}
+
+func (p *fakeEventPublisher) Close() error { return nil }
 
 func TestAuctionGRPCHandlerGetCurrentAuctionByRoom(t *testing.T) {
 	handler := NewAuctionGRPCHandler(&fakeAuctionRepository{
@@ -179,6 +270,81 @@ func TestAuctionGRPCHandlerListRoomAuctionsLimitsPendingToNextHour(t *testing.T)
 	}
 }
 
+func TestAuctionGRPCHandlerPlaceBidPublishesCountdownFields(t *testing.T) {
+	expireAt := time.Now().Add(30 * time.Second).Truncate(time.Millisecond)
+	publisher := &fakeEventPublisher{}
+	state := repository.AuctionState{
+		AuctionID:    5001,
+		GoodsID:      3001,
+		ShopID:       1001,
+		RoomID:       2001,
+		StartPrice:   10000,
+		BidIncrement: 1000,
+		CurrentPrice: 18000,
+		BidCount:     8,
+		Status:       model.AuctionStatusRunning,
+		StartTime:    time.Now().Add(-time.Minute),
+		EndTime:      time.Now().Add(time.Hour),
+		ExpireAt:     expireAt,
+		Version:      12,
+	}
+	handler := NewAuctionGRPCHandler(
+		&fakeAuctionRepository{},
+		&fakeBidRepository{},
+		&fakeAuctionStateStore{result: repository.BidResult{State: state}},
+		nil,
+		nil,
+		publisher,
+		nil,
+		4,
+	)
+
+	ctx := identity.NewContext(context.Background(), identity.Principal{Kind: identity.KindUser, ID: 4001})
+	resp, err := handler.PlaceBid(ctx, &auctionv1.PlaceBidRequest{
+		AuctionId: 5001,
+		RoomId:    2001,
+		BidPrice:  18000,
+		RequestId: "bid-req-1",
+	})
+	if err != nil {
+		t.Fatalf("PlaceBid returned error: %v", err)
+	}
+	if resp.GetExpireAt().AsTime().UnixMilli() != expireAt.UnixMilli() {
+		t.Fatalf("unexpected response expire_at: %v", resp.GetExpireAt())
+	}
+	if len(publisher.events) != 1 {
+		t.Fatalf("expected one bid_accepted event, got %d", len(publisher.events))
+	}
+	event := publisher.events[0]
+	if event.EventType != client.EventBidAccepted {
+		t.Fatalf("expected bid_accepted event, got %s", event.EventType)
+	}
+	if asInt64(event.Data["expire_at"]) != expireAt.UnixMilli() || asInt64(event.Data["server_time"]) <= 0 {
+		t.Fatalf("expected countdown fields in event data: %#v", event.Data)
+	}
+	if len(publisher.delayEvents) != 1 || asInt64(publisher.delayEvents[0].Data["expire_at"]) != expireAt.UnixMilli() {
+		t.Fatalf("expected delay expire_at event, got %#v", publisher.delayEvents)
+	}
+}
+
+func TestAuctionGRPCHandlerStartAuctionRejectsRoomRunningAuction(t *testing.T) {
+	pending := testPendingAuctionWithStartTime(5001, 2001, 3001, time.Now().Add(time.Minute))
+	handler := NewAuctionGRPCHandler(&fakeAuctionRepository{
+		auctionsByID: map[int64]*model.Auction{
+			5001: pending,
+		},
+		auctionsByRoomID: map[int64][]*model.Auction{
+			2001: {testRunningAuction(5002, 2001, 3002)},
+		},
+	}, nil, &fakeAuctionStateStore{}, nil, nil, nil, nil, 0)
+
+	ctx := identity.NewContext(context.Background(), identity.Principal{Kind: identity.KindShop, ID: 1001})
+	_, err := handler.StartAuction(ctx, &auctionv1.StartAuctionRequest{Id: 5001})
+	if err == nil {
+		t.Fatal("expected room running auction error")
+	}
+}
+
 func testRunningAuction(id int64, roomID int64, goodsID int64) *model.Auction {
 	now := time.Now()
 	return &model.Auction{
@@ -239,4 +405,17 @@ func auctionBelongsToSession(auction *model.Auction, startedAfter time.Time, upc
 	return (auction.StartTime != nil && !auction.StartTime.Before(startedAfter)) ||
 		(auction.EndTime != nil && !auction.EndTime.Before(startedAfter)) ||
 		!auction.CreatedAt.Before(startedAfter)
+}
+
+func asInt64(value any) int64 {
+	switch typed := value.(type) {
+	case int64:
+		return typed
+	case int32:
+		return int64(typed)
+	case int:
+		return int64(typed)
+	default:
+		return 0
+	}
 }

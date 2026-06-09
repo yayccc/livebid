@@ -34,6 +34,7 @@ type App struct {
 	live          client.LiveClient
 	events        client.EventPublisher
 	eventConsumer client.EventConsumer
+	expireScanner *client.AuctionExpireScanner
 }
 
 func New(ctx context.Context, cfg config.Config) (*App, error) {
@@ -80,6 +81,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	expireScanner := client.NewAuctionExpireScanner(stateStore, eventProcessor, cfg.Auction.ExpireScanner, log)
 	// handler 负责同步入口，consumer 负责异步事件补偿，两者共用同一组仓储和 Redis 状态。
 	auctionHandler := handler.NewAuctionGRPCHandler(
 		auctionRepo,
@@ -108,12 +110,23 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		live:          liveClient,
 		events:        eventPublisher,
 		eventConsumer: eventConsumer,
+		expireScanner: expireScanner,
 	}, nil
 }
 
 func (a *App) Run(ctx context.Context) error {
+	if a.expireScanner != nil {
+		a.expireScanner.Start(ctx)
+		a.log.Info("auction-service expire scanner started",
+			zap.Int("interval_seconds", a.cfg.Auction.ExpireScanner.IntervalSeconds),
+			zap.Int("batch_size", a.cfg.Auction.ExpireScanner.BatchSize),
+		)
+	}
 	if a.eventConsumer != nil {
 		if err := a.eventConsumer.Start(); err != nil {
+			if a.expireScanner != nil {
+				a.expireScanner.Close()
+			}
 			return err
 		}
 		a.log.Info("auction-service rocketmq consumer started", zap.String("topic", a.cfg.RocketMQ.Topic), zap.String("group", a.cfg.RocketMQ.ConsumerGroup))
@@ -121,11 +134,23 @@ func (a *App) Run(ctx context.Context) error {
 
 	listener, err := net.Listen("tcp", a.cfg.GRPC.Addr)
 	if err != nil {
+		if a.eventConsumer != nil {
+			_ = a.eventConsumer.Close()
+		}
+		if a.expireScanner != nil {
+			a.expireScanner.Close()
+		}
 		return err
 	}
 	registration, err := nacosx.RegisterInstance(ctx, a.naming, a.cfg.Registry, listener.Addr(), a.cfg.Env, a.log)
 	if err != nil {
 		_ = listener.Close()
+		if a.eventConsumer != nil {
+			_ = a.eventConsumer.Close()
+		}
+		if a.expireScanner != nil {
+			a.expireScanner.Close()
+		}
 		return err
 	}
 	a.registration = registration
@@ -144,6 +169,12 @@ func (a *App) Run(ctx context.Context) error {
 		grpcx.SetNotServing(a.health, router.HealthServiceName)
 		_ = a.registration.Deregister(context.Background())
 		a.grpcServer.GracefulStop()
+		if a.expireScanner != nil {
+			a.expireScanner.Close()
+		}
+		if a.eventConsumer != nil {
+			_ = a.eventConsumer.Close()
+		}
 		return nil
 	case err := <-errCh:
 		return err
@@ -154,6 +185,9 @@ func (a *App) Stop() {
 	grpcx.SetNotServing(a.health, router.HealthServiceName)
 	_ = a.registration.Deregister(context.Background())
 	a.grpcServer.GracefulStop()
+	if a.expireScanner != nil {
+		a.expireScanner.Close()
+	}
 	if a.stateStore != nil {
 		_ = a.stateStore.Close()
 	}

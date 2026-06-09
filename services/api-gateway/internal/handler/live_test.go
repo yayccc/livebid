@@ -415,7 +415,12 @@ func TestLiveHandlerGetUserLiveEntryAggregatesSnapshot(t *testing.T) {
 	if !resp.Data.Viewer.IsLoggedIn || resp.Data.Viewer.UserID != 3001 || !resp.Data.Viewer.CanBid {
 		t.Fatalf("unexpected viewer: %#v", resp.Data.Viewer)
 	}
-	if resp.Data.CurrentAuction.NextBidPrice != 19000 || resp.Data.Runtime.Version != 12 || resp.Data.Goods.Title != "高冰翡翠手镯" {
+	if resp.Data.CurrentAuction.NextBidPrice != 19000 ||
+		resp.Data.CurrentAuction.ServerTime != serverTime.AsTime().UnixMilli() ||
+		resp.Data.CurrentAuction.ExpireAt != expireAt.AsTime().UnixMilli() ||
+		resp.Data.CurrentAuction.Version != 12 ||
+		resp.Data.Runtime.Version != 12 ||
+		resp.Data.Goods.Title != "高冰翡翠手镯" {
 		t.Fatalf("unexpected entry snapshot: %#v", resp.Data)
 	}
 	if resp.Data.WS.URL != "wss://example.com/ws/live" || resp.Data.WS.HeartbeatIntervalSeconds != 20 {

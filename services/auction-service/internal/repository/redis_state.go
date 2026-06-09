@@ -53,6 +53,9 @@ type AuctionStateStore interface {
 	FinishExpiredAuction(ctx context.Context, auctionID int64, version int64, expireAt int64, now time.Time) (AuctionState, bool, error)
 	CancelAuction(ctx context.Context, auctionID int64, now time.Time) (AuctionState, error)
 	GetState(ctx context.Context, auctionID int64) (AuctionState, error)
+	ListExpiredAuctionIDs(ctx context.Context, now time.Time, limit int64) ([]int64, error)
+	IndexRunningAuction(ctx context.Context, auctionID int64, expireAt time.Time) error
+	RemoveRunningAuction(ctx context.Context, auctionID int64) error
 	Close() error
 }
 
@@ -109,7 +112,13 @@ func (s *RedisAuctionStateStore) LoadAuction(ctx context.Context, auction *model
 	if auction.WinnerUserID != nil {
 		values["winner_user_id"] = *auction.WinnerUserID
 	}
-	return s.client.HSet(ctx, stateKey(auction.ID), values).Err()
+	args := append([]any{auction.ID, endTime.UnixMilli()}, redisArgs(values)...)
+	err := loadAuctionScript.Run(ctx, s.client, []string{
+		stateKey(auction.ID),
+		roomCurrentAuctionKey(auction.RoomID),
+		runningExpireIndexKey(),
+	}, args...).Err()
+	return mapRedisScriptError(err)
 }
 
 func (s *RedisAuctionStateStore) PlaceBid(ctx context.Context, auctionID int64, roomID int64, userID int64, bidPrice int64, requestID string, bidRecordID int64, now time.Time) (BidResult, error) {
@@ -119,6 +128,7 @@ func (s *RedisAuctionStateStore) PlaceBid(ctx context.Context, auctionID int64, 
 		bidRequestKey(auctionID, requestID),
 		lastBidKey(auctionID, userID),
 		rankKey(auctionID),
+		runningExpireIndexKey(),
 	}, now.UnixMilli(), roomID, userID, bidPrice, bidRecordID, s.bidCountdownMillis).Result()
 	if err != nil {
 		return BidResult{}, mapRedisScriptError(err)
@@ -139,7 +149,7 @@ func (s *RedisAuctionStateStore) PlaceBid(ctx context.Context, auctionID int64, 
 }
 
 func (s *RedisAuctionStateStore) FinishAuction(ctx context.Context, auctionID int64, now time.Time) (AuctionState, error) {
-	result, err := finishAuctionScript.Run(ctx, s.client, []string{stateKey(auctionID)}, now.UnixMilli()).Result()
+	result, err := finishAuctionScript.Run(ctx, s.client, []string{stateKey(auctionID), runningExpireIndexKey()}, now.UnixMilli()).Result()
 	if err != nil {
 		return AuctionState{}, mapRedisScriptError(err)
 	}
@@ -147,12 +157,16 @@ func (s *RedisAuctionStateStore) FinishAuction(ctx context.Context, auctionID in
 	if !ok || len(values) < 15 {
 		return AuctionState{}, errors.New("invalid redis finish result")
 	}
-	return stateFromScript(values[:15])
+	state, err := stateFromScript(values[:15])
+	if err != nil {
+		return AuctionState{}, err
+	}
+	return state, nil
 }
 
 func (s *RedisAuctionStateStore) FinishExpiredAuction(ctx context.Context, auctionID int64, version int64, expireAt int64, now time.Time) (AuctionState, bool, error) {
 	// 延迟检查消息可能过期；只有 Redis 当前 version/expire_at 仍匹配时才真正结束。
-	result, err := finishExpiredAuctionScript.Run(ctx, s.client, []string{stateKey(auctionID)}, now.UnixMilli(), version, expireAt).Result()
+	result, err := finishExpiredAuctionScript.Run(ctx, s.client, []string{stateKey(auctionID), runningExpireIndexKey()}, now.UnixMilli(), version, expireAt).Result()
 	if err != nil {
 		return AuctionState{}, false, mapRedisScriptError(err)
 	}
@@ -171,7 +185,7 @@ func (s *RedisAuctionStateStore) FinishExpiredAuction(ctx context.Context, aucti
 }
 
 func (s *RedisAuctionStateStore) CancelAuction(ctx context.Context, auctionID int64, now time.Time) (AuctionState, error) {
-	result, err := cancelAuctionScript.Run(ctx, s.client, []string{stateKey(auctionID)}, now.UnixMilli()).Result()
+	result, err := cancelAuctionScript.Run(ctx, s.client, []string{stateKey(auctionID), runningExpireIndexKey()}, now.UnixMilli()).Result()
 	if err != nil {
 		return AuctionState{}, mapRedisScriptError(err)
 	}
@@ -179,7 +193,11 @@ func (s *RedisAuctionStateStore) CancelAuction(ctx context.Context, auctionID in
 	if !ok || len(values) < 15 {
 		return AuctionState{}, errors.New("invalid redis cancel result")
 	}
-	return stateFromScript(values[:15])
+	state, err := stateFromScript(values[:15])
+	if err != nil {
+		return AuctionState{}, err
+	}
+	return state, nil
 }
 
 func (s *RedisAuctionStateStore) GetState(ctx context.Context, auctionID int64) (AuctionState, error) {
@@ -193,9 +211,64 @@ func (s *RedisAuctionStateStore) GetState(ctx context.Context, auctionID int64) 
 	return stateFromMap(values)
 }
 
+func (s *RedisAuctionStateStore) ListExpiredAuctionIDs(ctx context.Context, now time.Time, limit int64) ([]int64, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	values, err := s.client.ZRangeByScore(ctx, runningExpireIndexKey(), &redis.ZRangeBy{
+		Min:    "-inf",
+		Max:    strconv.FormatInt(now.UnixMilli(), 10),
+		Offset: 0,
+		Count:  limit,
+	}).Result()
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]int64, 0, len(values))
+	for _, value := range values {
+		id, err := strconv.ParseInt(value, 10, 64)
+		if err == nil && id > 0 {
+			ids = append(ids, id)
+		}
+	}
+	return ids, nil
+}
+
+func (s *RedisAuctionStateStore) IndexRunningAuction(ctx context.Context, auctionID int64, expireAt time.Time) error {
+	return s.client.ZAdd(ctx, runningExpireIndexKey(), redis.Z{
+		Score:  float64(expireAt.UnixMilli()),
+		Member: auctionID,
+	}).Err()
+}
+
+func (s *RedisAuctionStateStore) RemoveRunningAuction(ctx context.Context, auctionID int64) error {
+	return s.client.ZRem(ctx, runningExpireIndexKey(), auctionID).Err()
+}
+
 func (s *RedisAuctionStateStore) Close() error {
 	return s.client.Close()
 }
+
+var loadAuctionScript = redis.NewScript(`
+local state_key = KEYS[1]
+local room_current_key = KEYS[2]
+local expire_index_key = KEYS[3]
+local auction_id = tostring(ARGV[1])
+local expire_at = tonumber(ARGV[2])
+local current_auction_id = redis.call("GET", room_current_key)
+if current_auction_id ~= false and current_auction_id ~= auction_id then
+  local current_state_key = "auction:" .. current_auction_id .. ":state"
+  local current_status = tonumber(redis.call("HGET", current_state_key, "status") or "0")
+  if current_status == 1 then
+    return redis.error_reply("room auction running")
+  end
+  redis.call("DEL", room_current_key)
+end
+redis.call("HSET", state_key, unpack(ARGV, 3))
+redis.call("SET", room_current_key, auction_id)
+redis.call("ZADD", expire_index_key, expire_at, auction_id)
+return 1
+`)
 
 // placeBidScript 是出价路径的并发控制核心，所有校验和状态更新必须保持原子性。
 var placeBidScript = redis.NewScript(`
@@ -203,6 +276,7 @@ local state_key = KEYS[1]
 local req_key = KEYS[2]
 local last_bid_key = KEYS[3]
 local rank_key = KEYS[4]
+local expire_index_key = KEYS[5]
 local now = tonumber(ARGV[1])
 local room_id = tonumber(ARGV[2])
 local user_id = tonumber(ARGV[3])
@@ -234,9 +308,11 @@ if seal_price > 0 and bid_price > seal_price then return redis.error_reply("bid 
 
 local bid_count = tonumber(redis.call("HINCRBY", state_key, "bid_count", 1))
 local version = tonumber(redis.call("HINCRBY", state_key, "version", 1))
-redis.call("HSET", state_key, "current_price", bid_price, "winner_user_id", user_id, "expire_at", now + bid_countdown_millis)
+local next_expire_at = now + bid_countdown_millis
+redis.call("HSET", state_key, "current_price", bid_price, "winner_user_id", user_id, "expire_at", next_expire_at)
 redis.call("SET", last_bid_key, bid_price, "EX", 86400)
 redis.call("ZADD", rank_key, bid_price, user_id)
+redis.call("ZADD", expire_index_key, next_expire_at, redis.call("HGET", state_key, "auction_id"))
 
 return {
   redis.call("HGET", state_key, "auction_id"),
@@ -260,6 +336,7 @@ return {
 
 var finishAuctionScript = redis.NewScript(`
 local state_key = KEYS[1]
+local expire_index_key = KEYS[2]
 local now = tonumber(ARGV[1])
 if redis.call("EXISTS", state_key) == 0 then return redis.error_reply("auction not found") end
 local status = tonumber(redis.call("HGET", state_key, "status"))
@@ -271,6 +348,8 @@ local next_status = 3
 if bid_count > 0 then next_status = 2 end
 local version = tonumber(redis.call("HINCRBY", state_key, "version", 1))
 redis.call("HSET", state_key, "status", next_status, "end_time", now, "expire_at", now)
+redis.call("ZREM", expire_index_key, redis.call("HGET", state_key, "auction_id"))
+redis.call("DEL", "auction:room:" .. redis.call("HGET", state_key, "room_id") .. ":current")
 return {
   redis.call("HGET", state_key, "auction_id"),
   redis.call("HGET", state_key, "goods_id"),
@@ -293,6 +372,7 @@ return {
 // finishExpiredAuctionScript 让延迟消息具备“检查而非强制结束”的语义。
 var finishExpiredAuctionScript = redis.NewScript(`
 local state_key = KEYS[1]
+local expire_index_key = KEYS[2]
 local now = tonumber(ARGV[1])
 local expected_version = tonumber(ARGV[2])
 local expected_expire_at = tonumber(ARGV[3])
@@ -310,6 +390,8 @@ local next_status = 3
 if bid_count > 0 then next_status = 2 end
 local next_version = tonumber(redis.call("HINCRBY", state_key, "version", 1))
 redis.call("HSET", state_key, "status", next_status, "end_time", now, "expire_at", now)
+redis.call("ZREM", expire_index_key, redis.call("HGET", state_key, "auction_id"))
+redis.call("DEL", "auction:room:" .. redis.call("HGET", state_key, "room_id") .. ":current")
 return {
   1,
   redis.call("HGET", state_key, "auction_id"),
@@ -332,12 +414,15 @@ return {
 
 var cancelAuctionScript = redis.NewScript(`
 local state_key = KEYS[1]
+local expire_index_key = KEYS[2]
 local now = tonumber(ARGV[1])
 if redis.call("EXISTS", state_key) == 0 then return redis.error_reply("auction not found") end
 local status = tonumber(redis.call("HGET", state_key, "status"))
 if status ~= 0 and status ~= 1 then return redis.error_reply("invalid auction state") end
 local version = tonumber(redis.call("HINCRBY", state_key, "version", 1))
 redis.call("HSET", state_key, "status", 4, "end_time", now, "expire_at", now)
+redis.call("ZREM", expire_index_key, redis.call("HGET", state_key, "auction_id"))
+redis.call("DEL", "auction:room:" .. redis.call("HGET", state_key, "room_id") .. ":current")
 return {
   redis.call("HGET", state_key, "auction_id"),
   redis.call("HGET", state_key, "goods_id"),
@@ -418,6 +503,8 @@ func mapRedisScriptError(err error) error {
 		return ErrDuplicateBidRequest
 	case contains(err, "invalid auction state"):
 		return ErrInvalidAuctionState
+	case contains(err, "room auction running"):
+		return ErrRoomAuctionRunning
 	case contains(err, "bid price too low"):
 		return ErrBidTooLow
 	case contains(err, "bid price over seal price"):
@@ -469,4 +556,20 @@ func lastBidKey(auctionID int64, userID int64) string {
 
 func rankKey(auctionID int64) string {
 	return fmt.Sprintf("auction:%d:rank", auctionID)
+}
+
+func roomCurrentAuctionKey(roomID int64) string {
+	return fmt.Sprintf("auction:room:%d:current", roomID)
+}
+
+func runningExpireIndexKey() string {
+	return "auction:running:expire_index"
+}
+
+func redisArgs(values map[string]any) []any {
+	args := make([]any, 0, len(values)*2)
+	for key, value := range values {
+		args = append(args, key, value)
+	}
+	return args
 }

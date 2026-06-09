@@ -14,6 +14,7 @@ var (
 	ErrAuctionNotFound        = errors.New("竞拍活动不存在或已被删除")
 	ErrAuctionDuplicated      = errors.New("该商品已创建竞拍活动，不能重复创建")
 	ErrInvalidAuctionState    = errors.New("当前竞拍状态不允许执行该操作")
+	ErrRoomAuctionRunning     = errors.New("当前直播间已有竞拍正在进行")
 	ErrBidRecordNotFound      = errors.New("出价记录不存在或已被删除")
 	ErrOutdatedAuctionVersion = errors.New("竞拍状态版本已过期，跳过旧状态更新")
 )

@@ -11,6 +11,8 @@ func TestLoadAppliesEnvOverrides(t *testing.T) {
 	t.Setenv("AUCTION_SERVICE_LIVE_ADDR", "127.0.0.1:19007")
 	t.Setenv("AUCTION_SERVICE_LIVE_TARGET", "nacosx:///live-service")
 	t.Setenv("AUCTION_SERVICE_WORKER_ID", "31")
+	t.Setenv("AUCTION_SERVICE_EXPIRE_SCANNER_INTERVAL_SECONDS", "7")
+	t.Setenv("AUCTION_SERVICE_EXPIRE_SCANNER_BATCH_SIZE", "50")
 	t.Setenv("AUCTION_SERVICE_REGISTRY_ENABLED", "true")
 
 	cfg := Load()
@@ -37,5 +39,8 @@ func TestLoadAppliesEnvOverrides(t *testing.T) {
 	}
 	if cfg.WorkerID != 31 {
 		t.Fatalf("worker id = %d", cfg.WorkerID)
+	}
+	if !cfg.Auction.ExpireScanner.Enabled || cfg.Auction.ExpireScanner.IntervalSeconds != 7 || cfg.Auction.ExpireScanner.BatchSize != 50 {
+		t.Fatalf("expire scanner config = %#v", cfg.Auction.ExpireScanner)
 	}
 }
