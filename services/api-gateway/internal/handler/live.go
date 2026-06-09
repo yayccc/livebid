@@ -215,11 +215,25 @@ type userLiveRuntimeResponse struct {
 }
 
 type userLiveAuctionRecordListResponse struct {
-	RoomID   int64                     `json:"room_id"`
-	Total    int64                     `json:"total"`
-	Page     int32                     `json:"page"`
-	PageSize int32                     `json:"page_size"`
-	List     []userLiveAuctionResponse `json:"list"`
+	RoomID   int64                           `json:"room_id"`
+	Total    int64                           `json:"total"`
+	Page     int32                           `json:"page"`
+	PageSize int32                           `json:"page_size"`
+	List     []userLiveAuctionRecordResponse `json:"list"`
+}
+
+type userLiveAuctionRecordResponse struct {
+	userLiveAuctionResponse
+	Goods *userLiveAuctionRecordGoodsResponse `json:"goods"`
+}
+
+type userLiveAuctionRecordGoodsResponse struct {
+	ID          int64  `json:"id"`
+	ShopID      int64  `json:"shop_id"`
+	Title       string `json:"title"`
+	CoverURL    string `json:"cover_url,omitempty"`
+	Description string `json:"description,omitempty"`
+	Status      int32  `json:"status"`
 }
 
 type userLiveWSResponse struct {
@@ -651,12 +665,17 @@ func (h *LiveHandler) GetUserLiveAuctionRecords(c *gin.Context) {
 		respondGRPCError(c, err)
 		return
 	}
+	goodsByID, err := h.batchGoods(ctx, auctionGoodsIDs(resp.GetList()))
+	if err != nil {
+		respondGRPCError(c, err)
+		return
+	}
 	respondOK(c, userLiveAuctionRecordListResponse{
 		RoomID:   roomID,
 		Total:    resp.GetTotal(),
 		Page:     resp.GetPage(),
 		PageSize: resp.GetPageSize(),
-		List:     toUserLiveAuctionRecordList(resp.GetList()),
+		List:     toUserLiveAuctionRecordList(resp.GetList(), goodsByID),
 	})
 }
 
@@ -1062,15 +1081,43 @@ func toUserLiveAuctionResponse(auction *auctionv1.Auction, runtime *auctionv1.Au
 	}
 }
 
-func toUserLiveAuctionRecordList(list []*auctionv1.Auction) []userLiveAuctionResponse {
-	result := make([]userLiveAuctionResponse, 0, len(list))
+func toUserLiveAuctionRecordList(list []*auctionv1.Auction, goodsByID map[int64]*goodsv1.Goods) []userLiveAuctionRecordResponse {
+	result := make([]userLiveAuctionRecordResponse, 0, len(list))
 	for _, auction := range list {
 		item := toUserLiveAuctionResponse(auction, nil)
 		if item != nil {
-			result = append(result, *item)
+			record := userLiveAuctionRecordResponse{userLiveAuctionResponse: *item}
+			if goods := goodsByID[auction.GetGoodsId()]; goods != nil {
+				record.Goods = toUserLiveAuctionRecordGoodsResponse(goods)
+			}
+			result = append(result, record)
 		}
 	}
 	return result
+}
+
+func toUserLiveAuctionRecordGoodsResponse(goods *goodsv1.Goods) *userLiveAuctionRecordGoodsResponse {
+	if goods == nil {
+		return nil
+	}
+	return &userLiveAuctionRecordGoodsResponse{
+		ID:          goods.GetId(),
+		ShopID:      goods.GetShopId(),
+		Title:       goods.GetTitle(),
+		CoverURL:    goods.GetCoverUrl(),
+		Description: goods.GetDescription(),
+		Status:      goods.GetStatus(),
+	}
+}
+
+func auctionGoodsIDs(list []*auctionv1.Auction) []int64 {
+	ids := make([]int64, 0, len(list))
+	for _, auction := range list {
+		if auction != nil && auction.GetGoodsId() > 0 {
+			ids = append(ids, auction.GetGoodsId())
+		}
+	}
+	return ids
 }
 
 func toUserLiveGoodsResponse(goods *goodsv1.Goods) *userLiveGoodsResponse {

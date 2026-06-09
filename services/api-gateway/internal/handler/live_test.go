@@ -470,7 +470,14 @@ func TestLiveHandlerGetUserLiveAuctionRecordsUsesLiveSessionStart(t *testing.T) 
 			room.ActualStartTime = timestamppb.New(sessionStart)
 			return &livev1.GetLiveRoomResponse{LiveRoom: room}, nil
 		},
-	}, nil, nil, mockUserLiveAuctionClient{
+	}, nil, mockUserLiveGoodsClient{
+		batch: func(ctx context.Context, in *goodsv1.BatchGetGoodsRequest, opts ...grpc.CallOption) (*goodsv1.BatchGetGoodsResponse, error) {
+			if len(in.GetIds()) != 1 || in.GetIds()[0] != 3001 {
+				t.Fatalf("unexpected goods batch request: %#v", in)
+			}
+			return &goodsv1.BatchGetGoodsResponse{List: []*goodsv1.Goods{testGoodsProto()}}, nil
+		},
+	}, mockUserLiveAuctionClient{
 		roomList: func(ctx context.Context, in *auctionv1.ListRoomAuctionsRequest, opts ...grpc.CallOption) (*auctionv1.ListRoomAuctionsResponse, error) {
 			if in.GetRoomId() != 2001 || in.GetPage() != 2 || in.GetPageSize() != 10 {
 				t.Fatalf("unexpected room auction request: %#v", in)
@@ -510,6 +517,9 @@ func TestLiveHandlerGetUserLiveAuctionRecordsUsesLiveSessionStart(t *testing.T) 
 	}
 	if resp.Data.Total != 1 || len(resp.Data.List) != 1 || resp.Data.List[0].AuctionID != 5001 || resp.Data.List[0].Status != 2 {
 		t.Fatalf("unexpected auction records: %#v", resp.Data)
+	}
+	if resp.Data.List[0].Goods == nil || resp.Data.List[0].Goods.ID != 3001 || resp.Data.List[0].Goods.Title != "高冰翡翠手镯" {
+		t.Fatalf("expected embedded goods snapshot, got %#v", resp.Data.List[0].Goods)
 	}
 }
 
