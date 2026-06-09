@@ -96,18 +96,18 @@ func (h *WebSocketHandler) Hub() *Hub {
 func (h *WebSocketHandler) ServeLive(c *gin.Context) {
 	roomID, err := strconv.ParseInt(strings.TrimSpace(c.Query("room_id")), 10, 64)
 	if err != nil || roomID <= 0 {
-		c.JSON(http.StatusBadRequest, response("", CodeBadRequest, "room_id 无效", nil))
+		c.JSON(http.StatusBadRequest, response("", ResponseTypeConnect, CodeBadRequest, "room_id 无效", nil))
 		return
 	}
 	token := strings.TrimSpace(c.Query("token"))
 	userID, err := h.verifyToken(token)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, response("", CodeUnauthenticated, "token 无效或已过期", nil))
+		c.JSON(http.StatusUnauthorized, response("", ResponseTypeConnect, CodeUnauthenticated, "token 无效或已过期", nil))
 		return
 	}
 	if err := h.validateLiveRoom(c.Request.Context(), roomID); err != nil {
 		code, message := websocketCodeFromError(err)
-		c.JSON(httpStatusFromCode(code), response("", code, message, nil))
+		c.JSON(httpStatusFromCode(code), response("", ResponseTypeConnect, code, message, nil))
 		return
 	}
 
@@ -150,7 +150,7 @@ func (h *WebSocketHandler) ServeLive(c *gin.Context) {
 	}
 	h.publishOnlineIfChanged(c.Request.Context(), conn, stats)
 
-	conn.Send(response("", CodeOK, "connected", map[string]any{
+	conn.Send(response("", ResponseTypeConnect, CodeOK, "connected", map[string]any{
 		"connection_id":              conn.ID,
 		"room_id":                    conn.RoomID,
 		"user_id":                    conn.UserID,
@@ -286,17 +286,21 @@ func (h *WebSocketHandler) handleMessage(ctx context.Context, conn *Connection, 
 	case MessageTypePlaceBid:
 		h.handlePlaceBid(ctx, conn, message)
 	case MessageTypeRoomLeave:
-		conn.Send(response(message.RequestID, CodeOK, "success", nil))
+		conn.Send(response(message.RequestID, MessageTypeRoomLeave, CodeOK, "success", nil))
 		conn.Close()
 	default:
-		conn.Send(response(message.RequestID, CodeBadRequest, "不支持的消息类型", nil))
+		requestType := strings.TrimSpace(message.Type)
+		if requestType == "" {
+			requestType = ResponseTypeMalformed
+		}
+		conn.Send(response(message.RequestID, requestType, CodeBadRequest, "不支持的消息类型", nil))
 	}
 }
 
 func (h *WebSocketHandler) handlePing(ctx context.Context, conn *Connection, message ClientMessage) {
 	stats, err := h.online.Heartbeat(ctx, h.connectionState(conn))
 	if err != nil {
-		conn.Send(response(message.RequestID, CodeInternal, "心跳刷新失败", nil))
+		conn.Send(response(message.RequestID, MessageTypePing, CodeInternal, "心跳刷新失败", nil))
 		if h.log != nil {
 			h.log.Warn("websocket heartbeat failed", zap.String("connection_id", conn.ID), zap.Error(err))
 		}
@@ -305,7 +309,7 @@ func (h *WebSocketHandler) handlePing(ctx context.Context, conn *Connection, mes
 	if stats.Changed {
 		h.publishOnlineIfChanged(ctx, conn, stats)
 	}
-	conn.Send(response(message.RequestID, CodeOK, "pong", nil))
+	conn.Send(response(message.RequestID, MessageTypePing, CodeOK, "pong", nil))
 }
 
 func (h *WebSocketHandler) handlePong(ctx context.Context, conn *Connection) {
@@ -323,16 +327,16 @@ func (h *WebSocketHandler) handlePong(ctx context.Context, conn *Connection) {
 
 func (h *WebSocketHandler) handlePlaceBid(ctx context.Context, conn *Connection, message ClientMessage) {
 	if conn.UserID <= 0 {
-		conn.Send(response(message.RequestID, CodeUnauthenticated, "请先登录后再出价", nil))
+		conn.Send(response(message.RequestID, MessageTypePlaceBid, CodeUnauthenticated, "请先登录后再出价", nil))
 		return
 	}
 	var data PlaceBidData
 	if len(message.Data) == 0 {
-		conn.Send(response(message.RequestID, CodeBadRequest, "出价参数无效", nil))
+		conn.Send(response(message.RequestID, MessageTypePlaceBid, CodeBadRequest, "出价参数无效", nil))
 		return
 	}
 	if err := json.Unmarshal(message.Data, &data); err != nil || data.AuctionID <= 0 || data.BidPrice <= 0 || strings.TrimSpace(message.RequestID) == "" {
-		conn.Send(response(message.RequestID, CodeBadRequest, "出价参数无效", nil))
+		conn.Send(response(message.RequestID, MessageTypePlaceBid, CodeBadRequest, "出价参数无效", nil))
 		return
 	}
 
@@ -348,10 +352,10 @@ func (h *WebSocketHandler) handlePlaceBid(ctx context.Context, conn *Connection,
 	})
 	if err != nil {
 		code, text := websocketCodeFromError(err)
-		conn.Send(response(message.RequestID, code, text, nil))
+		conn.Send(response(message.RequestID, MessageTypePlaceBid, code, text, nil))
 		return
 	}
-	conn.Send(response(message.RequestID, CodeOK, "success", map[string]any{
+	conn.Send(response(message.RequestID, MessageTypePlaceBid, CodeOK, "success", map[string]any{
 		"accepted":       resp.GetAccepted(),
 		"current_price":  resp.GetCurrentPrice(),
 		"bid_count":      resp.GetBidCount(),

@@ -11,6 +11,9 @@ const (
 	MessageTypeRoomLeave = "room_leave"
 	MessageTypeResponse  = "response"
 
+	ResponseTypeConnect   = "connect"
+	ResponseTypeMalformed = "malformed"
+
 	EventRoomOnlineChanged = "room_online_changed"
 	EventAuctionStarted    = "auction_started"
 	EventBidAccepted       = "bid_accepted"
@@ -37,12 +40,13 @@ type ClientMessage struct {
 }
 
 type ResponseMessage struct {
-	Type       string `json:"type"`
-	RequestID  string `json:"request_id,omitempty"`
-	Code       int    `json:"code"`
-	Message    string `json:"message"`
-	ServerTime int64  `json:"server_time"`
-	Data       any    `json:"data,omitempty"`
+	Type        string `json:"type"`
+	RequestID   string `json:"request_id,omitempty"`
+	RequestType string `json:"request_type,omitempty"`
+	Code        int    `json:"code"`
+	Message     string `json:"message"`
+	ServerTime  int64  `json:"server_time"`
+	Data        any    `json:"data,omitempty"`
 }
 
 type BroadcastMessage struct {
@@ -79,14 +83,15 @@ func nowMillis() int64 {
 	return time.Now().UnixMilli()
 }
 
-func response(requestID string, code int, message string, data any) ResponseMessage {
+func response(requestID string, requestType string, code int, message string, data any) ResponseMessage {
 	return ResponseMessage{
-		Type:       MessageTypeResponse,
-		RequestID:  requestID,
-		Code:       code,
-		Message:    message,
-		ServerTime: nowMillis(),
-		Data:       data,
+		Type:        MessageTypeResponse,
+		RequestID:   requestID,
+		RequestType: requestType,
+		Code:        code,
+		Message:     message,
+		ServerTime:  nowMillis(),
+		Data:        data,
 	}
 }
 

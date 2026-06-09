@@ -152,7 +152,7 @@ func (c *Connection) readLoop(ctx context.Context) {
 		_ = c.ws.SetReadDeadline(time.Now().Add(c.readTimeout))
 		var message ClientMessage
 		if err := json.Unmarshal(payload, &message); err != nil {
-			c.Send(response("", CodeBadRequest, "消息格式错误", nil))
+			c.Send(response("", ResponseTypeMalformed, CodeBadRequest, "消息格式错误", nil))
 			continue
 		}
 		if c.onMessage != nil {
