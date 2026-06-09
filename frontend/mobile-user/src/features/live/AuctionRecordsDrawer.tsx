@@ -146,6 +146,7 @@ export function AuctionRecordsDrawer({
     <>
       <Popup
         visible={visible}
+        className="auction-mobile-popup"
         onMaskClick={onClose}
         bodyClassName="auction-records-drawer"
         position="bottom"
@@ -243,6 +244,7 @@ export function AuctionRecordsDrawer({
 
       <Popup
         visible={Boolean(activeBidRecord)}
+        className="auction-mobile-popup"
         onMaskClick={() => {
           setActiveBidRecord(null)
           setHasAdjustedBidPrice(false)
