@@ -423,7 +423,12 @@ func TestLiveHandlerGetUserLiveEntryAggregatesSnapshot(t *testing.T) {
 		resp.Data.Goods.Title != "高冰翡翠手镯" {
 		t.Fatalf("unexpected entry snapshot: %#v", resp.Data)
 	}
-	if resp.Data.WS.URL != "wss://example.com/ws/live" || resp.Data.WS.HeartbeatIntervalSeconds != 20 {
+	if resp.Data.WS.URL != "wss://example.com/ws/live" ||
+		resp.Data.WS.HeartbeatIntervalSeconds != 20 ||
+		resp.Data.WS.ReconnectStrategy != "http_snapshot" ||
+		!resp.Data.WS.ResyncOnConnect ||
+		resp.Data.WS.SnapshotURL != "/api/user/live/rooms/2001/auction-snapshot" ||
+		resp.Data.WS.AuctionRecordsURL != "/api/user/live/rooms/2001/auction-records" {
 		t.Fatalf("unexpected ws config: %#v", resp.Data.WS)
 	}
 }

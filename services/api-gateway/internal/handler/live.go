@@ -244,6 +244,10 @@ type userLiveWSResponse struct {
 	RoomID                   int64  `json:"room_id"`
 	TokenRequiredForBid      bool   `json:"token_required_for_bid"`
 	HeartbeatIntervalSeconds int    `json:"heartbeat_interval_seconds"`
+	ReconnectStrategy        string `json:"reconnect_strategy"`
+	ResyncOnConnect          bool   `json:"resync_on_connect"`
+	SnapshotURL              string `json:"snapshot_url"`
+	AuctionRecordsURL        string `json:"auction_records_url"`
 }
 
 type srsCallbackRequest struct {
@@ -1184,6 +1188,10 @@ func (h *LiveHandler) userLiveWS(roomID int64) userLiveWSResponse {
 		RoomID:                   roomID,
 		TokenRequiredForBid:      true,
 		HeartbeatIntervalSeconds: h.userLive.HeartbeatIntervalSeconds,
+		ReconnectStrategy:        "http_snapshot",
+		ResyncOnConnect:          true,
+		SnapshotURL:              "/api/user/live/rooms/" + strconv.FormatInt(roomID, 10) + "/auction-snapshot",
+		AuctionRecordsURL:        "/api/user/live/rooms/" + strconv.FormatInt(roomID, 10) + "/auction-records",
 	}
 }
 

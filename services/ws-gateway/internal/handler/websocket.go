@@ -150,7 +150,12 @@ func (h *WebSocketHandler) ServeLive(c *gin.Context) {
 	}
 	h.publishOnlineIfChanged(c.Request.Context(), conn, stats)
 
-	conn.Send(response("", ResponseTypeConnect, CodeOK, "connected", map[string]any{
+	conn.Send(response("", ResponseTypeConnect, CodeOK, "connected", h.connectResponseData(conn)))
+	conn.Start(c.Request.Context(), h.cfg.WebSocket.MaxMessageBytes, h.cfg.HeartbeatTimeout(), h.cfg.HeartbeatInterval())
+}
+
+func (h *WebSocketHandler) connectResponseData(conn *Connection) map[string]any {
+	return map[string]any{
 		"connection_id":              conn.ID,
 		"room_id":                    conn.RoomID,
 		"user_id":                    conn.UserID,
@@ -158,8 +163,11 @@ func (h *WebSocketHandler) ServeLive(c *gin.Context) {
 		"heartbeat_interval_seconds": h.cfg.WebSocket.HeartbeatIntervalSeconds,
 		"heartbeat_timeout_seconds":  h.cfg.WebSocket.HeartbeatTimeoutSeconds,
 		"connected_at":               conn.ConnectedAt,
-	}))
-	conn.Start(c.Request.Context(), h.cfg.WebSocket.MaxMessageBytes, h.cfg.HeartbeatTimeout(), h.cfg.HeartbeatInterval())
+		"reconnect_strategy":         "http_snapshot",
+		"resync_on_connect":          true,
+		"snapshot_url":               fmt.Sprintf("/api/user/live/rooms/%d/auction-snapshot", conn.RoomID),
+		"auction_records_url":        fmt.Sprintf("/api/user/live/rooms/%d/auction-records", conn.RoomID),
+	}
 }
 
 func (h *WebSocketHandler) BroadcastOnlineEvent(ctx context.Context, event repository.OnlineEvent) {
