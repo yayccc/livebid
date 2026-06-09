@@ -153,6 +153,36 @@ func (h *AuctionGRPCHandler) BatchGetCurrentAuctionsByRoom(ctx context.Context, 
 	return &auctionv1.BatchGetCurrentAuctionsByRoomResponse{List: orderAuctionsByRoomIDs(roomIDs, list)}, nil
 }
 
+func (h *AuctionGRPCHandler) ListRoomAuctions(ctx context.Context, req *auctionv1.ListRoomAuctionsRequest) (*auctionv1.ListRoomAuctionsResponse, error) {
+	if req.GetRoomId() <= 0 {
+		return nil, toGRPCError(errInvalidArgument)
+	}
+	filter := repository.ListAuctionFilter{
+		RoomID:   req.GetRoomId(),
+		Page:     int(req.GetPage()),
+		PageSize: int(req.GetPageSize()),
+	}
+	if req.GetStartedAfter() != nil {
+		startedAfter := req.GetStartedAfter().AsTime()
+		filter.StartedAfter = &startedAfter
+		upcomingFrom := time.Now()
+		upcomingBefore := upcomingFrom.Add(time.Hour)
+		filter.UpcomingFrom = &upcomingFrom
+		filter.UpcomingBefore = &upcomingBefore
+	}
+	list, total, err := h.auctions.ListByRoom(ctx, filter)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	page, pageSize := normalizePagination(int(req.GetPage()), int(req.GetPageSize()), 20)
+	return &auctionv1.ListRoomAuctionsResponse{
+		Total:    total,
+		Page:     int32(page),
+		PageSize: int32(pageSize),
+		List:     toProtoAuctionList(list),
+	}, nil
+}
+
 func (h *AuctionGRPCHandler) ListShopAuctions(ctx context.Context, req *auctionv1.ListShopAuctionsRequest) (*auctionv1.ListShopAuctionsResponse, error) {
 	shopID, err := currentShopID(ctx)
 	if err != nil {

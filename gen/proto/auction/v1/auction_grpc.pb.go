@@ -24,6 +24,7 @@ const (
 	AuctionService_GetAuctionByGoods_FullMethodName             = "/livebid.auction.v1.AuctionService/GetAuctionByGoods"
 	AuctionService_GetCurrentAuctionByRoom_FullMethodName       = "/livebid.auction.v1.AuctionService/GetCurrentAuctionByRoom"
 	AuctionService_BatchGetCurrentAuctionsByRoom_FullMethodName = "/livebid.auction.v1.AuctionService/BatchGetCurrentAuctionsByRoom"
+	AuctionService_ListRoomAuctions_FullMethodName              = "/livebid.auction.v1.AuctionService/ListRoomAuctions"
 	AuctionService_ListShopAuctions_FullMethodName              = "/livebid.auction.v1.AuctionService/ListShopAuctions"
 	AuctionService_ListMerchantAuctions_FullMethodName          = "/livebid.auction.v1.AuctionService/ListMerchantAuctions"
 	AuctionService_GetAuctionRuntime_FullMethodName             = "/livebid.auction.v1.AuctionService/GetAuctionRuntime"
@@ -46,6 +47,7 @@ type AuctionServiceClient interface {
 	GetAuctionByGoods(ctx context.Context, in *GetAuctionByGoodsRequest, opts ...grpc.CallOption) (*GetAuctionByGoodsResponse, error)
 	GetCurrentAuctionByRoom(ctx context.Context, in *GetCurrentAuctionByRoomRequest, opts ...grpc.CallOption) (*GetCurrentAuctionByRoomResponse, error)
 	BatchGetCurrentAuctionsByRoom(ctx context.Context, in *BatchGetCurrentAuctionsByRoomRequest, opts ...grpc.CallOption) (*BatchGetCurrentAuctionsByRoomResponse, error)
+	ListRoomAuctions(ctx context.Context, in *ListRoomAuctionsRequest, opts ...grpc.CallOption) (*ListRoomAuctionsResponse, error)
 	ListShopAuctions(ctx context.Context, in *ListShopAuctionsRequest, opts ...grpc.CallOption) (*ListShopAuctionsResponse, error)
 	ListMerchantAuctions(ctx context.Context, in *ListMerchantAuctionsRequest, opts ...grpc.CallOption) (*ListMerchantAuctionsResponse, error)
 	GetAuctionRuntime(ctx context.Context, in *GetAuctionRuntimeRequest, opts ...grpc.CallOption) (*GetAuctionRuntimeResponse, error)
@@ -111,6 +113,16 @@ func (c *auctionServiceClient) BatchGetCurrentAuctionsByRoom(ctx context.Context
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(BatchGetCurrentAuctionsByRoomResponse)
 	err := c.cc.Invoke(ctx, AuctionService_BatchGetCurrentAuctionsByRoom_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *auctionServiceClient) ListRoomAuctions(ctx context.Context, in *ListRoomAuctionsRequest, opts ...grpc.CallOption) (*ListRoomAuctionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListRoomAuctionsResponse)
+	err := c.cc.Invoke(ctx, AuctionService_ListRoomAuctions_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -236,6 +248,7 @@ type AuctionServiceServer interface {
 	GetAuctionByGoods(context.Context, *GetAuctionByGoodsRequest) (*GetAuctionByGoodsResponse, error)
 	GetCurrentAuctionByRoom(context.Context, *GetCurrentAuctionByRoomRequest) (*GetCurrentAuctionByRoomResponse, error)
 	BatchGetCurrentAuctionsByRoom(context.Context, *BatchGetCurrentAuctionsByRoomRequest) (*BatchGetCurrentAuctionsByRoomResponse, error)
+	ListRoomAuctions(context.Context, *ListRoomAuctionsRequest) (*ListRoomAuctionsResponse, error)
 	ListShopAuctions(context.Context, *ListShopAuctionsRequest) (*ListShopAuctionsResponse, error)
 	ListMerchantAuctions(context.Context, *ListMerchantAuctionsRequest) (*ListMerchantAuctionsResponse, error)
 	GetAuctionRuntime(context.Context, *GetAuctionRuntimeRequest) (*GetAuctionRuntimeResponse, error)
@@ -271,6 +284,9 @@ func (UnimplementedAuctionServiceServer) GetCurrentAuctionByRoom(context.Context
 }
 func (UnimplementedAuctionServiceServer) BatchGetCurrentAuctionsByRoom(context.Context, *BatchGetCurrentAuctionsByRoomRequest) (*BatchGetCurrentAuctionsByRoomResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BatchGetCurrentAuctionsByRoom not implemented")
+}
+func (UnimplementedAuctionServiceServer) ListRoomAuctions(context.Context, *ListRoomAuctionsRequest) (*ListRoomAuctionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListRoomAuctions not implemented")
 }
 func (UnimplementedAuctionServiceServer) ListShopAuctions(context.Context, *ListShopAuctionsRequest) (*ListShopAuctionsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListShopAuctions not implemented")
@@ -412,6 +428,24 @@ func _AuctionService_BatchGetCurrentAuctionsByRoom_Handler(srv interface{}, ctx 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AuctionServiceServer).BatchGetCurrentAuctionsByRoom(ctx, req.(*BatchGetCurrentAuctionsByRoomRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuctionService_ListRoomAuctions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRoomAuctionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServiceServer).ListRoomAuctions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuctionService_ListRoomAuctions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServiceServer).ListRoomAuctions(ctx, req.(*ListRoomAuctionsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -640,6 +674,10 @@ var AuctionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BatchGetCurrentAuctionsByRoom",
 			Handler:    _AuctionService_BatchGetCurrentAuctionsByRoom_Handler,
+		},
+		{
+			MethodName: "ListRoomAuctions",
+			Handler:    _AuctionService_ListRoomAuctions_Handler,
 		},
 		{
 			MethodName: "ListShopAuctions",

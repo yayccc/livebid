@@ -20,6 +20,10 @@ var (
 
 type ListAuctionFilter struct {
 	ShopID           int64
+	RoomID           int64
+	StartedAfter     *time.Time
+	UpcomingFrom     *time.Time
+	UpcomingBefore   *time.Time
 	Status           *model.AuctionStatus
 	GoodsIDs         []int64
 	FilterByGoodsIDs bool
@@ -44,6 +48,7 @@ type AuctionRepository interface {
 	FindByGoodsID(ctx context.Context, goodsID int64) (*model.Auction, error)
 	FindCurrentByRoomID(ctx context.Context, roomID int64) (*model.Auction, error)
 	BatchFindCurrentByRoomIDs(ctx context.Context, roomIDs []int64) ([]*model.Auction, error)
+	ListByRoom(ctx context.Context, filter ListAuctionFilter) ([]*model.Auction, int64, error)
 	ListByShop(ctx context.Context, filter ListAuctionFilter) ([]*model.Auction, int64, error)
 	SummarizeByShop(ctx context.Context, shopID int64, todayStart time.Time, todayEnd time.Time) (MerchantAuctionSummary, error)
 	UpdatePendingConfig(ctx context.Context, auction *model.Auction) error
@@ -122,6 +127,50 @@ func (r *GormAuctionRepository) BatchFindCurrentByRoomIDs(ctx context.Context, r
 		list = append(list, auction)
 	}
 	return list, nil
+}
+
+func (r *GormAuctionRepository) ListByRoom(ctx context.Context, filter ListAuctionFilter) ([]*model.Auction, int64, error) {
+	page, pageSize := normalizePagination(filter.Page, filter.PageSize, 20)
+	query := r.db.WithContext(ctx).
+		Model(&model.Auction{}).
+		Where("room_id = ? AND is_delete = 0", filter.RoomID)
+	if filter.StartedAfter != nil {
+		query = query.Where(
+			"((status <> ? AND (start_time >= ? OR end_time >= ? OR created_at >= ?)) OR (status = ? AND start_time >= ? AND start_time <= ?))",
+			model.AuctionStatusPending,
+			*filter.StartedAfter,
+			*filter.StartedAfter,
+			*filter.StartedAfter,
+			model.AuctionStatusPending,
+			timeValueOrNow(filter.UpcomingFrom),
+			timeValueOr(filter.UpcomingBefore, timeValueOrNow(filter.UpcomingFrom).Add(time.Hour)),
+		)
+	}
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var list []*model.Auction
+	err := query.Order("created_at DESC, id DESC").
+		Limit(pageSize).
+		Offset((page - 1) * pageSize).
+		Find(&list).Error
+	return list, total, err
+}
+
+func timeValueOrNow(value *time.Time) time.Time {
+	if value == nil {
+		return time.Now()
+	}
+	return *value
+}
+
+func timeValueOr(value *time.Time, fallback time.Time) time.Time {
+	if value == nil {
+		return fallback
+	}
+	return *value
 }
 
 func (r *GormAuctionRepository) ListByShop(ctx context.Context, filter ListAuctionFilter) ([]*model.Auction, int64, error) {

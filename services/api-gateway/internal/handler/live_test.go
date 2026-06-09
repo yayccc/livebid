@@ -116,6 +116,7 @@ func (m mockUserLiveGoodsClient) PutGoodsOffSale(ctx context.Context, in *goodsv
 type mockUserLiveAuctionClient struct {
 	current      func(ctx context.Context, in *auctionv1.GetCurrentAuctionByRoomRequest, opts ...grpc.CallOption) (*auctionv1.GetCurrentAuctionByRoomResponse, error)
 	batchCurrent func(ctx context.Context, in *auctionv1.BatchGetCurrentAuctionsByRoomRequest, opts ...grpc.CallOption) (*auctionv1.BatchGetCurrentAuctionsByRoomResponse, error)
+	roomList     func(ctx context.Context, in *auctionv1.ListRoomAuctionsRequest, opts ...grpc.CallOption) (*auctionv1.ListRoomAuctionsResponse, error)
 	runtime      func(ctx context.Context, in *auctionv1.GetAuctionRuntimeRequest, opts ...grpc.CallOption) (*auctionv1.GetAuctionRuntimeResponse, error)
 }
 
@@ -125,6 +126,10 @@ func (m mockUserLiveAuctionClient) GetCurrentAuctionByRoom(ctx context.Context, 
 
 func (m mockUserLiveAuctionClient) BatchGetCurrentAuctionsByRoom(ctx context.Context, in *auctionv1.BatchGetCurrentAuctionsByRoomRequest, opts ...grpc.CallOption) (*auctionv1.BatchGetCurrentAuctionsByRoomResponse, error) {
 	return m.batchCurrent(ctx, in, opts...)
+}
+
+func (m mockUserLiveAuctionClient) ListRoomAuctions(ctx context.Context, in *auctionv1.ListRoomAuctionsRequest, opts ...grpc.CallOption) (*auctionv1.ListRoomAuctionsResponse, error) {
+	return m.roomList(ctx, in, opts...)
 }
 
 func (m mockUserLiveAuctionClient) GetAuctionRuntime(ctx context.Context, in *auctionv1.GetAuctionRuntimeRequest, opts ...grpc.CallOption) (*auctionv1.GetAuctionRuntimeResponse, error) {
@@ -449,6 +454,62 @@ func TestLiveHandlerGetUserLiveAuctionSnapshotReturnsNullWhenNoAuction(t *testin
 	}
 	if resp.Data.CurrentAuction != nil || resp.Data.Goods != nil || resp.Data.Runtime != nil {
 		t.Fatalf("expected null auction snapshot, got %#v", resp.Data)
+	}
+}
+
+func TestLiveHandlerGetUserLiveAuctionRecordsUsesLiveSessionStart(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	sessionStart := time.Date(2026, 6, 9, 12, 0, 0, 0, time.UTC)
+
+	handler := NewLiveHandlerWithAggregates(mockLiveClient{
+		getLiveRoom: func(ctx context.Context, in *livev1.GetLiveRoomRequest, opts ...grpc.CallOption) (*livev1.GetLiveRoomResponse, error) {
+			if in.GetId() != 2001 {
+				t.Fatalf("unexpected live room request: %#v", in)
+			}
+			room := testLiveProtoRoom()
+			room.ActualStartTime = timestamppb.New(sessionStart)
+			return &livev1.GetLiveRoomResponse{LiveRoom: room}, nil
+		},
+	}, nil, nil, mockUserLiveAuctionClient{
+		roomList: func(ctx context.Context, in *auctionv1.ListRoomAuctionsRequest, opts ...grpc.CallOption) (*auctionv1.ListRoomAuctionsResponse, error) {
+			if in.GetRoomId() != 2001 || in.GetPage() != 2 || in.GetPageSize() != 10 {
+				t.Fatalf("unexpected room auction request: %#v", in)
+			}
+			if in.GetStartedAfter() == nil || !in.GetStartedAfter().AsTime().Equal(sessionStart) {
+				t.Fatalf("expected session start filter, got %#v", in.GetStartedAfter())
+			}
+			return &auctionv1.ListRoomAuctionsResponse{
+				Total:    1,
+				Page:     2,
+				PageSize: 10,
+				List: []*auctionv1.Auction{{
+					Id:           5001,
+					RoomId:       2001,
+					GoodsId:      3001,
+					Status:       2,
+					StartPrice:   10000,
+					BidIncrement: 1000,
+					CurrentPrice: 18000,
+					BidCount:     8,
+				}},
+			}, nil
+		},
+	}, config.UserLiveConfig{}, time.Second)
+
+	w := performLiveRequestWithParams(handler.GetUserLiveAuctionRecords, http.MethodGet, "/api/user/live/rooms/2001/auction-records?page=2&page_size=10", bytes.NewBuffer(nil), gin.Params{
+		{Key: "id", Value: "2001"},
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp struct {
+		Data userLiveAuctionRecordListResponse `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp.Data.Total != 1 || len(resp.Data.List) != 1 || resp.Data.List[0].AuctionID != 5001 || resp.Data.List[0].Status != 2 {
+		t.Fatalf("unexpected auction records: %#v", resp.Data)
 	}
 }
 

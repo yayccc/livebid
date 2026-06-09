@@ -12,6 +12,7 @@ service AuctionService {
   rpc GetAuctionByGoods(GetAuctionByGoodsRequest) returns (GetAuctionByGoodsResponse);
   rpc GetCurrentAuctionByRoom(GetCurrentAuctionByRoomRequest) returns (GetCurrentAuctionByRoomResponse);
   rpc BatchGetCurrentAuctionsByRoom(BatchGetCurrentAuctionsByRoomRequest) returns (BatchGetCurrentAuctionsByRoomResponse);
+  rpc ListRoomAuctions(ListRoomAuctionsRequest) returns (ListRoomAuctionsResponse);
   rpc ListShopAuctions(ListShopAuctionsRequest) returns (ListShopAuctionsResponse);
   rpc ListMerchantAuctions(ListMerchantAuctionsRequest) returns (ListMerchantAuctionsResponse);
   rpc GetAuctionRuntime(GetAuctionRuntimeRequest) returns (GetAuctionRuntimeResponse);
@@ -70,6 +71,20 @@ message BatchGetCurrentAuctionsByRoomRequest {
 
 message BatchGetCurrentAuctionsByRoomResponse {
   repeated Auction list = 1;
+}
+
+message ListRoomAuctionsRequest {
+  int64 room_id = 1;
+  google.protobuf.Timestamp started_after = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message ListRoomAuctionsResponse {
+  int64 total = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  repeated Auction list = 4;
 }
 
 message ListShopAuctionsRequest {

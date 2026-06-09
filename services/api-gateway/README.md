@@ -37,6 +37,7 @@
 | 竞拍运行态 | GET | `/api/auctions/:id/runtime` | 转发到 `auction-service.GetAuctionRuntime` |
 | 商品竞拍信息 | GET | `/api/auctions/goods/:goods_id` | 转发到 `auction-service.GetAuctionByGoods` |
 | 竞拍出价记录 | GET | `/api/auctions/:id/bids` | 转发到 `auction-service.ListBidRecords` |
+| 用户出价降级入口 | POST | `/api/auctions/:id/bids` | 需要用户 JWT，转发到 `auction-service.PlaceBid`；用户端推荐优先走 ws-gateway `place_bid` |
 | 商家竞拍列表 | GET | `/api/merchant/auctions` | 需要商家 JWT，返回商品标题和封面等聚合字段 |
 | 商家工作台统计 | GET | `/api/merchant/dashboard/summary` | 需要商家 JWT，聚合商品统计和竞拍统计 |
 | 创建竞拍 | POST | `/api/auctions` | 需要商家 JWT，转发到 `auction-service.CreateAuction` |
@@ -56,6 +57,7 @@
 | 用户预览播放信息 | GET | `/api/user/live/rooms/:id/preview` | 转发到 `live-service.GetLiveStreamInfo`，只返回用户播放字段 |
 | 用户进入直播间详情 | GET | `/api/user/live/rooms/:id/entry` | 可选用户 JWT，聚合直播间、公开商铺、播放、当前竞拍、商品、运行态和 WebSocket 配置 |
 | 用户竞拍快照 | GET | `/api/user/live/rooms/:id/auction-snapshot` | 可选用户 JWT，返回当前运行中竞拍快照；无竞拍时返回 null |
+| 用户直播间竞拍记录 | GET | `/api/user/live/rooms/:id/auction-records` | 可选用户 JWT，返回当前直播间本次开播以来的竞拍列表 |
 | SRS 推流回调 | POST | `/api/srs/callbacks/publish` | 转发到 `live-service.HandleSRSPublishCallback` |
 | SRS 断流回调 | POST | `/api/srs/callbacks/unpublish` | 转发到 `live-service.HandleSRSUnpublishCallback` |
 
@@ -72,6 +74,10 @@
 ## 用户接口说明
 
 用户资料修改、头像上传和收货地址接口中的 `user_id` 均来自用户端 JWT 的 subject。用户登录 token 当前由 `user-service` 签发，网关只做 HTTP 到 gRPC 转发与响应格式统一。
+
+## 竞拍出价入口说明
+
+直播间用户出价推荐优先通过 `ws-gateway` 的 WebSocket `place_bid` 消息提交；HTTP `POST /api/auctions/:id/bids` 保留为 WebSocket 不可用、重连中或旧客户端兼容时的降级入口。两条入口都会调用 `auction-service.PlaceBid`，请求必须携带客户端生成的 `request_id`，同一次出价重试应复用同一个 `request_id`，以便下游做幂等处理。前端最终价格和成交状态仍以 WebSocket 广播 `bid_accepted`、`auction_finished` 等事件为准。
 
 ## 本地启动
 

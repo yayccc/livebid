@@ -11,7 +11,7 @@ import (
 )
 
 type fakeAuctionStateStore struct {
-	state  repository.AuctionState
+	state   repository.AuctionState
 	changed bool
 }
 
@@ -61,13 +61,18 @@ func (r *fakeAuctionRepository) FindCurrentByRoomID(ctx context.Context, roomID 
 func (r *fakeAuctionRepository) BatchFindCurrentByRoomIDs(ctx context.Context, roomIDs []int64) ([]*model.Auction, error) {
 	return nil, nil
 }
+func (r *fakeAuctionRepository) ListByRoom(ctx context.Context, filter repository.ListAuctionFilter) ([]*model.Auction, int64, error) {
+	return nil, 0, nil
+}
 func (r *fakeAuctionRepository) ListByShop(ctx context.Context, filter repository.ListAuctionFilter) ([]*model.Auction, int64, error) {
 	return nil, 0, nil
 }
 func (r *fakeAuctionRepository) SummarizeByShop(ctx context.Context, shopID int64, todayStart time.Time, todayEnd time.Time) (repository.MerchantAuctionSummary, error) {
 	return repository.MerchantAuctionSummary{}, nil
 }
-func (r *fakeAuctionRepository) UpdatePendingConfig(ctx context.Context, auction *model.Auction) error { return nil }
+func (r *fakeAuctionRepository) UpdatePendingConfig(ctx context.Context, auction *model.Auction) error {
+	return nil
+}
 func (r *fakeAuctionRepository) UpdateStatusSnapshot(ctx context.Context, auction *model.Auction) error {
 	r.updated = append(r.updated, auction)
 	return nil
@@ -77,7 +82,9 @@ func (r *fakeAuctionRepository) Delete(ctx context.Context, id int64, shopID int
 type fakeBidRepository struct{}
 
 func (r *fakeBidRepository) Create(ctx context.Context, record *model.BidRecord) error { return nil }
-func (r *fakeBidRepository) CreateIfNotExists(ctx context.Context, record *model.BidRecord) error { return nil }
+func (r *fakeBidRepository) CreateIfNotExists(ctx context.Context, record *model.BidRecord) error {
+	return nil
+}
 func (r *fakeBidRepository) ListByAuction(ctx context.Context, filter repository.ListBidRecordFilter) ([]*model.BidRecord, int64, error) {
 	return nil, 0, nil
 }

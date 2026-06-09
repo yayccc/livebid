@@ -34,6 +34,7 @@ type liveServiceClient interface {
 type userLiveAuctionClient interface {
 	GetCurrentAuctionByRoom(ctx context.Context, in *auctionv1.GetCurrentAuctionByRoomRequest, opts ...grpc.CallOption) (*auctionv1.GetCurrentAuctionByRoomResponse, error)
 	BatchGetCurrentAuctionsByRoom(ctx context.Context, in *auctionv1.BatchGetCurrentAuctionsByRoomRequest, opts ...grpc.CallOption) (*auctionv1.BatchGetCurrentAuctionsByRoomResponse, error)
+	ListRoomAuctions(ctx context.Context, in *auctionv1.ListRoomAuctionsRequest, opts ...grpc.CallOption) (*auctionv1.ListRoomAuctionsResponse, error)
 	GetAuctionRuntime(ctx context.Context, in *auctionv1.GetAuctionRuntimeRequest, opts ...grpc.CallOption) (*auctionv1.GetAuctionRuntimeResponse, error)
 }
 
@@ -211,6 +212,14 @@ type userLiveRuntimeResponse struct {
 	ServerTime        int64  `json:"server_time"`
 	ExpireAt          int64  `json:"expire_at,omitempty"`
 	Version           int64  `json:"version"`
+}
+
+type userLiveAuctionRecordListResponse struct {
+	RoomID   int64                     `json:"room_id"`
+	Total    int64                     `json:"total"`
+	Page     int32                     `json:"page"`
+	PageSize int32                     `json:"page_size"`
+	List     []userLiveAuctionResponse `json:"list"`
 }
 
 type userLiveWSResponse struct {
@@ -601,6 +610,54 @@ func (h *LiveHandler) GetUserLiveAuctionSnapshot(c *gin.Context) {
 		data["runtime"] = toUserLiveRuntimeResponse(auction, runtime)
 	}
 	respondOK(c, data)
+}
+
+func (h *LiveHandler) GetUserLiveAuctionRecords(c *gin.Context) {
+	roomID, ok := parseIDParam(c, "id")
+	if !ok {
+		return
+	}
+	if h.auctionClient == nil {
+		respondError(c, http.StatusBadGateway, "竞拍服务暂不可用")
+		return
+	}
+	page, ok := parseOptionalInt32Query(c, "page")
+	if !ok {
+		return
+	}
+	pageSize, ok := parseOptionalInt32Query(c, "page_size")
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), h.rpcTimeout)
+	defer cancel()
+
+	roomResp, err := h.liveClient.GetLiveRoom(ctx, &livev1.GetLiveRoomRequest{Id: roomID})
+	if err != nil {
+		respondGRPCError(c, err)
+		return
+	}
+	req := &auctionv1.ListRoomAuctionsRequest{
+		RoomId:   roomID,
+		Page:     int32ValueOrZero(page),
+		PageSize: int32ValueOrZero(pageSize),
+	}
+	if startedAt := roomResp.GetLiveRoom().GetActualStartTime(); startedAt != nil {
+		req.StartedAfter = startedAt
+	}
+	resp, err := h.auctionClient.ListRoomAuctions(ctx, req)
+	if err != nil {
+		respondGRPCError(c, err)
+		return
+	}
+	respondOK(c, userLiveAuctionRecordListResponse{
+		RoomID:   roomID,
+		Total:    resp.GetTotal(),
+		Page:     resp.GetPage(),
+		PageSize: resp.GetPageSize(),
+		List:     toUserLiveAuctionRecordList(resp.GetList()),
+	})
 }
 
 func (h *LiveHandler) HandleSRSPublishCallback(c *gin.Context) {
@@ -1003,6 +1060,17 @@ func toUserLiveAuctionResponse(auction *auctionv1.Auction, runtime *auctionv1.Au
 		StartTime:         timestampMillis(auction.GetStartTime()),
 		EndTime:           timestampMillis(auction.GetEndTime()),
 	}
+}
+
+func toUserLiveAuctionRecordList(list []*auctionv1.Auction) []userLiveAuctionResponse {
+	result := make([]userLiveAuctionResponse, 0, len(list))
+	for _, auction := range list {
+		item := toUserLiveAuctionResponse(auction, nil)
+		if item != nil {
+			result = append(result, *item)
+		}
+	}
+	return result
 }
 
 func toUserLiveGoodsResponse(goods *goodsv1.Goods) *userLiveGoodsResponse {

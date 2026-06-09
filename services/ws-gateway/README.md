@@ -69,6 +69,22 @@ GET /ws/live?room_id={room_id}&token={access_token}
 
 对外 JSON 时间字段统一使用 Unix 毫秒。
 
+服务端 `type=response` 是通用响应信封，响应中会带 `request_type` 用于精确分发：
+
+```json
+{
+  "type": "response",
+  "request_id": "req_bid_1",
+  "request_type": "place_bid",
+  "code": 0,
+  "message": "success",
+  "server_time": 1780000123000,
+  "data": {}
+}
+```
+
+用户端出价推荐优先走 WebSocket `place_bid`；api-gateway 的 HTTP 出价接口仅作为 WebSocket 不可用、重连中或旧客户端兼容时的降级入口。两条入口都需要复用同一个 `request_id` 幂等语义。
+
 在线状态写入 Redis 后实时维护；面向客户端的 `room_online_changed` 展示消息由 `ws-gateway` 按房间聚合，默认每 3 秒最多广播一次最新人数。
 
 ## 验证

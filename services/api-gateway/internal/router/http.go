@@ -78,6 +78,7 @@ func Register(engine *gin.Engine, shopHandler *handler.ShopHandler, userHandler 
 	userLive.GET("/rooms/:id/preview", liveHandler.GetUserLivePreview)
 	userLive.GET("/rooms/:id/entry", middleware.OptionalUserAuth(userJWTManager), liveHandler.GetUserLiveEntry)
 	userLive.GET("/rooms/:id/auction-snapshot", middleware.OptionalUserAuth(userJWTManager), liveHandler.GetUserLiveAuctionSnapshot)
+	userLive.GET("/rooms/:id/auction-records", middleware.OptionalUserAuth(userJWTManager), liveHandler.GetUserLiveAuctionRecords)
 
 	auction := api.Group("/auctions")
 	auction.GET("/:id", auctionHandler.Get)
