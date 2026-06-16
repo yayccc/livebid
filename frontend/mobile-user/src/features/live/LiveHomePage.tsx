@@ -17,6 +17,7 @@ import { mapIncomingLiveEvent } from './eventMapper'
 import { cx, formatCentAmount, getErrorText } from '../../lib/format'
 import {
   batchGetGoods,
+  getGoods,
   getUserLiveAuctionRecords,
   getUserLiveAuctionSnapshot,
   getUserLiveEntry,
@@ -528,11 +529,12 @@ export function LiveHomePage() {
       (!winnerID || isSameEntityID(winnerID, localLeadingBid?.winnerID, viewerUserID))
     const isWinner = isSameEntityID(winnerID, viewerUserID, userID, profile?.id) || isLocalLeadingWinner
     const winnerProfile = winnerID ? publicUserCacheRef.current.get(winnerID) : undefined
+    const dealGoods = record.goods || goods || null
     setDealDialog({
       auctionID: record.id,
       role: isWinner ? 'winner' : 'viewer',
-      goods: record.goods || goods || null,
-      title: record.goods?.title || goods?.title || '竞拍商品',
+      goods: dealGoods,
+      title: dealGoods?.title || '竞拍商品',
       price,
       winnerID,
       winnerName: winnerProfile?.nickname || record.winner_display_name || auction?.winner_display_name,
@@ -542,6 +544,9 @@ export function LiveHomePage() {
     })
     if (!isWinner && winnerID && !winnerProfile) {
       void hydrateDealWinnerProfile(record.id, winnerID)
+    }
+    if (!dealGoods?.cover_url && record.goods_id) {
+      void hydrateDealGoods(record.id, record.goods_id)
     }
   }
 
@@ -562,6 +567,29 @@ export function LiveHomePage() {
       })
     } catch {
       // 成交弹窗可以继续展示脱敏兜底信息。
+    }
+  }
+
+  async function hydrateDealGoods(auctionID: EntityID, goodsID: EntityID) {
+    try {
+      const goods = await getGoods(goodsID)
+      if (!goods) {
+        return
+      }
+
+      setDealDialog((current) => {
+        if (!current || current.auctionID !== auctionID) {
+          return current
+        }
+
+        return {
+          ...current,
+          goods: current.goods ? { ...goods, ...current.goods, cover_url: current.goods.cover_url || goods.cover_url } : goods,
+          title: current.title === '竞拍商品' ? goods.title : current.title,
+        }
+      })
+    } catch {
+      // The deal dialog can still show the title and price if the goods image cannot be refreshed.
     }
   }
 
