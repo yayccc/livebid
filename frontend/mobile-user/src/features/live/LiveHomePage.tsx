@@ -345,12 +345,15 @@ export function LiveHomePage() {
   async function refreshAuctionRecords(roomID: EntityID, currentGoods = activeEntry?.goods) {
     try {
       const page = await getUserLiveAuctionRecords(roomID, token)
-      const goodsByID = await fetchMissingAuctionGoods(page.list)
+      const [goodsByID, winnerNamesByID] = await Promise.all([
+        fetchMissingAuctionGoods(page.list),
+        fetchMissingAuctionWinnerNames(page.list, publicUserCacheRef.current),
+      ])
       setSession((current) => {
         if (current.roomID !== roomID || current.status !== 'entered') {
           return current
         }
-        const records = mergeAuctionRecordsGoods(page.list, goodsByID)
+        const records = mergeAuctionRecordsWinners(mergeAuctionRecordsGoods(page.list, goodsByID), winnerNamesByID)
         const currentAuction = current.entry?.current_auction || current.entry?.auction || null
         const currentRecord = currentAuction ? records.find((record) => record.id === currentAuction.id) : null
         const nextAuction =
@@ -1202,6 +1205,61 @@ function mergeAuctionRecordsGoods(records: UserLiveAuctionRecord[], goodsByID: M
       goods: record.goods ? { ...goods, ...record.goods, cover_url: record.goods.cover_url || goods.cover_url } : goods,
     }
   })
+}
+
+async function fetchMissingAuctionWinnerNames(records: UserLiveAuctionRecord[], userCache: Map<EntityID, UserProfile>) {
+  const ids = Array.from(
+    new Set(
+      records
+        .filter((record) => record.winner_user_id && shouldHydrateDisplayName(record.winner_display_name))
+        .map((record) => record.winner_user_id as EntityID),
+    ),
+  )
+  if (ids.length === 0) {
+    return new Map<EntityID, string>()
+  }
+
+  const entries = await Promise.all(
+    ids.map(async (id) => {
+      const cachedProfile = userCache.get(id)
+      if (cachedProfile) {
+        return [id, userDisplayName(cachedProfile)] as const
+      }
+
+      try {
+        const profile = await getUserProfile(id)
+        userCache.set(id, profile)
+        return [id, userDisplayName(profile)] as const
+      } catch {
+        return [id, ''] as const
+      }
+    }),
+  )
+
+  return new Map(entries.filter((entry) => Boolean(entry[1])))
+}
+
+function mergeAuctionRecordsWinners(records: UserLiveAuctionRecord[], winnerNamesByID: Map<EntityID, string>) {
+  if (winnerNamesByID.size === 0) {
+    return records
+  }
+
+  return records.map((record) => {
+    const winnerName = record.winner_user_id ? winnerNamesByID.get(record.winner_user_id) : ''
+    if (!winnerName) {
+      return record
+    }
+
+    return {
+      ...record,
+      winner_display_name: winnerName,
+    }
+  })
+}
+
+function shouldHydrateDisplayName(value?: string) {
+  const name = value?.trim()
+  return !name || /^用户\d+$/.test(name)
 }
 
 function getStoredReturnRoomID() {
