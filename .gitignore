@@ -30,6 +30,12 @@ go.work.sum
 # Local service run logs
 .run-logs/
 
+# Personal remote deployment scripts
+scripts/deploy-server-local.sh
+scripts/deploy-frontend-local.sh
+scripts/deploy-backend-local.sh
+docs/deployment/remote-deploy-scripts.md
+
 # Editor/IDE
 # .idea/
 # .vscode/
