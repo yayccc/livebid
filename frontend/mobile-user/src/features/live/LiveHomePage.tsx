@@ -467,6 +467,44 @@ export function LiveHomePage() {
       ...current,
       messages: [...current.messages, message].slice(-30),
     }))
+    if (message.type === 'bid' && message.userID && !message.displayName) {
+      void hydrateBidMessageUser(message)
+    }
+  }
+
+  async function hydrateBidMessageUser(message: BidEventMessage) {
+    if (!message.userID) {
+      return
+    }
+
+    const cachedProfile = publicUserCacheRef.current.get(message.userID)
+    const displayName = cachedProfile ? userDisplayName(cachedProfile) : await fetchPublicUserDisplayName(message.userID)
+    if (!displayName) {
+      return
+    }
+
+    setSession((current) => ({
+      ...current,
+      messages: current.messages.map((item) =>
+        item.id === message.id
+          ? {
+              ...item,
+              displayName,
+              text: `${displayName} 出价 ${formatCentAmount(item.bidPrice || message.bidPrice || 0)}`,
+            }
+          : item,
+      ),
+    }))
+  }
+
+  async function fetchPublicUserDisplayName(userID: EntityID) {
+    try {
+      const profile = await getUserProfile(userID)
+      publicUserCacheRef.current.set(userID, profile)
+      return userDisplayName(profile)
+    } catch {
+      return ''
+    }
   }
 
   function appendAuctionRecord(record: UserLiveAuctionRecord) {
@@ -916,6 +954,10 @@ function createMessage(type: BidEventMessage['type'], text: string, prefix: stri
   }
 }
 
+function userDisplayName(profile: UserProfile) {
+  return profile.nickname?.trim() || profile.username?.trim() || ''
+}
+
 function displayWinnerName(value?: string) {
   const name = value?.trim()
   if (!name) {
@@ -1006,6 +1048,7 @@ function buildDealRecordFromEvent(
   const currentPrice = numberFromUnknown(data.current_price) || numberFromUnknown(data.deal_price) || auction?.current_price || 0
   const status = numberFromUnknown(data.status) || 2
   const winnerUserID = idFromUnknown(data.winner_user_id) || idFromUnknown(data.user_id) || auction?.winner_user_id
+  const winnerDisplayName = displayNameFromData(data) || auction?.winner_display_name
 
   return {
     id: auctionID,
@@ -1024,8 +1067,20 @@ function buildDealRecordFromEvent(
     server_time: numberFromUnknown(data.server_time) || event.server_time,
     version: numberFromUnknown(data.version) || event.version,
     winner_user_id: winnerUserID,
-    winner_display_name: winnerUserID ? `用户${winnerUserID}` : auction?.winner_display_name,
+    winner_display_name: winnerDisplayName,
   }
+}
+
+function displayNameFromData(data: Record<string, unknown>) {
+  return (
+    stringFromUnknown(data.winner_display_name) ||
+    stringFromUnknown(data.bidder_display_name) ||
+    stringFromUnknown(data.display_name) ||
+    stringFromUnknown(data.nickname) ||
+    stringFromUnknown(data.username) ||
+    stringFromUnknown(data.user_name) ||
+    undefined
+  )
 }
 
 function idFromUnknown(value: unknown) {
@@ -1050,6 +1105,10 @@ function numberFromUnknown(value: unknown) {
   }
 
   return undefined
+}
+
+function stringFromUnknown(value: unknown) {
+  return typeof value === 'string' ? value.trim() : ''
 }
 
 function timeFromUnknown(value: unknown) {

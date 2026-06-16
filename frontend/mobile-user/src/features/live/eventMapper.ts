@@ -90,12 +90,19 @@ export function mapIncomingLiveEvent(
 
   if (type === 'bid_accepted') {
     const bidPrice = toNumber(data.bid_price) ?? toNumber(data.current_price)
+    const userID = toID(data.winner_user_id) ?? toID(data.user_id)
+    const displayName = displayNameFromData(data)
     return {
       runtime: buildRuntimePatch(data, auction, 1),
       auctionRecord: buildAuctionRecord(data, auction, 1),
       message: buildMessage(
         'bid',
-        `${winnerText(data)} 出价 ${formatCentAmount(bidPrice || 0)}`,
+        `${displayName || '用户'} 出价 ${formatCentAmount(bidPrice || 0)}`,
+        {
+          userID,
+          bidPrice,
+          displayName,
+        },
       ),
     }
   }
@@ -135,6 +142,7 @@ function buildRuntimePatch(
   const currentPrice = toNumber(data.current_price) ?? toNumber(data.bid_price)
   const bidCount = toNumber(data.bid_count)
   const winnerUserID = toID(data.winner_user_id) ?? toID(data.user_id)
+  const winnerDisplayName = displayNameFromData(data) ?? auction?.winner_display_name
   const expireAt = toNumber(data.expire_at)
   const serverTime = toNumber(data.server_time)
   const version = toNumber(data.version)
@@ -148,7 +156,7 @@ function buildRuntimePatch(
     bid_count: bidCount ?? auction?.bid_count,
     status: toNumber(data.status) ?? fallbackStatus ?? auction?.status,
     winner_user_id: winnerUserID,
-    winner_display_name: winnerUserID ? `用户${winnerUserID}` : auction?.winner_display_name,
+    winner_display_name: winnerDisplayName,
     remaining_seconds: expireAt ? Math.max(0, Math.ceil((expireAt - (serverTime || Date.now())) / 1000)) : undefined,
     server_time: serverTime,
     expire_at: expireAt,
@@ -172,6 +180,7 @@ function buildAuctionRecord(
   const status = toNumber(data.status) ?? statusOverride ?? auction?.status ?? 0
   const dealPrice = toNumber(data.deal_price)
   const winnerUserID = toID(data.winner_user_id) ?? toID(data.user_id) ?? auction?.winner_user_id
+  const winnerDisplayName = displayNameFromData(data) ?? auction?.winner_display_name
   const serverTime = toNumber(data.server_time)
   const expireAt = toNumber(data.expire_at)
 
@@ -194,15 +203,22 @@ function buildAuctionRecord(
     version: toNumber(data.version),
     countdown_received_at: expireAt ? Date.now() : undefined,
     winner_user_id: winnerUserID,
-    winner_display_name: winnerUserID ? `用户${winnerUserID}` : auction?.winner_display_name,
+    winner_display_name: winnerDisplayName,
     created_at: toTimeValue(data.created_at),
     updated_at: toTimeValue(data.updated_at),
   }
 }
 
-function winnerText(data: Record<string, unknown>) {
-  const userID = toID(data.winner_user_id) ?? toID(data.user_id)
-  return userID ? `用户${userID}` : '用户'
+function displayNameFromData(data: Record<string, unknown>) {
+  return (
+    toString(data.winner_display_name) ||
+    toString(data.bidder_display_name) ||
+    toString(data.display_name) ||
+    toString(data.nickname) ||
+    toString(data.username) ||
+    toString(data.user_name) ||
+    undefined
+  )
 }
 
 function statusText(status: number, fallback?: string) {
@@ -226,13 +242,18 @@ function statusText(status: number, fallback?: string) {
   }
 }
 
-function buildMessage(type: BidEventMessage['type'], text: string): BidEventMessage {
+function buildMessage(
+  type: BidEventMessage['type'],
+  text: string,
+  metadata?: Pick<BidEventMessage, 'userID' | 'bidPrice' | 'displayName'>,
+): BidEventMessage {
   const createdAt = Date.now()
   return {
     id: `${createdAt}_${Math.random().toString(16).slice(2)}`,
     type,
     text,
     createdAt,
+    ...metadata,
   }
 }
 

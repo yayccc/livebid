@@ -192,6 +192,9 @@ export type BidEventMessage = {
   type: 'system' | 'bid' | 'deal' | 'error' | 'chat'
   text: string
   createdAt: number
+  userID?: EntityID
+  bidPrice?: number
+  displayName?: string
 }
 
 export type IncomingLiveEvent = {
