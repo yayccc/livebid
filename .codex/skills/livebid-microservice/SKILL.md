@@ -1,171 +1,109 @@
 ---
 name: livebid-microservice
-description: LiveBid 项目内用于开发 Go 微服务的本地工作流。用于新增或修改 services/*-service 下的微服务，尤其是用户用中文要求“开发微服务”“新增服务”“按照某个服务文档实现”“阅读 docs/services/{service-name} 文档”“先澄清需求再编码”“补充设计文档”“记录开发进度”“仿照 shop-service”“从 templates/go-service 复制模板”“先写 proto”“生成 gen/proto 代码”“实现 gRPC 服务、模型、仓储、配置、路由、测试和 README”等场景。
+description: 用于 LiveBid 仓库内 services/*-service 的 Go 后端微服务工作：新建微服务、修改已有服务、更新 api/proto 契约、生成 gen/proto 代码、实现 gRPC handler/model/repository/config，或维护 docs/services/<service-name> 开发进度。不要用于纯前端任务、普通文档整理，或与 LiveBid 微服务无关的一次性 shell 操作。
 ---
 
-# LiveBid 微服务开发
+# LiveBid 微服务
 
-## 目标
+这个 skill 用于本仓库的 Go 微服务开发。保持实用：先读当前代码，判断任务类型，做最小安全改动，再验证。
 
-使用此项目局部 Skill 开发 LiveBid 后端微服务。开发时必须以 `services/shop-service` 为主要代码模板，以 `api/proto` 中的 proto 文件作为服务契约源头，并让现有项目结构决定实现方式。
+## 信息来源
 
-## 必读上下文
+改服务行为前，优先读取当前项目文件，不要把这个 skill 当完整业务规格：
 
-动手修改前先阅读当前项目代码，不要凭记忆猜测：
+- 服务文档：优先读 `docs/services/<service-name>/`。
+- 服务代码：`services/<service-name>/`。
+- Proto 契约：`api/proto/<domain>/v1/<domain>.proto`。
+- 生成代码：`gen/proto/<domain>/v1/`。
+- 参考实现：`services/shop-service/` 和最接近的已有服务。
+- 新服务骨架：`templates/go-service/`。
 
-- `templates/go-service/README.md` 与 `templates/go-service` 目录结构
-- `services/shop-service/README.md`
-- `api/proto/shop/v1/shop.proto`
-- `services/shop-service/cmd/server/main.go`
-- `services/shop-service/internal/config/config.go`
-- `services/shop-service/internal/bootstrap/app.go`
-- `services/shop-service/internal/router/grpc.go`
-- `services/shop-service/internal/handler/*_grpc_handler.go`
-- `services/shop-service/internal/model/*.go`
-- `services/shop-service/internal/repository/*.go`
-- 当前目标微服务的需求文档与设计文档
+不要把具体服务的业务规则写进这个 skill。表结构、状态流转、归属关系、校验规则和 RPC 能力，都从当前文档、proto、测试和实现中确认。
 
-## 服务文档目录规范
+## 通用规则
 
-每个新微服务的需求与设计文档优先放在：
+- 保护已有工作。禁止把 `templates/go-service` 复制覆盖到已有服务目录。
+- 除非现有代码或用户明确要求，否则服务保持 gRPC-first，不在业务服务里直接扩 HTTP。
+- `api/proto` 是手写契约；`gen/proto` 是生成结果。
+- 不要手写或手改生成的 `*.pb.go`、`*_grpc.pb.go`。
+- 修改已有服务 proto 时保持兼容：不要复用字段号、删除在用字段、随意改 package 或 service 名，除非用户明确确认破坏性变更。
+- 遵守本地 Go 风格：轻量 handler、GORM repository、`internal/model`、`internal/config`、`internal/router`、`pkg/logger`、gRPC health check、`gofmt`。
+- 修改用户写过的服务文档时只追加或标记废弃，不直接删除原文。
+- 涉及核心契约且文档不清楚时先问用户：proto 形状、数据库 schema、状态流转、权限边界、跨服务调用、不可逆行为。
+- 对很小且明确的修复，不要强制进入完整需求澄清流程；采用保守假设时，在最终回复或开发进度里说明。
+
+## 按任务类型选择流程
+
+### 修改已有服务
+
+当 `services/<service-name>/` 已存在时走这条路径。
+
+1. 读取服务文档、proto、生成包引用、服务 README/Makefile，以及本次最可能影响的代码文件。
+2. 先确认当前行为和兼容性约束，再编辑。
+3. 如果需要改 proto，在已有 proto 上增量修改，并用服务 Makefile 或相同风格的根目录 `protoc` 命令重新生成代码。
+4. 在 handler/model/repository/config/router/client 中做最小范围改动。
+5. 更新靠近改动点的测试。涉及校验、repository 行为或错误映射时，补聚焦测试。
+6. 只有当行为、命令、配置、契约或已知缺口变化时，才更新 README 或 `docs/services/<service-name>/开发进度.md`。
+
+### 新建服务
+
+只有当 `services/<service-name>/` 不存在，且用户明确要新建微服务时走这条路径。
+
+1. 从 `<service-name>` 去掉 `-service` 得到 `<domain>`。
+2. 读取 `templates/go-service/README.md`、`templates/go-service/`、`services/shop-service/` 和该服务文档。
+3. 复制 `templates/go-service` 到 `services/<service-name>`。
+4. 补齐模板可能没有的必要文件，尤其是 `configs/config.local.yaml`、`cmd/server/main.go`、`internal/config/config.go`、`internal/bootstrap/app.go`、`internal/router/grpc.go`、handler、model、repository、`README.md`、`Makefile`。
+5. 新建 `api/proto/<domain>/v1/<domain>.proto`，使用 package `livebid.<domain>.v1`，并设置 `go_package = "github.com/yayccc/livebid/gen/proto/<domain>/v1;<domain>v1";`。
+6. 生成代码到 `gen/proto/<domain>/v1`。如果缺少 `protoc` 或插件，保持 proto 完整，跳过生成文件，并报告阻塞点。
+7. 只有当同目录已有真实文件替代占位作用时，才删除 `.gitkeep`。
+
+### 只更新 Proto 或生成代码
+
+当用户只要求契约相关工作时走这条路径。
+
+1. 修改前读取已有 proto 和调用方。
+2. 除非用户明确确认破坏性变更，否则保留字段号、service 名和 package 名。
+3. 局部更新优先使用 `optional` 标量字段；时间使用 `google.protobuf.Timestamp`；列表接口定义分页 request/response。
+4. 将 HTTP 网关细节转换为内部 gRPC 语义；除非服务确实负责上传或 HTTP 入口，不要把 multipart、HTTP method、HTTP path 写进业务服务 proto。
+5. 用现有服务 Makefile 的同类命令风格重新生成 `gen/proto`。
+
+### 只做文档或方案
+
+当用户要求 review、设计、规划、文档，不要求实现时走这条路径。
+
+1. 读取相关服务文档和当前代码。
+2. 具体指出不一致、缺失决策和实现影响。
+3. 编辑文档时追加有日期的说明或小节。除非用户明确要求，不要重写旧决策。
+
+## 服务文档
+
+服务文档优先放在：
 
 ```text
 docs/services/<service-name>/
 ```
 
-其中 `<service-name>` 使用完整服务目录名，例如 `goods-service`、`order-service`、`auction-service`。建议文件命名：
+本仓库文件名并不完全统一，常见有 `需求.md`、`服务设计.md`、`设计.md`、`需求分析.md`、`README.md`、`开发进度.md`。做较大改动前，读取该服务文档目录下全部 Markdown 文件。
 
-- `需求.md`：描述业务目标、核心功能、业务规则、接口能力。
-- `设计.md`：描述数据库表、字段、状态枚举、接口文档、边界条件。
-- `补充.md`：可选，用于记录临时补充、待确认问题、跨服务依赖。
-- `开发进度.md`：记录每次开发的完成内容、未完成内容、阻塞点、验证结果和后续待办。
+追加开发进度时包含：
 
-开发前按以下顺序查找文档：
+- 本地时区日期时间。
+- 用户本轮目标。
+- 已修改文件或模块。
+- 验证命令和结果。
+- 剩余工作、阻塞点和假设。
 
-1. 优先读取用户在提示词中明确给出的文档路径。
-2. 如果用户只给出服务名，读取 `docs/services/<service-name>/` 下的全部 Markdown 文档。
-3. 如果上述目录不存在，再在项目根目录和 `docs/` 中查找与服务中文名或英文名相关的文档，并在最终回复中建议沉淀到规范目录。
+## 收尾检查
 
-不要把某个具体服务的业务规则写死在 Skill 中。具体表结构、接口、状态、校验规则都必须从当前服务文档中提炼。
+把这部分当最终检查清单，不要当死板流水线：
 
-## 澄清与文档更新
-
-阅读当前服务文档后，先做需求澄清，不要急着编码。
-
-必须主动向用户提问的情况：
-
-- 设计文档中的字段、枚举、接口、状态流转、权限边界或数据归属关系不明确。
-- 需求和设计之间互相矛盾，或与 `shop-service` 的项目约定冲突。
-- 文档中出现不合理设计，例如 SQL 语法错误、字段缺失、HTTP 接口无法直接映射为内部 gRPC、上传/支付/通知等能力缺少依赖服务。
-- 当前服务需要调用其他服务，但对方服务、proto、鉴权方式、数据来源或失败处理没有定义。
-- 用户要求的“完整开发”依赖尚未存在的基础设施，导致当前服务无法 100% 闭环。
-
-提问方式：
-
-- 先给出已理解的实现范围，再列出需要确认的问题。
-- 问题要具体，最好带出可选方案和推荐方案。
-- 若问题会影响 proto、数据库表、跨服务调用或核心业务规则，必须等待用户确认后再编码。
-- 若问题只影响非核心细节，可采用保守默认值继续开发，但要把假设写入设计文档和开发进度。
-
-文档更新规则：
-
-- 不要删除用户原有文档中的任何文字。
-- 对废弃内容，只能在原段落前后添加明显标识，例如：
-  ```text
-  【废弃说明：YYYY-MM-DD，本段因 xxx 被废弃，保留原文供追溯】
-  ```
-- 对新增内容，使用明显标识，例如：
-  ```text
-  【新增说明：YYYY-MM-DD，本段根据需求澄清补充】
-  ```
-- 对不明确但暂未确认的问题，追加到文档末尾的“待确认问题”区域。
-- 对已确认的设计调整，追加到对应文档的“设计补充”或“需求补充”区域。
-- 若没有合适区域，直接在文档末尾追加新段落，不移动、不重排、不覆盖原文。
-
-## 开发流程
-
-1. 先完成需求澄清和设计补充。
-   - 阅读服务文档目录下的全部 Markdown 文档。
-   - 按“从文档提炼实现清单”整理实现范围。
-   - 主动指出不明确、不合理、跨服务依赖和无法 100% 完成的地方。
-   - 根据用户回复，将结论追加到原设计文档或需求文档，严格遵守“只追加/标记，不删除原文”的规则。
-   - 如果存在未解决的核心问题，先停止编码，等待用户确认。
-
-2. 优先定义 proto 契约。
-   - 新建 `api/proto/<domain>/v1/<domain>.proto`。
-   - 使用 package `livebid.<domain>.v1`。
-   - 使用 `option go_package = "github.com/yayccc/livebid/gen/proto/<domain>/v1;<domain>v1";`。
-   - 将设计文档中的用户侧 HTTP API 抽象为内部 gRPC 方法。除非用户明确要求服务自身处理 HTTP 上传，否则 HTTP、multipart、网关注入等细节应留给 `api-gateway` 或后续接入层。
-   - 部分更新接口使用 `optional` 标量字段，风格参考 `UpdateShopRequest`。
-   - 列表查询需要定义分页 request/response。
-   - 创建时间、更新时间使用 `google.protobuf.Timestamp`。
-   - proto 方法应覆盖文档中的核心业务能力，但要将 HTTP 路径、HTTP 动词、multipart 上传等接入层细节转换为适合内部服务调用的 gRPC 语义。
-
-3. 先生成 proto 代码，再编写依赖生成代码的 Go 实现。
-   - 执行：
-     ```bash
-     protoc --go_out=. --go_opt=module=github.com/yayccc/livebid \
-       --go-grpc_out=. --go-grpc_opt=module=github.com/yayccc/livebid \
-       api/proto/<domain>/v1/<domain>.proto
-     ```
-   - 生成代码必须位于 `gen/proto/<domain>/v1`。
-   - 如果本地缺少 `protoc` 或 Go 插件，保持 proto 文件完整，向用户说明阻塞点，不要手写或手改生成文件。
-
-4. 从空微服务模板复制服务骨架。
-   - 将 `templates/go-service` 复制为 `services/<domain>-service`。
-   - 只有在真实文件替代占位文件时才删除 `.gitkeep`。
-   - 维持与 `shop-service` 一致的目录布局：`cmd/server`、`configs`、`internal/bootstrap`、`internal/config`、`internal/handler`、`internal/model`、`internal/repository`、`internal/router`、`tests`。
-
-5. 严格模仿 `shop-service` 的代码风格实现。
-   - 除非现有文档或用户明确要求，否则服务保持 gRPC-only，不直接启动 Gin/HTTP REST。
-   - 使用 `pkg/logger`、`pkg/idgen`、GORM repository、gRPC health check 等现有模式。
-   - handler 保持轻量：参数校验、字符串 trim、调用 repository、model 转 proto、领域错误转 gRPC status code。
-   - 数据库模型、状态常量、`TableName()` 放在 `internal/model`。
-   - repository 接口、GORM 实现、软删除过滤、重复/未找到错误、列表过滤、必要事务放在 `internal/repository`。
-   - 配置放在 `internal/config`，环境变量前缀使用大写服务名，例如 `<DOMAIN>_SERVICE_GRPC_ADDR`。
-   - 只在不明显的业务规则、数据约束或复杂逻辑处添加简洁注释。
-
-6. 验证与文档收尾。
-   - 对改动过的 Go 文件运行 `gofmt`。
-   - 先跑聚焦测试，再在可行时运行 `go test ./...`。
-   - 新增或更新 `services/<domain>-service/README.md`，说明启动命令、配置文件路径、proto 路径、生成代码路径、proto 重新生成命令。
-   - 新增或更新服务目录下的 `Makefile`，提供 `run`、`test`、`proto` 目标，风格参考 `shop-service`。
-   - 新增或更新 `docs/services/<service-name>/开发进度.md`，记录本次开发结果。
-
-## 从文档提炼实现清单
-
-阅读当前服务文档后，先在心里形成实现清单，再开始写代码：
-
-- 服务名：完整服务名 `<service-name>` 与领域名 `<domain>`，例如 `goods-service` 对应 `goods`。
-- 数据模型：表名、字段、索引、软删除字段、状态枚举、时间字段。
-- gRPC 方法：创建、更新、删除、详情、列表、批量查询、状态流转等能力，按文档实际内容取舍。
-- 请求校验：必填字段、ID 合法性、分页默认值、字符串长度、状态流转限制。
-- repository 行为：唯一冲突、未找到、软删除过滤、按归属方隔离、分页和排序。
-- handler 行为：输入清洗、错误映射、model 与 proto 转换。
-- 配置与端口：默认端口、环境变量前缀、MySQL 自动迁移、日志服务名。
-- 测试重点：配置加载、repository 关键路径、handler 校验和错误映射。
-
-## 开发进度记录
-
-每次完成或阶段性停止开发时，都要在服务文档目录中维护：
-
-```text
-docs/services/<service-name>/开发进度.md
-```
-
-如果文件不存在则新建；如果已存在则追加新记录，不覆盖历史。每次记录建议包含：
-
-- 日期时间：使用当前日期和本地时间。
-- 本次目标：用户本轮要求完成什么。
-- 已完成：proto、生成代码、服务结构、具体模块、文档更新等。
-- 未完成：尚未实现的接口、测试、网关接入、跨服务调用等。
-- 阻塞点：依赖其他服务、基础设施、用户确认、工具缺失等。
-- 设计变更：本次追加到需求/设计文档的内容摘要。
-- 验证结果：执行过的命令、通过/失败情况、失败原因。
-- 后续建议：下一步最应该处理的事项。
-
-如果当前服务因为跨服务依赖或设计缺口无法 100% 完成，也要提交可独立编译/测试的部分，并在 `开发进度.md` 中明确剩余工作和依赖条件。
-
-## 质量要求
-
-不要为单个新服务发明一套新架构。若需求文档与 `shop-service` 约定冲突，先向用户说明冲突并请求确认；用户确认后再把取舍追加到设计文档，并在最终回复中说明。
+- 已读取相关文档和现有代码。
+- 没有覆盖已有服务目录。
+- Proto 改动兼容，或破坏性变更已获得明确确认。
+- 生成文件与 proto 匹配，且没有手工编辑生成文件。
+- 配置路径、环境变量前缀、端口和服务名与目标服务一致。
+- Handler 将校验错误和领域错误映射为合适的 gRPC status code。
+- Repository 处理未找到、唯一冲突、软删除、分页和必要事务。
+- 改过的 Go 文件已运行 `gofmt`。
+- 已运行聚焦测试；可行时运行更大范围的 `go test ./...`。
+- README、Makefile、服务开发进度文档反映了有意义的行为或流程变化。
