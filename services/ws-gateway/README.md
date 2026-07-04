@@ -2,6 +2,8 @@
 
 LiveBid WebSocket 网关服务，负责直播竞拍实时连接、直播间订阅、在线人数统计、出价转发和竞拍事件广播。
 
+弹幕一期能力在 `docs/services/ws-gateway/弹幕功能需求.md` 和 `docs/services/ws-gateway/弹幕功能设计.md` 中定义；消息协议、运行机制和 AI 对接分别拆到同目录的专题设计文档。
+
 ## 启动
 
 ```bash
@@ -47,6 +49,11 @@ GET /ws/live?room_id={room_id}&token={access_token}
 |`WS_GATEWAY_MAX_MESSAGE_BYTES`|`16384`|
 |`WS_GATEWAY_ROCKETMQ_ENABLED`|`false`|
 |`WS_GATEWAY_ROCKETMQ_NAME_SERVER`|空|
+|`WS_GATEWAY_DANMAKU_ENABLED`|`true`|
+|`WS_GATEWAY_DANMAKU_MAX_CHARS`|`30`|
+|`WS_GATEWAY_DANMAKU_RECENT_LIMIT`|`10`|
+|`WS_GATEWAY_AI_INPUT_MODE`|`redis_pubsub`|
+|`WS_GATEWAY_USER_SERVICE_TARGET`|`127.0.0.1:9004`|
 
 本地配置默认关闭 RocketMQ consumer。部署时设置 `WS_GATEWAY_ROCKETMQ_ENABLED=true` 并配置 `WS_GATEWAY_ROCKETMQ_NAME_SERVER` 后，会以广播消费模式消费 `auction_event`。
 
@@ -56,6 +63,7 @@ GET /ws/live?room_id={room_id}&token={access_token}
 
 - `ping`
 - `place_bid`
+- `send_danmaku`
 - `room_leave`
 
 服务端广播：
@@ -66,6 +74,8 @@ GET /ws/live?room_id={room_id}&token={access_token}
 - `auction_finished`
 - `auction_failed`
 - `auction_cancelled`
+- `danmaku_created`
+- `ai_interaction_created`
 
 对外 JSON 时间字段统一使用 Unix 毫秒。
 
