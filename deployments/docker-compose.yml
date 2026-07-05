@@ -426,6 +426,7 @@ services:
         SERVICE: ws-gateway
     environment:
       WS_GATEWAY_ENV: local
+      WS_GATEWAY_WORKER_ID: "8"
       WS_GATEWAY_HTTP_ADDR: ":58081"
       WS_GATEWAY_REDIS_ADDR: redis:6379
       WS_GATEWAY_REDIS_PASSWORD: ""
@@ -436,6 +437,17 @@ services:
       WS_GATEWAY_AUCTION_CONSUMER_GROUP: ws-gateway-auction-broadcast
       WS_GATEWAY_AUCTION_SERVICE_TARGET: nacosx:///auction-service
       WS_GATEWAY_LIVE_SERVICE_TARGET: nacosx:///live-service
+      WS_GATEWAY_USER_SERVICE_TARGET: nacosx:///user-service
+      WS_GATEWAY_DANMAKU_ENABLED: "true"
+      WS_GATEWAY_DANMAKU_MAX_CHARS: "30"
+      WS_GATEWAY_DANMAKU_RECENT_LIMIT: "10"
+      WS_GATEWAY_DANMAKU_RATE_LIMIT_SECONDS: "1"
+      WS_GATEWAY_DANMAKU_RECENT_TTL_HOURS: "24"
+      WS_GATEWAY_DANMAKU_REQUEST_TTL_SECONDS: "60"
+      WS_GATEWAY_ROOM_STATUS_CACHE_TTL_SECONDS: "5"
+      WS_GATEWAY_DANMAKU_NICKNAME_CACHE_TTL_MINUTES: "20"
+      WS_GATEWAY_AI_INPUT_MODE: redis_pubsub
+      WS_GATEWAY_INTERACTION_EVENT_TOPIC: live_interaction_event
       WS_GATEWAY_JWT_SECRET: ${LIVEBID_JWT_SECRET:-local-dev-jwt-secret-change-me}
       WS_GATEWAY_JWT_USER_ISSUER: ${LIVEBID_USER_JWT_ISSUER:-livebid-user}
       WS_GATEWAY_NACOS_ENABLED: "true"
@@ -459,6 +471,8 @@ services:
       live-service:
         condition: service_started
       auction-service:
+        condition: service_started
+      user-service:
         condition: service_started
 
 volumes:

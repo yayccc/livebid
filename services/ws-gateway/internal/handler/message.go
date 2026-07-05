@@ -6,20 +6,25 @@ import (
 )
 
 const (
-	MessageTypePing      = "ping"
-	MessageTypePlaceBid  = "place_bid"
-	MessageTypeRoomLeave = "room_leave"
-	MessageTypeResponse  = "response"
+	MessageTypePing        = "ping"
+	MessageTypePlaceBid    = "place_bid"
+	MessageTypeSendDanmaku = "send_danmaku"
+	MessageTypeRoomLeave   = "room_leave"
+	MessageTypeResponse    = "response"
 
 	ResponseTypeConnect   = "connect"
 	ResponseTypeMalformed = "malformed"
 
-	EventRoomOnlineChanged = "room_online_changed"
-	EventAuctionStarted    = "auction_started"
-	EventBidAccepted       = "bid_accepted"
-	EventAuctionFinished   = "auction_finished"
-	EventAuctionFailed     = "auction_failed"
-	EventAuctionCancelled  = "auction_cancelled"
+	EventRoomOnlineChanged    = "room_online_changed"
+	EventAuctionStarted       = "auction_started"
+	EventBidAccepted          = "bid_accepted"
+	EventAuctionFinished      = "auction_finished"
+	EventAuctionFailed        = "auction_failed"
+	EventAuctionCancelled     = "auction_cancelled"
+	EventDanmakuCreated       = "danmaku_created"
+	EventAIInteractionCreated = "ai_interaction_created"
+
+	InteractionEventDanmakuCreated = "danmaku.created"
 )
 
 const (
@@ -29,6 +34,7 @@ const (
 	CodeForbidden       = 403
 	CodeNotFound        = 404
 	CodeConflict        = 409
+	CodeTooManyRequests = 429
 	CodeInternal        = 500
 )
 
@@ -62,6 +68,10 @@ type BroadcastMessage struct {
 type PlaceBidData struct {
 	AuctionID int64 `json:"auction_id"`
 	BidPrice  int64 `json:"bid_price"`
+}
+
+type SendDanmakuData struct {
+	Content string `json:"content"`
 }
 
 type OnlineChangedData struct {

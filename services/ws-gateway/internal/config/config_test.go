@@ -9,6 +9,9 @@ func TestDefaultConfigAlignsDesign(t *testing.T) {
 	if cfg.HTTP.Addr != ":58081" {
 		t.Fatalf("unexpected http addr: %s", cfg.HTTP.Addr)
 	}
+	if cfg.WorkerID != 8 {
+		t.Fatalf("unexpected worker id: %d", cfg.WorkerID)
+	}
 	if cfg.JWT.UserIssuer != "livebid-user" {
 		t.Fatalf("unexpected user issuer: %s", cfg.JWT.UserIssuer)
 	}
@@ -27,6 +30,9 @@ func TestDefaultConfigAlignsDesign(t *testing.T) {
 	if cfg.RocketMQ.Enabled {
 		t.Fatal("rocketmq should be disabled by default without name servers")
 	}
+	if cfg.Interaction.AIInputMode != "redis_pubsub" {
+		t.Fatalf("unexpected ai input mode: %s", cfg.Interaction.AIInputMode)
+	}
 }
 
 func TestNormalizeHeartbeatTimeout(t *testing.T) {
@@ -37,6 +43,16 @@ func TestNormalizeHeartbeatTimeout(t *testing.T) {
 
 	if cfg.WebSocket.HeartbeatTimeoutSeconds != 60 {
 		t.Fatalf("expected timeout to be interval*3, got %d", cfg.WebSocket.HeartbeatTimeoutSeconds)
+	}
+}
+
+func TestNormalizeAIInputModeFallsBackToRedisPubSub(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Interaction.AIInputMode = "rocketmq"
+	normalize(&cfg)
+
+	if cfg.Interaction.AIInputMode != "redis_pubsub" {
+		t.Fatalf("unexpected ai input mode: %s", cfg.Interaction.AIInputMode)
 	}
 }
 

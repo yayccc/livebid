@@ -1,4 +1,5 @@
 env: local
+workerId: 8
 
 http:
   addr: ":58081"
@@ -23,6 +24,10 @@ liveService:
   addr: "127.0.0.1:9007"
   target: "127.0.0.1:9007"
 
+userService:
+  addr: "127.0.0.1:9004"
+  target: "127.0.0.1:9004"
+
 jwt:
   secret: "local-dev-jwt-secret-change-me"
   userIssuer: "livebid-user"
@@ -37,6 +42,21 @@ websocket:
   requireLivingRoom: true
   cleanupIntervalSeconds: 15
   onlineBroadcastIntervalSeconds: 3
+
+danmaku:
+  enabled: true
+  maxChars: 30
+  recentLimit: 10
+  rateLimitSeconds: 1
+  recentTTLHours: 24
+  requestTTLSeconds: 60
+  roomStatusCacheTTLSeconds: 5
+  nicknameCacheTTLMinutes: 20
+
+interaction:
+  eventTopic: "live_interaction_event"
+  producerGroup: "ws-gateway-interaction-producer"
+  aiInputMode: "redis_pubsub"
 
 rpc:
   timeoutSeconds: 3

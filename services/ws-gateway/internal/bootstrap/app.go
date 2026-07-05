@@ -26,8 +26,10 @@ type App struct {
 	server        *http.Server
 	wsHandler     *handler.WebSocketHandler
 	online        repository.OnlineStore
+	danmaku       repository.DanmakuStore
 	auctionConn   *grpc.ClientConn
 	liveConn      *grpc.ClientConn
+	userConn      *grpc.ClientConn
 	eventConsumer client.EventConsumer
 	cancel        context.CancelFunc
 }
@@ -62,16 +64,27 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	}
 	liveClient := client.NewLiveServiceClient(liveConn)
 
+	userConn, err := client.NewUserServiceConn(cfg.UserService.Target)
+	if err != nil {
+		_ = auctionConn.Close()
+		_ = liveConn.Close()
+		return nil, err
+	}
+	userClient := client.NewUserServiceClient(userConn)
+
 	online := repository.NewRedisOnlineStore(cfg.Redis, cfg.HeartbeatTimeout()*2)
+	danmaku := repository.NewRedisDanmakuStore(cfg.Redis, cfg.Interaction.AIInputMode)
 	hub := handler.NewHub()
 	wsHandler := handler.NewWebSocketHandler(handler.WebSocketHandlerOptions{
 		Config:     cfg,
 		Hub:        hub,
 		Online:     online,
+		Danmaku:    danmaku,
 		Auction:    auctionClient,
 		Live:       liveClient,
+		User:       userClient,
 		JWT:        jwtManager,
-		IDs:        idgen.New(8),
+		IDs:        idgen.New(cfg.WorkerID),
 		Log:        log,
 		RPCTimeout: cfg.RPCTimeout(),
 	})
@@ -82,7 +95,9 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		if err != nil {
 			_ = auctionConn.Close()
 			_ = liveConn.Close()
+			_ = userConn.Close()
 			_ = online.Close()
+			_ = danmaku.Close()
 			return nil, err
 		}
 	}
@@ -108,8 +123,10 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		server:        server,
 		wsHandler:     wsHandler,
 		online:        online,
+		danmaku:       danmaku,
 		auctionConn:   auctionConn,
 		liveConn:      liveConn,
+		userConn:      userConn,
 		eventConsumer: eventConsumer,
 		cancel:        cancel,
 	}
@@ -164,11 +181,17 @@ func (a *App) Stop(ctx context.Context) {
 	if a.online != nil {
 		_ = a.online.Close()
 	}
+	if a.danmaku != nil {
+		_ = a.danmaku.Close()
+	}
 	if a.auctionConn != nil {
 		_ = a.auctionConn.Close()
 	}
 	if a.liveConn != nil {
 		_ = a.liveConn.Close()
+	}
+	if a.userConn != nil {
+		_ = a.userConn.Close()
 	}
 }
 
@@ -179,6 +202,15 @@ func (a *App) startBackground(ctx context.Context) {
 		})
 		if err != nil && !errors.Is(err, context.Canceled) {
 			a.log.Warn("ws-gateway online pubsub stopped", zap.Error(err))
+		}
+	}()
+
+	go func() {
+		err := a.danmaku.SubscribeDanmaku(ctx, func(ctx context.Context, event repository.DanmakuBroadcast) {
+			a.wsHandler.BroadcastDanmakuEvent(ctx, event)
+		})
+		if err != nil && !errors.Is(err, context.Canceled) {
+			a.log.Warn("ws-gateway danmaku pubsub stopped", zap.Error(err))
 		}
 	}()
 

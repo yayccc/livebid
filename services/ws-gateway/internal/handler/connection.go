@@ -15,6 +15,7 @@ type Connection struct {
 	InstanceID  string
 	RoomID      int64
 	UserID      int64
+	Nickname    string
 	IdentityKey string
 	GuestID     string
 	ConnectedAt int64
@@ -36,6 +37,7 @@ type ConnectionOptions struct {
 	InstanceID  string
 	RoomID      int64
 	UserID      int64
+	Nickname    string
 	IdentityKey string
 	GuestID     string
 	ConnectedAt int64
@@ -55,6 +57,7 @@ func NewConnection(ws *websocket.Conn, opts ConnectionOptions) *Connection {
 		InstanceID:  opts.InstanceID,
 		RoomID:      opts.RoomID,
 		UserID:      opts.UserID,
+		Nickname:    opts.Nickname,
 		IdentityKey: opts.IdentityKey,
 		GuestID:     opts.GuestID,
 		ConnectedAt: opts.ConnectedAt,

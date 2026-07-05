@@ -15,6 +15,27 @@ func TestRedisKeys(t *testing.T) {
 	if got := roomEventsChannel(4001); got != "ws:room:4001:events" {
 		t.Fatalf("unexpected room events channel: %s", got)
 	}
+	if got := roomStatusKey(4001); got != "ws:room:4001:live_status" {
+		t.Fatalf("unexpected room status key: %s", got)
+	}
+	if got := danmakuRequestKey(4001, 9001, "req-1"); got != "ws:room:4001:danmaku:req:9001:req-1" {
+		t.Fatalf("unexpected danmaku request key: %s", got)
+	}
+	if got := danmakuRateKey(4001, 9001); got != "ws:room:4001:danmaku:rate:user:9001" {
+		t.Fatalf("unexpected danmaku rate key: %s", got)
+	}
+	if got := nicknameKey(9001); got != "ws:user:nickname:9001" {
+		t.Fatalf("unexpected nickname key: %s", got)
+	}
+	if got := recentDanmakuKey(4001); got != "ws:room:4001:danmaku:recent" {
+		t.Fatalf("unexpected recent danmaku key: %s", got)
+	}
+	if got := danmakuChannel(4001); got != "ws:room:4001:danmaku" {
+		t.Fatalf("unexpected danmaku channel: %s", got)
+	}
+	if got := aiDanmakuChannel(4001); got != "ws:room:4001:ai:danmaku" {
+		t.Fatalf("unexpected ai danmaku channel: %s", got)
+	}
 }
 
 func TestStatsFromScript(t *testing.T) {

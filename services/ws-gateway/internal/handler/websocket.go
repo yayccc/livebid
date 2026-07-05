@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/websocket"
 	auctionv1 "github.com/yayccc/livebid/gen/proto/auction/v1"
 	livev1 "github.com/yayccc/livebid/gen/proto/live/v1"
+	userv1 "github.com/yayccc/livebid/gen/proto/user/v1"
 	"github.com/yayccc/livebid/pkg/auth"
 	"github.com/yayccc/livebid/pkg/identity"
 	"github.com/yayccc/livebid/pkg/idgen"
@@ -30,8 +31,10 @@ type WebSocketHandler struct {
 	cfg        config.Config
 	hub        *Hub
 	online     repository.OnlineStore
+	danmaku    repository.DanmakuStore
 	auction    auctionv1.AuctionServiceClient
 	live       livev1.LiveServiceClient
+	user       userv1.UserServiceClient
 	jwt        *auth.JWTManager
 	ids        *idgen.Generator
 	upgrader   websocket.Upgrader
@@ -41,14 +44,18 @@ type WebSocketHandler struct {
 	onlineMu       sync.Mutex
 	pendingOnline  map[int64]repository.OnlineEvent
 	lastOnlineSent map[int64]repository.OnlineStats
+	danmakuMu      sync.Mutex
+	seenDanmaku    map[string]int64
 }
 
 type WebSocketHandlerOptions struct {
 	Config     config.Config
 	Hub        *Hub
 	Online     repository.OnlineStore
+	Danmaku    repository.DanmakuStore
 	Auction    auctionv1.AuctionServiceClient
 	Live       livev1.LiveServiceClient
+	User       userv1.UserServiceClient
 	JWT        *auth.JWTManager
 	IDs        *idgen.Generator
 	Log        *zap.Logger
@@ -73,14 +80,17 @@ func NewWebSocketHandler(opts WebSocketHandlerOptions) *WebSocketHandler {
 		cfg:            opts.Config,
 		hub:            hub,
 		online:         opts.Online,
+		danmaku:        opts.Danmaku,
 		auction:        opts.Auction,
 		live:           opts.Live,
+		user:           opts.User,
 		jwt:            opts.JWT,
 		ids:            ids,
 		log:            opts.Log,
 		rpcTimeout:     rpcTimeout,
 		pendingOnline:  make(map[int64]repository.OnlineEvent),
 		lastOnlineSent: make(map[int64]repository.OnlineStats),
+		seenDanmaku:    make(map[string]int64),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return originAllowed(r.Header.Get("Origin"), allowOrigins)
@@ -150,11 +160,12 @@ func (h *WebSocketHandler) ServeLive(c *gin.Context) {
 	}
 	h.publishOnlineIfChanged(c.Request.Context(), conn, stats)
 
-	conn.Send(response("", ResponseTypeConnect, CodeOK, "connected", h.connectResponseData(conn)))
+	conn.Send(response("", ResponseTypeConnect, CodeOK, "connected", h.connectResponseData(c.Request.Context(), conn)))
 	conn.Start(c.Request.Context(), h.cfg.WebSocket.MaxMessageBytes, h.cfg.HeartbeatTimeout(), h.cfg.HeartbeatInterval())
 }
 
-func (h *WebSocketHandler) connectResponseData(conn *Connection) map[string]any {
+func (h *WebSocketHandler) connectResponseData(ctx context.Context, conn *Connection) map[string]any {
+	recent := h.recentDanmaku(ctx, conn.RoomID)
 	return map[string]any{
 		"connection_id":              conn.ID,
 		"room_id":                    conn.RoomID,
@@ -167,7 +178,25 @@ func (h *WebSocketHandler) connectResponseData(conn *Connection) map[string]any 
 		"resync_on_connect":          true,
 		"snapshot_url":               fmt.Sprintf("/api/user/live/rooms/%d/auction-snapshot", conn.RoomID),
 		"auction_records_url":        fmt.Sprintf("/api/user/live/rooms/%d/auction-records", conn.RoomID),
+		"recent_danmaku":             recent,
 	}
+}
+
+func (h *WebSocketHandler) recentDanmaku(ctx context.Context, roomID int64) []repository.RecentDanmaku {
+	if h.danmaku == nil || roomID <= 0 || h.cfg.Danmaku.RecentLimit <= 0 {
+		return []repository.RecentDanmaku{}
+	}
+	recent, err := h.danmaku.GetRecent(ctx, roomID, h.cfg.Danmaku.RecentLimit)
+	if err != nil {
+		if h.log != nil {
+			h.log.Warn("get recent danmaku failed", zap.Int64("room_id", roomID), zap.Error(err))
+		}
+		return []repository.RecentDanmaku{}
+	}
+	if recent == nil {
+		return []repository.RecentDanmaku{}
+	}
+	return recent
 }
 
 func (h *WebSocketHandler) BroadcastOnlineEvent(ctx context.Context, event repository.OnlineEvent) {
@@ -293,6 +322,8 @@ func (h *WebSocketHandler) handleMessage(ctx context.Context, conn *Connection, 
 		h.handlePing(ctx, conn, message)
 	case MessageTypePlaceBid:
 		h.handlePlaceBid(ctx, conn, message)
+	case MessageTypeSendDanmaku:
+		h.handleSendDanmaku(ctx, conn, message)
 	case MessageTypeRoomLeave:
 		conn.Send(response(message.RequestID, MessageTypeRoomLeave, CodeOK, "success", nil))
 		conn.Close()
@@ -371,6 +402,251 @@ func (h *WebSocketHandler) handlePlaceBid(ctx context.Context, conn *Connection,
 		"server_time":    protoMillis(resp.GetServerTime()),
 		"expire_at":      protoMillis(resp.GetExpireAt()),
 	}))
+}
+
+func (h *WebSocketHandler) handleSendDanmaku(ctx context.Context, conn *Connection, message ClientMessage) {
+	if !h.cfg.Danmaku.Enabled {
+		conn.Send(response(message.RequestID, MessageTypeSendDanmaku, CodeForbidden, "弹幕功能未启用", nil))
+		return
+	}
+	if h.danmaku == nil {
+		conn.Send(response(message.RequestID, MessageTypeSendDanmaku, CodeInternal, "弹幕服务不可用", nil))
+		return
+	}
+	if conn.UserID <= 0 {
+		conn.Send(response(message.RequestID, MessageTypeSendDanmaku, CodeUnauthenticated, "请先登录后再发送弹幕", nil))
+		return
+	}
+	if conn.RoomID <= 0 {
+		conn.Send(response(message.RequestID, MessageTypeSendDanmaku, CodeBadRequest, "直播间无效", nil))
+		return
+	}
+	requestID := strings.TrimSpace(message.RequestID)
+	if requestID == "" || len(message.Data) == 0 {
+		conn.Send(response(message.RequestID, MessageTypeSendDanmaku, CodeBadRequest, "弹幕参数无效", nil))
+		return
+	}
+	var data SendDanmakuData
+	if err := json.Unmarshal(message.Data, &data); err != nil {
+		conn.Send(response(message.RequestID, MessageTypeSendDanmaku, CodeBadRequest, "弹幕参数无效", nil))
+		return
+	}
+	content := strings.TrimSpace(data.Content)
+	if content == "" || len([]rune(content)) > h.cfg.Danmaku.MaxChars {
+		conn.Send(response(message.RequestID, MessageTypeSendDanmaku, CodeBadRequest, "弹幕内容无效", nil))
+		return
+	}
+	if err := h.ensureRoomLivingForDanmaku(ctx, conn.RoomID); err != nil {
+		code, text := websocketCodeFromError(err)
+		conn.Send(response(message.RequestID, MessageTypeSendDanmaku, code, text, nil))
+		return
+	}
+
+	idempotent, ok, err := h.danmaku.GetIdempotent(ctx, conn.RoomID, conn.UserID, requestID)
+	if err != nil {
+		if h.log != nil {
+			h.log.Warn("get danmaku idempotent cache failed", zap.Int64("room_id", conn.RoomID), zap.Int64("user_id", conn.UserID), zap.Error(err))
+		}
+		conn.Send(response(message.RequestID, MessageTypeSendDanmaku, CodeInternal, "弹幕发送失败", nil))
+		return
+	}
+	if ok {
+		conn.Send(response(message.RequestID, MessageTypeSendDanmaku, CodeOK, "success", map[string]any{
+			"message_id": idempotent.MessageID,
+			"room_id":    idempotent.RoomID,
+		}))
+		return
+	}
+
+	allowed, err := h.danmaku.AllowSend(ctx, conn.RoomID, conn.UserID, h.cfg.DanmakuRateLimit())
+	if err != nil {
+		if h.log != nil {
+			h.log.Warn("check danmaku rate limit failed", zap.Int64("room_id", conn.RoomID), zap.Int64("user_id", conn.UserID), zap.Error(err))
+		}
+		conn.Send(response(message.RequestID, MessageTypeSendDanmaku, CodeInternal, "弹幕发送失败", nil))
+		return
+	}
+	if !allowed {
+		if idempotent, ok, err := h.danmaku.GetIdempotent(ctx, conn.RoomID, conn.UserID, requestID); err == nil && ok {
+			conn.Send(response(message.RequestID, MessageTypeSendDanmaku, CodeOK, "success", map[string]any{
+				"message_id": idempotent.MessageID,
+				"room_id":    idempotent.RoomID,
+			}))
+			return
+		}
+		conn.Send(response(message.RequestID, MessageTypeSendDanmaku, CodeTooManyRequests, "弹幕发送过于频繁", nil))
+		return
+	}
+
+	nickname := h.nicknameForDanmaku(ctx, conn)
+	messageID := h.eventID("dm")
+	eventID := h.eventID("evt_dm")
+	serverTime := nowMillis()
+	event := repository.DanmakuBroadcast{
+		Type:       EventDanmakuCreated,
+		EventID:    eventID,
+		RoomID:     conn.RoomID,
+		ServerTime: serverTime,
+		Data: repository.DanmakuData{
+			MessageID:   messageID,
+			SenderType:  repository.DanmakuSenderTypeUser,
+			UserID:      conn.UserID,
+			Nickname:    nickname,
+			Content:     content,
+			ContentType: repository.DanmakuContentTypeText,
+			Status:      repository.DanmakuStatusVisible,
+		},
+	}
+	if err := h.danmaku.SetIdempotent(ctx, conn.RoomID, conn.UserID, requestID, repository.DanmakuIdempotentResult{
+		MessageID: messageID,
+		RoomID:    conn.RoomID,
+	}, h.cfg.DanmakuRequestTTL()); err != nil {
+		if h.log != nil {
+			h.log.Warn("set danmaku idempotent cache failed", zap.Int64("room_id", conn.RoomID), zap.Int64("user_id", conn.UserID), zap.Error(err))
+		}
+		conn.Send(response(message.RequestID, MessageTypeSendDanmaku, CodeInternal, "弹幕发送失败", nil))
+		return
+	}
+	if err := h.danmaku.AppendRecent(ctx, conn.RoomID, event, h.cfg.Danmaku.RecentLimit, h.cfg.DanmakuRecentTTL()); err != nil && h.log != nil {
+		h.log.Warn("append recent danmaku failed", zap.Int64("room_id", conn.RoomID), zap.Error(err))
+	}
+
+	h.markDanmakuSeen(messageID)
+	h.hub.BroadcastRoom(conn.RoomID, event)
+	if err := h.danmaku.PublishDanmaku(ctx, event); err != nil && h.log != nil {
+		h.log.Warn("publish danmaku broadcast failed", zap.Int64("room_id", conn.RoomID), zap.Error(err))
+	}
+	if err := h.danmaku.PublishAIInput(ctx, repository.DanmakuCreatedEvent{
+		EventID:     eventID,
+		EventType:   InteractionEventDanmakuCreated,
+		MessageID:   messageID,
+		RoomID:      conn.RoomID,
+		UserID:      conn.UserID,
+		Nickname:    nickname,
+		Content:     content,
+		ContentType: repository.DanmakuContentTypeText,
+		ServerTime:  serverTime,
+	}); err != nil && h.log != nil {
+		h.log.Warn("publish danmaku ai input failed", zap.Int64("room_id", conn.RoomID), zap.Error(err))
+	}
+	conn.Send(response(message.RequestID, MessageTypeSendDanmaku, CodeOK, "success", map[string]any{
+		"message_id": messageID,
+		"room_id":    conn.RoomID,
+	}))
+}
+
+func (h *WebSocketHandler) ensureRoomLivingForDanmaku(ctx context.Context, roomID int64) error {
+	if h.danmaku != nil {
+		statusValue, ok, err := h.danmaku.GetRoomStatus(ctx, roomID)
+		if err == nil && ok {
+			if statusValue == repository.RoomStatusLiving {
+				return nil
+			}
+			return status.Error(codes.PermissionDenied, "直播间不允许发送弹幕")
+		}
+		if err != nil && h.log != nil {
+			h.log.Warn("get room status cache failed", zap.Int64("room_id", roomID), zap.Error(err))
+		}
+	}
+	if h.live == nil {
+		return status.Error(codes.Unavailable, "live service unavailable")
+	}
+	rpcCtx, cancel := context.WithTimeout(ctx, h.rpcTimeout)
+	defer cancel()
+	resp, err := h.live.GetLiveRoom(rpcCtx, &livev1.GetLiveRoomRequest{Id: roomID})
+	if err != nil {
+		return err
+	}
+	room := resp.GetLiveRoom()
+	if room == nil || room.GetId() <= 0 {
+		return status.Error(codes.NotFound, "直播间不存在")
+	}
+	statusValue := repository.RoomStatusNotLive
+	if room.GetStatus() == livev1.LiveRoomStatus_LIVE_ROOM_STATUS_LIVING {
+		statusValue = repository.RoomStatusLiving
+	}
+	if h.danmaku != nil {
+		if err := h.danmaku.SetRoomStatus(ctx, roomID, statusValue, h.cfg.RoomStatusCacheTTL()); err != nil && h.log != nil {
+			h.log.Warn("set room status cache failed", zap.Int64("room_id", roomID), zap.Error(err))
+		}
+	}
+	if statusValue != repository.RoomStatusLiving {
+		return status.Error(codes.PermissionDenied, "直播间不允许发送弹幕")
+	}
+	return nil
+}
+
+func (h *WebSocketHandler) nicknameForDanmaku(ctx context.Context, conn *Connection) string {
+	if nickname := strings.TrimSpace(conn.Nickname); nickname != "" {
+		return nickname
+	}
+	if h.danmaku != nil {
+		nickname, ok, err := h.danmaku.GetNickname(ctx, conn.UserID)
+		if err == nil && ok && nickname != "" {
+			conn.Nickname = nickname
+			return nickname
+		}
+		if err != nil && h.log != nil {
+			h.log.Warn("get user nickname cache failed", zap.Int64("user_id", conn.UserID), zap.Error(err))
+		}
+	}
+	if h.user != nil {
+		rpcCtx, cancel := context.WithTimeout(ctx, h.rpcTimeout)
+		defer cancel()
+		resp, err := h.user.GetUser(rpcCtx, &userv1.GetUserRequest{Id: conn.UserID})
+		if err == nil {
+			nickname := strings.TrimSpace(resp.GetUser().GetNickname())
+			if nickname != "" {
+				conn.Nickname = nickname
+				if h.danmaku != nil {
+					if err := h.danmaku.SetNickname(ctx, conn.UserID, nickname, h.cfg.NicknameCacheTTL()); err != nil && h.log != nil {
+						h.log.Warn("set user nickname cache failed", zap.Int64("user_id", conn.UserID), zap.Error(err))
+					}
+				}
+				return nickname
+			}
+		} else if h.log != nil {
+			h.log.Warn("get user nickname failed", zap.Int64("user_id", conn.UserID), zap.Error(err))
+		}
+	}
+	nickname := fallbackNickname(conn.UserID)
+	conn.Nickname = nickname
+	return nickname
+}
+
+func (h *WebSocketHandler) BroadcastDanmakuEvent(ctx context.Context, event repository.DanmakuBroadcast) {
+	if event.RoomID <= 0 || event.Data.MessageID == "" {
+		return
+	}
+	if !h.markDanmakuSeen(event.Data.MessageID) {
+		return
+	}
+	h.hub.BroadcastRoom(event.RoomID, event)
+}
+
+func (h *WebSocketHandler) markDanmakuSeen(messageID string) bool {
+	if messageID == "" {
+		return false
+	}
+	now := nowMillis()
+	h.danmakuMu.Lock()
+	defer h.danmakuMu.Unlock()
+	if _, ok := h.seenDanmaku[messageID]; ok {
+		return false
+	}
+	if len(h.seenDanmaku) > 2048 {
+		cutoff := now - int64(time.Hour/time.Millisecond)
+		for id, seenAt := range h.seenDanmaku {
+			if seenAt < cutoff {
+				delete(h.seenDanmaku, id)
+			}
+		}
+		if len(h.seenDanmaku) > 4096 {
+			h.seenDanmaku = make(map[string]int64)
+		}
+	}
+	h.seenDanmaku[messageID] = now
+	return true
 }
 
 func (h *WebSocketHandler) handleClose(ctx context.Context, conn *Connection) {
@@ -547,6 +823,8 @@ func httpStatusFromCode(code int) int {
 		return http.StatusNotFound
 	case CodeConflict:
 		return http.StatusConflict
+	case CodeTooManyRequests:
+		return http.StatusTooManyRequests
 	default:
 		return http.StatusInternalServerError
 	}
@@ -565,4 +843,12 @@ func protoMillis(ts *timestamppb.Timestamp) int64 {
 		return 0
 	}
 	return ts.AsTime().UnixMilli()
+}
+
+func fallbackNickname(userID int64) string {
+	suffix := fmt.Sprintf("%04d", userID%10000)
+	if userID < 0 {
+		suffix = fmt.Sprintf("%04d", -userID%10000)
+	}
+	return "用户" + suffix
 }

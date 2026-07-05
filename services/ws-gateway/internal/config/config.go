@@ -17,13 +17,17 @@ const ServiceName = "ws-gateway"
 
 type Config struct {
 	Env            string                    `yaml:"env"`
+	WorkerID       int64                     `yaml:"workerId"`
 	HTTP           HTTPConfig                `yaml:"http"`
 	Redis          RedisConfig               `yaml:"redis"`
 	RocketMQ       RocketMQConfig            `yaml:"rocketmq"`
 	AuctionService ServiceConfig             `yaml:"auctionService"`
 	LiveService    ServiceConfig             `yaml:"liveService"`
+	UserService    ServiceConfig             `yaml:"userService"`
 	JWT            JWTConfig                 `yaml:"jwt"`
 	WebSocket      WebSocketConfig           `yaml:"websocket"`
+	Danmaku        DanmakuConfig             `yaml:"danmaku"`
+	Interaction    InteractionConfig         `yaml:"interaction"`
 	RPC            RPCConfig                 `yaml:"rpc"`
 	Log            logger.Config             `yaml:"log"`
 	Nacos          nacosx.Config             `yaml:"nacos"`
@@ -70,6 +74,23 @@ type WebSocketConfig struct {
 	OnlineBroadcastIntervalSeconds int    `yaml:"onlineBroadcastIntervalSeconds"`
 }
 
+type DanmakuConfig struct {
+	Enabled                   bool `yaml:"enabled"`
+	MaxChars                  int  `yaml:"maxChars"`
+	RecentLimit               int  `yaml:"recentLimit"`
+	RateLimitSeconds          int  `yaml:"rateLimitSeconds"`
+	RecentTTLHours            int  `yaml:"recentTTLHours"`
+	RequestTTLSeconds         int  `yaml:"requestTTLSeconds"`
+	RoomStatusCacheTTLSeconds int  `yaml:"roomStatusCacheTTLSeconds"`
+	NicknameCacheTTLMinutes   int  `yaml:"nicknameCacheTTLMinutes"`
+}
+
+type InteractionConfig struct {
+	EventTopic    string `yaml:"eventTopic"`
+	ProducerGroup string `yaml:"producerGroup"`
+	AIInputMode   string `yaml:"aiInputMode"`
+}
+
 type RPCConfig struct {
 	TimeoutSeconds int `yaml:"timeoutSeconds"`
 }
@@ -88,6 +109,26 @@ func (c Config) CleanupInterval() time.Duration {
 
 func (c Config) OnlineBroadcastInterval() time.Duration {
 	return time.Duration(c.WebSocket.OnlineBroadcastIntervalSeconds) * time.Second
+}
+
+func (c Config) DanmakuRateLimit() time.Duration {
+	return time.Duration(c.Danmaku.RateLimitSeconds) * time.Second
+}
+
+func (c Config) DanmakuRecentTTL() time.Duration {
+	return time.Duration(c.Danmaku.RecentTTLHours) * time.Hour
+}
+
+func (c Config) DanmakuRequestTTL() time.Duration {
+	return time.Duration(c.Danmaku.RequestTTLSeconds) * time.Second
+}
+
+func (c Config) RoomStatusCacheTTL() time.Duration {
+	return time.Duration(c.Danmaku.RoomStatusCacheTTLSeconds) * time.Second
+}
+
+func (c Config) NicknameCacheTTL() time.Duration {
+	return time.Duration(c.Danmaku.NicknameCacheTTLMinutes) * time.Minute
 }
 
 func (c Config) RPCTimeout() time.Duration {
@@ -114,7 +155,8 @@ func defaultConfig() Config {
 		hostname = "local"
 	}
 	return Config{
-		Env: "local",
+		Env:      "local",
+		WorkerID: 8,
 		HTTP: HTTPConfig{
 			Addr: ":58081",
 		},
@@ -136,6 +178,10 @@ func defaultConfig() Config {
 			Addr:   "127.0.0.1:9007",
 			Target: "127.0.0.1:9007",
 		},
+		UserService: ServiceConfig{
+			Addr:   "127.0.0.1:9004",
+			Target: "127.0.0.1:9004",
+		},
 		JWT: JWTConfig{
 			Secret:     "local-dev-jwt-secret-change-me",
 			UserIssuer: "livebid-user",
@@ -150,6 +196,21 @@ func defaultConfig() Config {
 			RequireLivingRoom:              true,
 			CleanupIntervalSeconds:         15,
 			OnlineBroadcastIntervalSeconds: 3,
+		},
+		Danmaku: DanmakuConfig{
+			Enabled:                   true,
+			MaxChars:                  30,
+			RecentLimit:               10,
+			RateLimitSeconds:          1,
+			RecentTTLHours:            24,
+			RequestTTLSeconds:         60,
+			RoomStatusCacheTTLSeconds: 5,
+			NicknameCacheTTLMinutes:   20,
+		},
+		Interaction: InteractionConfig{
+			EventTopic:    "live_interaction_event",
+			ProducerGroup: "ws-gateway-interaction-producer",
+			AIInputMode:   "redis_pubsub",
 		},
 		RPC: RPCConfig{
 			TimeoutSeconds: 3,
@@ -179,6 +240,7 @@ func applyEnvOverrides(cfg *Config) {
 	if value := os.Getenv("WS_GATEWAY_ENV"); value != "" {
 		cfg.Env = value
 	}
+	setInt64Env("WS_GATEWAY_WORKER_ID", &cfg.WorkerID)
 	if value := os.Getenv("WS_GATEWAY_HTTP_ADDR"); value != "" {
 		cfg.HTTP.Addr = value
 	}
@@ -213,6 +275,12 @@ func applyEnvOverrides(cfg *Config) {
 	if value := os.Getenv("WS_GATEWAY_LIVE_SERVICE_TARGET"); value != "" {
 		cfg.LiveService.Target = value
 	}
+	if value := os.Getenv("WS_GATEWAY_USER_SERVICE_ADDR"); value != "" {
+		cfg.UserService.Addr = value
+	}
+	if value := os.Getenv("WS_GATEWAY_USER_SERVICE_TARGET"); value != "" {
+		cfg.UserService.Target = value
+	}
 	if value := os.Getenv("WS_GATEWAY_JWT_SECRET"); value != "" {
 		cfg.JWT.Secret = value
 	}
@@ -232,6 +300,23 @@ func applyEnvOverrides(cfg *Config) {
 	setBoolEnv("WS_GATEWAY_REQUIRE_LIVING_ROOM", &cfg.WebSocket.RequireLivingRoom)
 	setIntEnv("WS_GATEWAY_CLEANUP_INTERVAL_SECONDS", &cfg.WebSocket.CleanupIntervalSeconds)
 	setIntEnv("WS_GATEWAY_ONLINE_BROADCAST_INTERVAL_SECONDS", &cfg.WebSocket.OnlineBroadcastIntervalSeconds)
+	setBoolEnv("WS_GATEWAY_DANMAKU_ENABLED", &cfg.Danmaku.Enabled)
+	setIntEnv("WS_GATEWAY_DANMAKU_MAX_CHARS", &cfg.Danmaku.MaxChars)
+	setIntEnv("WS_GATEWAY_DANMAKU_RECENT_LIMIT", &cfg.Danmaku.RecentLimit)
+	setIntEnv("WS_GATEWAY_DANMAKU_RATE_LIMIT_SECONDS", &cfg.Danmaku.RateLimitSeconds)
+	setIntEnv("WS_GATEWAY_DANMAKU_RECENT_TTL_HOURS", &cfg.Danmaku.RecentTTLHours)
+	setIntEnv("WS_GATEWAY_DANMAKU_REQUEST_TTL_SECONDS", &cfg.Danmaku.RequestTTLSeconds)
+	setIntEnv("WS_GATEWAY_ROOM_STATUS_CACHE_TTL_SECONDS", &cfg.Danmaku.RoomStatusCacheTTLSeconds)
+	setIntEnv("WS_GATEWAY_DANMAKU_NICKNAME_CACHE_TTL_MINUTES", &cfg.Danmaku.NicknameCacheTTLMinutes)
+	if value := os.Getenv("WS_GATEWAY_INTERACTION_EVENT_TOPIC"); value != "" {
+		cfg.Interaction.EventTopic = value
+	}
+	if value := os.Getenv("WS_GATEWAY_INTERACTION_PRODUCER_GROUP"); value != "" {
+		cfg.Interaction.ProducerGroup = value
+	}
+	if value := os.Getenv("WS_GATEWAY_AI_INPUT_MODE"); value != "" {
+		cfg.Interaction.AIInputMode = value
+	}
 	setIntEnv("WS_GATEWAY_RPC_TIMEOUT_SECONDS", &cfg.RPC.TimeoutSeconds)
 
 	envLog := logger.LoadConfigFromEnv("WS_GATEWAY_LOG")
@@ -306,6 +391,14 @@ func normalize(cfg *Config) {
 	} else if cfg.LiveService.Addr == "" {
 		cfg.LiveService.Addr = cfg.LiveService.Target
 	}
+	if cfg.UserService.Addr == "" {
+		cfg.UserService.Addr = "127.0.0.1:9004"
+	}
+	if cfg.UserService.Target == "" {
+		cfg.UserService.Target = cfg.UserService.Addr
+	} else if cfg.UserService.Addr == "" {
+		cfg.UserService.Addr = cfg.UserService.Target
+	}
 	if cfg.JWT.UserIssuer == "" {
 		cfg.JWT.UserIssuer = "livebid-user"
 	}
@@ -339,6 +432,40 @@ func normalize(cfg *Config) {
 	}
 	if cfg.WebSocket.OnlineBroadcastIntervalSeconds <= 0 {
 		cfg.WebSocket.OnlineBroadcastIntervalSeconds = 3
+	}
+	if cfg.Danmaku.MaxChars <= 0 {
+		cfg.Danmaku.MaxChars = 30
+	}
+	if cfg.Danmaku.RecentLimit <= 0 {
+		cfg.Danmaku.RecentLimit = 10
+	}
+	if cfg.Danmaku.RateLimitSeconds <= 0 {
+		cfg.Danmaku.RateLimitSeconds = 1
+	}
+	if cfg.Danmaku.RecentTTLHours <= 0 {
+		cfg.Danmaku.RecentTTLHours = 24
+	}
+	if cfg.Danmaku.RequestTTLSeconds <= 0 {
+		cfg.Danmaku.RequestTTLSeconds = 60
+	}
+	if cfg.Danmaku.RoomStatusCacheTTLSeconds <= 0 {
+		cfg.Danmaku.RoomStatusCacheTTLSeconds = 5
+	}
+	if cfg.Danmaku.NicknameCacheTTLMinutes <= 0 {
+		cfg.Danmaku.NicknameCacheTTLMinutes = 20
+	}
+	if strings.TrimSpace(cfg.Interaction.EventTopic) == "" {
+		cfg.Interaction.EventTopic = "live_interaction_event"
+	}
+	if strings.TrimSpace(cfg.Interaction.ProducerGroup) == "" {
+		cfg.Interaction.ProducerGroup = "ws-gateway-interaction-producer"
+	}
+	cfg.Interaction.AIInputMode = strings.ToLower(strings.TrimSpace(cfg.Interaction.AIInputMode))
+	if cfg.Interaction.AIInputMode != "redis_pubsub" {
+		cfg.Interaction.AIInputMode = "redis_pubsub"
+	}
+	if cfg.WorkerID < 0 {
+		cfg.WorkerID = 8
 	}
 	if cfg.RPC.TimeoutSeconds <= 0 {
 		cfg.RPC.TimeoutSeconds = 3
