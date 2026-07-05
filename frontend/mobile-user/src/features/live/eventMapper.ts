@@ -12,8 +12,11 @@ export type LiveEventPatch = {
   runtime?: UserLiveRuntime
   stats?: UserLiveStats
   message?: BidEventMessage
+  messages?: BidEventMessage[]
   bidResolved?: boolean
   bidError?: string
+  danmakuResolved?: boolean
+  danmakuError?: string
   auctionRecord?: UserLiveAuctionRecord
 }
 
@@ -46,7 +49,12 @@ export function mapIncomingLiveEvent(
   }
 
   if (type === 'response') {
-    if (requestType === 'ping' || requestType === 'connect') {
+    if (requestType === 'connect') {
+      const messages = buildRecentDanmakuMessages(data.recent_danmaku)
+      return messages.length > 0 ? { messages } : {}
+    }
+
+    if (requestType === 'ping') {
       return {}
     }
 
@@ -77,7 +85,31 @@ export function mapIncomingLiveEvent(
       }
     }
 
+    if (requestType === 'send_danmaku' || requestID.startsWith('dm_')) {
+      const code = toNumber(data.code) ?? 0
+      if (code !== 0) {
+        return {
+          danmakuResolved: true,
+          danmakuError: danmakuErrorText(code, toString(data.message)),
+        }
+      }
+
+      return {
+        danmakuResolved: true,
+      }
+    }
+
     return {}
+  }
+
+  if (type === 'danmaku_created') {
+    const message = buildDanmakuMessage(data)
+    return message ? { message } : {}
+  }
+
+  if (type === 'ai_interaction_created') {
+    const message = buildAIInteractionMessage(data)
+    return message ? { message } : {}
   }
 
   if (type === 'auction_started') {
@@ -219,6 +251,81 @@ function displayNameFromData(data: Record<string, unknown>) {
     toString(data.user_name) ||
     undefined
   )
+}
+
+function buildRecentDanmakuMessages(value: unknown) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .map((item) => buildDanmakuMessage(toRecord(item)))
+    .filter((message): message is BidEventMessage => Boolean(message))
+}
+
+function buildDanmakuMessage(data: Record<string, unknown>): BidEventMessage | undefined {
+  const status = toString(data.status)
+  if (status && status !== 'visible') {
+    return undefined
+  }
+
+  const content = toString(data.content).trim()
+  if (!content) {
+    return undefined
+  }
+
+  const messageID = toString(data.message_id)
+  const displayName = displayNameFromData(data) || '用户'
+  const userID = toID(data.user_id)
+  const createdAt = toNumber(data.server_time) || Date.now()
+
+  return {
+    id: messageID ? `danmaku_${messageID}` : `danmaku_${createdAt}_${Math.random().toString(16).slice(2)}`,
+    type: 'chat',
+    text: `${displayName}：${content}`,
+    createdAt,
+    userID,
+    displayName,
+  }
+}
+
+function buildAIInteractionMessage(data: Record<string, unknown>): BidEventMessage | undefined {
+  const status = toString(data.status)
+  if (status && status !== 'visible') {
+    return undefined
+  }
+
+  const content = toString(data.content).trim()
+  if (!content) {
+    return undefined
+  }
+
+  const messageID = toString(data.message_id)
+  const displayName = toString(data.display_name) || 'AI互动助手'
+  const createdAt = toNumber(data.server_time) || Date.now()
+
+  return {
+    id: messageID ? `ai_${messageID}` : `ai_${createdAt}_${Math.random().toString(16).slice(2)}`,
+    type: 'ai',
+    text: `${displayName}：${content}`,
+    createdAt,
+    displayName,
+  }
+}
+
+function danmakuErrorText(code: number, fallback: string) {
+  switch (code) {
+    case 400:
+      return '弹幕内容需要在 1-30 个字符内'
+    case 401:
+      return '请先登录后发送弹幕'
+    case 403:
+      return '当前直播间不允许发送弹幕'
+    case 429:
+      return '发送太频繁，请稍后再试'
+    default:
+      return fallback || '弹幕发送失败，请稍后重试'
+  }
 }
 
 function statusText(status: number, fallback?: string) {

@@ -189,7 +189,7 @@ export type UserLiveAuctionRecordPage = PageResult<UserLiveAuctionRecord> & {
 
 export type BidEventMessage = {
   id: string
-  type: 'system' | 'bid' | 'deal' | 'error' | 'chat'
+  type: 'system' | 'bid' | 'deal' | 'error' | 'chat' | 'ai'
   text: string
   createdAt: number
   userID?: EntityID

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, DotLoading, Toast } from 'antd-mobile'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { Gavel, RefreshCw, Smile } from 'lucide-react'
+import { Gavel, RefreshCw, SendHorizontal, Smile } from 'lucide-react'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Keyboard, Mousewheel } from 'swiper/modules'
 import type { Swiper as SwiperInstance } from 'swiper'
@@ -96,10 +96,12 @@ export function LiveHomePage() {
   const [isAuctionRecordsOpen, setIsAuctionRecordsOpen] = useState(false)
   const [dismissedAuctionCardByRoom, setDismissedAuctionCardByRoom] = useState<Record<EntityID, string>>({})
   const [isBidding, setIsBidding] = useState(false)
+  const [isSendingDanmaku, setIsSendingDanmaku] = useState(false)
   const [dealDialog, setDealDialog] = useState<DealDialogState>(null)
   const [dealNow, setDealNow] = useState(Date.now())
   const [chatDraft, setChatDraft] = useState('')
   const bidTimeoutRef = useRef<number | null>(null)
+  const danmakuTimeoutRef = useRef<number | null>(null)
   const pendingBidRef = useRef<LocalLeadingBid | null>(null)
   const localLeadingBidRef = useRef<LocalLeadingBid | null>(null)
   const publicUserCacheRef = useRef<Map<EntityID, UserProfile>>(new Map())
@@ -156,7 +158,14 @@ export function LiveHomePage() {
 
   useEffect(() => {
     return () => {
-      clearBidTimeout()
+      if (bidTimeoutRef.current !== null) {
+        window.clearTimeout(bidTimeoutRef.current)
+        bidTimeoutRef.current = null
+      }
+      if (danmakuTimeoutRef.current !== null) {
+        window.clearTimeout(danmakuTimeoutRef.current)
+        danmakuTimeoutRef.current = null
+      }
       socketRef.current?.close()
     }
   }, [])
@@ -183,10 +192,18 @@ export function LiveHomePage() {
   const leaveRoom = useCallback(() => {
     socketRef.current?.close()
     socketRef.current = null
-    clearBidTimeout()
+    if (bidTimeoutRef.current !== null) {
+      window.clearTimeout(bidTimeoutRef.current)
+      bidTimeoutRef.current = null
+    }
+    if (danmakuTimeoutRef.current !== null) {
+      window.clearTimeout(danmakuTimeoutRef.current)
+      danmakuTimeoutRef.current = null
+    }
     pendingBidRef.current = null
     localLeadingBidRef.current = null
     setIsBidding(false)
+    setIsSendingDanmaku(false)
     setChatDraft('')
     setSession({
       roomID: null,
@@ -235,13 +252,15 @@ export function LiveHomePage() {
       if (entry.ws?.url) {
         socketRef.current = openLiveSocket(entry.ws.url, entry.ws.room_id || roomID, token, {
           onOpen: () => {
-            appendMessage(createMessage('system', '互动连接已建立', 'ws_open'))
+            appendMessage(createMessage('system', '互动连接已建立', 'ws_open'), roomID)
           },
           onError: () => {
-            appendMessage(createMessage('error', '互动连接异常，价格以页面展示为准', 'ws_error'))
+            appendMessage(createMessage('error', '互动连接异常，价格以页面展示为准', 'ws_error'), roomID)
           },
           onClose: () => {
             setIsBidding(false)
+            setIsSendingDanmaku(false)
+            clearDanmakuTimeout()
           },
           onEvent: (event) => {
             const eventType = event.type || event.event_type
@@ -265,6 +284,15 @@ export function LiveHomePage() {
             if (patch.bidError) {
               Toast.show(patch.bidError)
             }
+            if (patch.danmakuResolved) {
+              clearDanmakuTimeout()
+              setIsSendingDanmaku(false)
+              if (patch.danmakuError) {
+                Toast.show(patch.danmakuError)
+              } else {
+                setChatDraft('')
+              }
+            }
             if (patch.runtime) {
               setSession((current) =>
                 current.roomID === roomID
@@ -287,8 +315,11 @@ export function LiveHomePage() {
                 },
               }))
             }
+            if (patch.messages) {
+              appendMessages(patch.messages, roomID)
+            }
             if (patch.message) {
-              appendMessage(patch.message)
+              appendMessage(patch.message, roomID)
             }
             if (patch.auctionRecord) {
               updateLocalLeadingBidFromAuctionRecord(patch.auctionRecord)
@@ -451,11 +482,33 @@ export function LiveHomePage() {
 
     const text = chatDraft.trim()
     if (!text) {
+      Toast.show('请输入弹幕内容')
+      return
+    }
+    if (Array.from(text).length > 30) {
+      Toast.show('弹幕最多 30 个字符')
+      return
+    }
+    if (!isLoggedIn) {
+      Toast.show('请先登录后发送弹幕')
+      return
+    }
+    if (isSendingDanmaku) {
       return
     }
 
-    appendMessage(createMessage('chat', `我：${text}`, 'chat'))
-    setChatDraft('')
+    const requestID = socketRef.current?.sendDanmaku(text)
+    if (!requestID) {
+      Toast.show('互动连接未就绪，请稍后重试')
+      return
+    }
+
+    setIsSendingDanmaku(true)
+    clearDanmakuTimeout()
+    danmakuTimeoutRef.current = window.setTimeout(() => {
+      setIsSendingDanmaku(false)
+      Toast.show('弹幕发送超时，请稍后重试')
+    }, 8000)
   }
 
   function clearBidTimeout() {
@@ -465,13 +518,37 @@ export function LiveHomePage() {
     }
   }
 
-  function appendMessage(message: BidEventMessage) {
-    setSession((current) => ({
-      ...current,
-      messages: [...current.messages, message].slice(-30),
-    }))
-    if (message.type === 'bid' && message.userID && !message.displayName) {
-      void hydrateBidMessageUser(message)
+  function clearDanmakuTimeout() {
+    if (danmakuTimeoutRef.current !== null) {
+      window.clearTimeout(danmakuTimeoutRef.current)
+      danmakuTimeoutRef.current = null
+    }
+  }
+
+  function appendMessage(message: BidEventMessage, roomID?: EntityID) {
+    appendMessages([message], roomID)
+  }
+
+  function appendMessages(messages: BidEventMessage[], roomID?: EntityID) {
+    if (messages.length === 0) {
+      return
+    }
+
+    setSession((current) => {
+      if (roomID && (current.roomID !== roomID || current.status !== 'entered')) {
+        return current
+      }
+
+      return {
+        ...current,
+        messages: mergeMessages(current.messages, messages).slice(-30),
+      }
+    })
+
+    for (const message of messages) {
+      if (message.type === 'bid' && message.userID && !message.displayName) {
+        void hydrateBidMessageUser(message)
+      }
     }
   }
 
@@ -836,6 +913,15 @@ export function LiveHomePage() {
                           <span className="live-chat-composer__placeholder" aria-hidden="true">
                             <Smile size={18} strokeWidth={2.2} aria-hidden="true" />
                           </span>
+                          <button
+                            type="button"
+                            className="live-chat-composer__send"
+                            disabled={isSendingDanmaku || chatDraft.trim().length === 0}
+                            onClick={handleSendChat}
+                            aria-label="发送弹幕"
+                          >
+                            {isSendingDanmaku ? <DotLoading /> : <SendHorizontal size={16} aria-hidden="true" />}
+                          </button>
                         </div>
 
                         <div className="live-chat-actions">
@@ -1011,6 +1097,15 @@ function mergeRooms(current: UserLiveFeedItem[], incoming: UserLiveFeedItem[]) {
   }
 
   return next
+}
+
+function mergeMessages(current: BidEventMessage[], incoming: BidEventMessage[]) {
+  const byID = new Map<string, BidEventMessage>()
+  for (const message of [...current, ...incoming]) {
+    byID.set(message.id, message)
+  }
+
+  return [...byID.values()].sort((left, right) => left.createdAt - right.createdAt)
 }
 
 function isLiveRoom(status?: string, statusText?: string) {

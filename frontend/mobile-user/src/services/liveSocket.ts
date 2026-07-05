@@ -12,6 +12,7 @@ export type LiveSocketHandlers = {
 
 export type LiveSocketClient = {
   sendBid: (auctionID: EntityID, bidPrice: number) => string | null
+  sendDanmaku: (content: string) => string | null
   close: () => void
 }
 
@@ -51,6 +52,27 @@ export function openLiveSocket(
       socket.send(
         `{"type":"place_bid","request_id":"${requestID}","timestamp":${Date.now()},"data":{"auction_id":${auctionIDText},"bid_price":${bidPrice}}}`,
       )
+      return requestID
+    },
+    sendDanmaku(content: string) {
+      if (socket.readyState !== WebSocket.OPEN) {
+        return null
+      }
+
+      const text = content.trim()
+      if (!text) {
+        return null
+      }
+
+      const requestID = `dm_${Date.now()}_${Math.random().toString(16).slice(2)}`
+      socket.send(JSON.stringify({
+        type: 'send_danmaku',
+        request_id: requestID,
+        timestamp: Date.now(),
+        data: {
+          content: text,
+        },
+      }))
       return requestID
     },
     close() {
