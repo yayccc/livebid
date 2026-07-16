@@ -49,6 +49,8 @@ message ListLiveRoomsRequest {
   // Optional shop filter. When omitted, the first version keeps user feed behavior and lists living rooms only.
   optional int64 shop_id = 3;
   optional LiveRoomStatus status = 4;
+  // Optional room visibility filter. Public room directories should request PUBLISHED explicitly.
+  optional LiveRoomVisibility visibility = 5;
 }
 
 message ListLiveRoomsResponse {
@@ -126,6 +128,12 @@ message LiveRoom {
   google.protobuf.Timestamp actual_end_time = 9;
   google.protobuf.Timestamp created_at = 10;
   google.protobuf.Timestamp updated_at = 11;
+  // Controls whether the persistent room can be discovered and entered. It is independent of live status.
+  LiveRoomVisibility visibility = 12;
+  // Controls whether public room interaction is accepted while the room is accessible. Absence means legacy data.
+  optional bool chat_enabled = 13;
+  // Identifies the current business live session. It is absent while the room is not live.
+  optional int64 current_live_session_id = 14;
 }
 
 message LiveStreamInfo {
@@ -141,6 +149,13 @@ enum LiveRoomStatus {
   LIVE_ROOM_STATUS_UNSPECIFIED = 0;
   LIVE_ROOM_STATUS_NOT_LIVE = 1;
   LIVE_ROOM_STATUS_LIVING = 2;
+}
+
+enum LiveRoomVisibility {
+  LIVE_ROOM_VISIBILITY_UNSPECIFIED = 0;
+  LIVE_ROOM_VISIBILITY_DRAFT = 1;
+  LIVE_ROOM_VISIBILITY_PUBLISHED = 2;
+  LIVE_ROOM_VISIBILITY_DISABLED = 3;
 }
 
 enum MediaStreamStatus {

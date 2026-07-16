@@ -39,7 +39,16 @@ API Gateway              WebSocket Gateway
 | `order-service` | 成交订单、订单状态、超时关闭 | 是 |
 | `payment-service` | 支付单、支付回调、退款，可先 mock | 是 |
 | `message-service` | 站内通知、系统消息、广播事件消费 | 可选 |
-| `ai-service` | AI 定价建议、话术生成、风险提示 | 可选 |
+| `interaction-service` | 直播公开消息准入、幂等、房间序号、短历史和实时分发 | 建议 |
+| `ai-service` | AI 定价建议、选择性直播问答、话术生成和风险提示 | 可选 |
+
+## 直播互动专题
+
+- `interaction-service` 负责直播间公开互动消息的准入、幂等、频控、短历史、房间序号和 Redis fan-out，不拥有长期消息数据库。
+- `ws-gateway` 在目标架构中只负责 WebSocket 连接、协议适配和本地房间广播，不继续承载弹幕业务状态。
+- `ai-service` 增加直播场控能力，消费互动服务的低延迟真人消息事件，执行选择性公共问答、知识路由和低频氛围辅助；AI 回复统一通过 gRPC 回到互动服务。
+- `live-service` 将直播间建模为持久用户入口；`visibility` 决定可访问性，`status` 表示业务开播，`media_stream_status` 表示推流在线，`live_session_id` 隔离单次直播上下文。
+- 直播互动跨服务边界、共享契约与实施路线统一从 `docs/features/live-interaction/README.md` 进入；服务内部方案分别见 `docs/services/interaction-service/README.md` 和 `docs/services/ai-service/README.md`。
 
 ## 架构边界
 

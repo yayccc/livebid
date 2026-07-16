@@ -180,3 +180,49 @@ live.stream.unpublished
 
 - `not_live` 状态可以提前创建竞拍。
 - 只有 `living` 状态可以开始竞拍。
+
+## 2026-07-17 目标契约增量
+
+本节描述持久直播间演进后的目标契约。当前服务行为仍按上文第一版规则运行，实施步骤见 [演进需求.md](演进需求.md)。
+
+`LiveRoom` 增量字段：
+
+| 字段 | 类型 | 语义 |
+| --- | --- | --- |
+| `visibility` | `LiveRoomVisibility` | `draft/published/disabled`，决定普通用户是否可以访问房间 |
+| `chat_enabled` | `optional bool` | 是否允许公开互动，不依赖业务是否开播；缺失表示尚未迁移的旧数据 |
+| `current_live_session_id` | `optional int64` | 当前业务直播场次；`not_live` 时不存在 |
+
+`UpdateLiveRoom` 是 L0 必须冻结、当前 Proto 尚未补齐的目标 RPC。请求语义固定为：
+
+| 字段 | 类型 | 语义 |
+| --- | --- | --- |
+| `request_id` | string | 商家、房间作用域的幂等键 |
+| `id` | int64 | 直播间 ID |
+| `shop_id` | int64 | 过渡期调用身份一致性校验；最终权限以认证上下文为准 |
+| `title/cover/description` | optional string | 可更新的展示字段 |
+| `visibility` | optional enum | 只能更新房间可见性 |
+| `chat_enabled` | optional bool | 开启或关闭公开互动 |
+| `update_mask` | `google.protobuf.FieldMask` | 必填，明确本次更新字段 |
+
+响应返回最新 `LiveRoom` 和幂等重放标识。`status`、`media_stream_status`、`current_live_session_id`、推流凭证和归属字段禁止通过该 RPC 修改；它们分别只能由 `StartLive/EndLive`、SRS 回调或内部安全流程维护。相同 `request_id` 重试返回首次结果，字段掩码为空、包含只读字段或调用者无房间归属时拒绝。
+
+`ListLiveRoomsRequest` 增加可选 `visibility` 过滤。目标调用约定：
+
+1. 用户直播推荐流显式传 `visibility=published`、`status=living`。
+2. 店铺公开房间目录传 `visibility=published`，不强制传直播状态。
+3. 商家管理列表按商家身份查询，并可组合可见性和直播状态筛选。
+4. 按 ID 进入房间时校验 `visibility=published`，不再要求 `status=living`。
+
+`StartLive` 的目标语义：
+
+- 从 `not_live` 进入 `living` 时生成新的 `current_live_session_id`。
+- 幂等重试返回相同场次 ID。
+- 不等待 SRS 推流上线。
+
+`EndLive` 的目标语义：
+
+- 结束当前直播场次并清空 `current_live_session_id`。
+- 房间保持 `published`，可以继续访问和互动。
+
+SRS callback 继续只维护 `media_stream_status` 和活动媒体连接身份，不得创建或切换直播场次。`on_unpublish` 只有在 `client_id` 与当前活动连接匹配时才能置离线。

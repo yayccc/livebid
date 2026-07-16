@@ -79,3 +79,39 @@ living -> not_live
 - 发布 `live.ended` 事件。
 
 第一版建议如果存在 `running` 竞拍，不允许直接关播。商家需要先落锤、流拍或取消竞拍。
+
+## 2026-07-17 持久房间演进
+
+以上 `not_live/living` 状态机继续保留，但它只表达业务开播状态，不再决定房间是否可访问。目标模型增加两个正交维度：
+
+| 维度 | 状态 | 作用 |
+| --- | --- | --- |
+| 房间可见性 | `draft/published/disabled` | 决定普通用户是否可以发现和进入 |
+| 公开互动 | `chat_enabled=true/false` | 决定房间是否接受用户公开消息 |
+
+创建直播间后，第一阶段默认 `published + chat_enabled`。此时即使 `status=not_live`、`media_stream_status=offline`，用户也可以进入房间并看到“主播暂未开播”。
+
+目标生命周期：
+
+```text
+CreateLiveRoom
+  -> published / not_live / media offline / no current session
+
+StartLive
+  -> create live_session_id
+  -> living / media may still be offline
+
+SRS on_publish
+  -> replace active client + increment generation
+  -> media online / session unchanged
+
+SRS on_unpublish
+  -> matching active client: media offline / session unchanged
+  -> stale client: ignore state change
+
+EndLive
+  -> end current session
+  -> not_live / clear current session / room remains published
+```
+
+详细跨服务改造项见 [演进需求.md](演进需求.md)。

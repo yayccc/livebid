@@ -190,6 +190,7 @@ live-service
 auction-service
 order-service
 payment-service
+interaction-service
 ai-service
 ```
 

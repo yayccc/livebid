@@ -2,7 +2,7 @@
 
 LiveBid WebSocket 网关服务，负责直播竞拍实时连接、直播间订阅、在线人数统计、出价转发和竞拍事件广播。
 
-弹幕一期能力在 `docs/services/ws-gateway/弹幕功能需求.md` 和 `docs/services/ws-gateway/弹幕功能设计.md` 中定义；消息协议、运行机制和 AI 对接分别拆到同目录的专题设计文档。
+当前代码仍包含 `ws-gateway` 直管弹幕的 V1 实现，历史材料位于 `docs/archive/live-interaction/ws-gateway-v1/`。目标架构从 `docs/features/live-interaction/README.md` 进入，外部兼容协议见 `docs/services/ws-gateway/互动协议-v1.md`。
 
 ## 启动
 

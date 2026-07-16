@@ -1,4 +1,6 @@
-# AI 互动助手对接设计
+# AI 互动助手对接设计（ws-gateway V1 归档）
+
+> Status: superseded。本文只追溯 ws-gateway V1；Redis/RocketMQ 双链路不是目标方案。现行目标见 `docs/features/live-interaction/README.md`。
 
 ## 一、边界
 

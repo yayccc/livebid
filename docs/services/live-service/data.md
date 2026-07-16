@@ -40,3 +40,51 @@ CREATE TABLE live_room (
     INDEX idx_media_stream_status(media_stream_status)
 ) COMMENT='直播间主表';
 ```
+
+## 2026-07-17 目标数据模型增量
+
+为支持持久房间、离线互动和独立直播场次，`live_room` 目标增加：
+
+```sql
+ALTER TABLE live_room
+    ADD COLUMN visibility TINYINT NOT NULL DEFAULT 2
+        COMMENT '可见性：1-draft 2-published 3-disabled',
+    ADD COLUMN chat_enabled TINYINT NOT NULL DEFAULT 1
+        COMMENT '是否允许公开互动：0-否 1-是',
+    ADD COLUMN current_live_session_id BIGINT NULL
+        COMMENT '当前业务直播场次ID，未开播时为空',
+    ADD COLUMN active_publish_client_id VARCHAR(128) NULL
+        COMMENT '当前活动SRS推流连接ID，媒体离线时为空',
+    ADD COLUMN media_stream_generation BIGINT NOT NULL DEFAULT 0
+        COMMENT '每次成功on_publish递增的媒体连接代次',
+    ADD INDEX idx_visibility_status (visibility, status),
+    ADD INDEX idx_current_live_session_id (current_live_session_id);
+```
+
+直播场次使用独立表保存，不把历史场次覆盖在 `live_room.actual_start_time/actual_end_time` 中：
+
+```sql
+CREATE TABLE live_session (
+    id BIGINT PRIMARY KEY COMMENT '直播场次ID，采用雪花算法',
+    room_id BIGINT NOT NULL COMMENT '持久直播间ID',
+    shop_id BIGINT NOT NULL COMMENT '开播时商铺ID快照',
+    status TINYINT NOT NULL COMMENT '场次状态：1-living 2-ended',
+    started_at DATETIME NOT NULL COMMENT '业务开播时间',
+    ended_at DATETIME NULL COMMENT '业务结束时间',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_room_started_at (room_id, started_at),
+    INDEX idx_shop_started_at (shop_id, started_at),
+    INDEX idx_status (status)
+) COMMENT='直播业务场次';
+```
+
+实施约束：
+
+1. 存量未删除房间回填为 `visibility=published`、`chat_enabled=1`。
+2. `StartLive` 在同一事务中创建场次并写入 `live_room.current_live_session_id`。
+3. `EndLive` 在同一事务中结束场次并清空当前场次 ID。
+4. `actual_start_time/actual_end_time` 在兼容期继续表示当前或最近一次开关播时间；历史事实以 `live_session` 为准。
+5. SRS 回调不能修改 `current_live_session_id`。
+6. `on_publish` 在条件更新中递增 `media_stream_generation`、替换 `active_publish_client_id` 并置媒体在线。
+7. `on_unpublish` 只有在回调 `client_id = active_publish_client_id` 时才能清空连接并置离线；不匹配表示旧连接迟到，只记录审计。
